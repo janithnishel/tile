@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:tilework/models/dashboard/dashboard_models.dart';
-import 'package:tilework/routes/app_routes.dart';
+import 'package:tilework/routes/company_routes.dart';
 import 'package:tilework/widget/dashboard/dashboard_period_selector.dart';
 import 'package:tilework/widget/dashboard/material_sales/material_sales_dashboard_tab.dart';
 import 'package:tilework/widget/dashboard/projects/projects_dashboard_tab.dart';

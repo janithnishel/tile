@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:tilework/screens/sidebar_screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:tilework/cubits/auth/auth_cubit.dart';
+import 'package:tilework/repositories/auth_repository.dart';
+import 'package:tilework/routes/company_routes.dart';
+import 'package:tilework/services/api_service.dart';
 
 // -----------------------------------------------------------------------------
-// ENUMS AND DATA MODELS 
+// MAIN APP
 // -----------------------------------------------------------------------------
 
 void main() {
@@ -14,12 +19,20 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Desktop Sidebar App',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
-      home:SidebarScreen() ,
-      // SidebarScreen(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) => AuthCubit(
+            AuthRepository(ApiService()),
+          ),
+        ),
+      ],
+      child: MaterialApp.router(
+        title: 'TileWork',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+        routerConfig: appRouter,
+      ),
     );
   }
 }
