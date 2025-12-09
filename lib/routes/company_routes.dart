@@ -8,7 +8,7 @@ import '../screens/job_cost_section.dart';
 import '../screens/quotation_Invoice/quotation_list_screen.dart';
 import '../screens/auth/login _screen.dart';
 import '../screens/purchase_order_screen.dart';
-import '../screens/sidebar_screen.dart';
+import '../screens/company_sidebar_screen.dart';
 
 /// Application route names
 class AppRoutes {
@@ -52,10 +52,10 @@ final GoRouter appRouter = GoRouter(
           if (authState is AuthAuthenticated) {
             // Check user role and navigate accordingly
             final user = authState.user;
-            if (user.role == 'admin') {
+            if (user.role == 'super-admin') {
               return const SuperAdminDashboard();
             } else {
-              return SidebarScreen();
+              return CompanySidebarScreen();
             }
           } else {
             // User not authenticated, this shouldn't happen due to redirect
@@ -95,32 +95,7 @@ final GoRouter appRouter = GoRouter(
   ],
 );
 
-/// Placeholder widgets for routes that haven't been implemented yet
-class _HomePlaceholder extends StatelessWidget {
-  const _HomePlaceholder();
 
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.home, size: 80, color: Colors.blue),
-          SizedBox(height: 16),
-          Text(
-            'Welcome to TileWork Dashboard',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Select a menu item from the sidebar to get started',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _NotificationsPlaceholder extends StatelessWidget {
   const _NotificationsPlaceholder();

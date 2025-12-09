@@ -59,6 +59,84 @@ class MaterialSaleItem {
     return 0;
   }
 
+  // Factory constructor for JSON deserialization
+  factory MaterialSaleItem.fromJson(Map<String, dynamic> json) {
+    return MaterialSaleItem(
+      category: _categoryFromString(json['category'] as String? ?? 'Floor Tile'),
+      colorCode: json['colorCode'] as String? ?? '',
+      productName: json['productName'] as String? ?? '',
+      plank: (json['plank'] as num?)?.toDouble() ?? 0,
+      sqftPerPlank: (json['sqftPerPlank'] as num?)?.toDouble() ?? 0,
+      totalSqft: (json['totalSqft'] as num?)?.toDouble() ?? 0,
+      unitPrice: (json['unitPrice'] as num?)?.toDouble() ?? 0,
+      amount: (json['amount'] as num?)?.toDouble() ?? 0,
+      costPerSqft: (json['costPerSqft'] as num?)?.toDouble() ?? 0,
+      totalCost: (json['totalCost'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  // Convert to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'category': _categoryToString(category),
+      'colorCode': colorCode,
+      'productName': productName,
+      'plank': plank,
+      'sqftPerPlank': sqftPerPlank,
+      'totalSqft': totalSqft,
+      'unitPrice': unitPrice,
+      'amount': amount,
+      'costPerSqft': costPerSqft,
+      'totalCost': totalCost,
+    };
+  }
+
+  // Helper method to convert category string to enum
+  static MaterialCategory _categoryFromString(String category) {
+    switch (category) {
+      case 'Floor Tile':
+        return MaterialCategory.floorTile;
+      case 'Wall Tile':
+        return MaterialCategory.wallTile;
+      case 'Granite':
+        return MaterialCategory.granite;
+      case 'Marble':
+        return MaterialCategory.marble;
+      case 'Porcelain':
+        return MaterialCategory.porcelain;
+      case 'Ceramic':
+        return MaterialCategory.ceramic;
+      case 'Mosaic':
+        return MaterialCategory.mosaic;
+      case 'Other':
+        return MaterialCategory.other;
+      default:
+        return MaterialCategory.floorTile;
+    }
+  }
+
+  // Helper method to convert category enum to string
+  static String _categoryToString(MaterialCategory category) {
+    switch (category) {
+      case MaterialCategory.floorTile:
+        return 'Floor Tile';
+      case MaterialCategory.wallTile:
+        return 'Wall Tile';
+      case MaterialCategory.granite:
+        return 'Granite';
+      case MaterialCategory.marble:
+        return 'Marble';
+      case MaterialCategory.porcelain:
+        return 'Porcelain';
+      case MaterialCategory.ceramic:
+        return 'Ceramic';
+      case MaterialCategory.mosaic:
+        return 'Mosaic';
+      case MaterialCategory.other:
+        return 'Other';
+    }
+  }
+
   // Copy method
   MaterialSaleItem copyWith({
     MaterialCategory? category,

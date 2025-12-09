@@ -1,16 +1,24 @@
 // lib/screens/quotation_Invoice/quotation_list_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:math';
 
+import 'package:tilework/cubits/auth/auth_cubit.dart';
+import 'package:tilework/cubits/auth/auth_state.dart';
+import 'package:tilework/cubits/material_sale/material_sale_cubit.dart';
+import 'package:tilework/cubits/quotation/quotation_cubit.dart';
 import 'package:tilework/data/material_sale_data.dart';
-import 'package:tilework/data/mock_data.dart';
 import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_document.dart';
 import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_enums.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/document_enums.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/quotation_document.dart';
+import 'package:tilework/repositories/material_sale/material_sale_repository.dart';
+import 'package:tilework/repositories/quotation/quotation_repository.dart';
 import 'package:tilework/screens/quotation_Invoice/material_sale/material_sale_invoice_screen.dart';
 import 'package:tilework/screens/quotation_Invoice/quotation_invoice_screen.dart';
+import 'package:tilework/services/material_sale/material_sale_api_service.dart';
+import 'package:tilework/services/quotation/quotation_api_service.dart';
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/project_tab_view/project_tab_view.dart';
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/material_sales_tab_view/material_sale_tab_view.dart';
 
@@ -48,38 +56,68 @@ class _QuotationListScreenState extends State<QuotationListScreen>
     super.dispose();
   }
 
+  // Create QuotationCubit with proper context access
+  QuotationCubit _createQuotationCubit(BuildContext context) {
+    final authCubit = context.read<AuthCubit>();
+    final token = (authCubit.state as AuthAuthenticated?)?.token;
+
+    return QuotationCubit(
+      QuotationRepository(
+        QuotationApiService(),
+        token,
+      ),
+      authCubit,
+    )..loadQuotations();
+  }
+
+  // Create MaterialSaleCubit with proper context access
+  MaterialSaleCubit _createMaterialSaleCubit(BuildContext context) {
+    final authCubit = context.read<AuthCubit>();
+    final token = (authCubit.state as AuthAuthenticated?)?.token;
+
+    return MaterialSaleCubit(
+      MaterialSaleRepository(
+        MaterialSaleApiService(),
+        token,
+      ),
+      authCubit,
+    );
+  }
+
+  // Refresh callback for app bar
+  void _refreshQuotations() {
+    print('🔄 Manual refresh triggered - reloading quotations from backend...');
+    context.read<QuotationCubit>().loadQuotations();
+  }
+
   // ============================================
   // NAVIGATION METHODS
   // ============================================
 
-  Future<void> _openDocument(QuotationDocument doc) async {
-    final result = await Navigator.push<bool>(
+  void _openDocument(QuotationDocument doc, QuotationCubit cubit) {
+    Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => QuotationInvoiceScreen(
-          document: doc,
-          isNewDocument: false,
+        builder: (context) => BlocProvider<QuotationCubit>.value(
+          value: cubit,
+          child: QuotationInvoiceScreen(
+            document: doc,
+            isNewDocument: false,
+          ),
         ),
       ),
-    );
-
-    if (result == true || result == null) {
-      setState(() {});
-    }
+    ).then((result) {
+      if (result == true || result == null) {
+        // Refresh quotations list after editing
+        cubit.loadQuotations();
+      }
+    });
   }
 
-  Future<void> _createNewQuotation() async {
-    // Generate new document number
-    int maxNum = mockDocuments.isEmpty
-        ? 1500
-        : mockDocuments
-            .map((d) => int.tryParse(d.documentNumber) ?? 0)
-            .reduce(max);
-    final newNumber = (maxNum + 1).toString();
-
-    // Create new document
+  void _createNewQuotation(QuotationCubit cubit) {
+    // Create new document with empty documentNumber for backend auto-generation
     final newDoc = QuotationDocument(
-      documentNumber: newNumber,
+      documentNumber: '', // Backend will auto-generate this
       customerName: '',
       customerPhone: '',
       customerAddress: '',
@@ -92,20 +130,24 @@ class _QuotationListScreenState extends State<QuotationListScreen>
       status: DocumentStatus.pending,
     );
 
-    // Navigate to create screen
-    final result = await Navigator.push<bool>(
+    // Navigate to create screen with the same cubit instance
+    Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => QuotationInvoiceScreen(
-          document: newDoc,
-          isNewDocument: true,
+        builder: (context) => BlocProvider<QuotationCubit>.value(
+          value: cubit, // Pass cubit instance
+          child: QuotationInvoiceScreen(
+            document: newDoc,
+            isNewDocument: true,
+          ),
         ),
       ),
-    );
-
-    if (result == true) {
-      setState(() {});
-    }
+    ).then((result) {
+      if (result == true) {
+        // Refresh quotations from API after successful creation
+        cubit.loadQuotations();
+      }
+    });
   }
 
   Future<void> _openMaterialSaleDocument(MaterialSaleDocument doc) async {
@@ -188,29 +230,47 @@ class _QuotationListScreenState extends State<QuotationListScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _buildAppBar(),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // Tab 1: Project
-          ProjectTabView(
-            onCreateNew: _createNewQuotation,
-            onDocumentTap: _openDocument,
-          ),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) => _createQuotationCubit(context),
+        ),
+        BlocProvider(
+          create: (context) => _createMaterialSaleCubit(context),
+        ),
+      ],
+      child: Builder(
+        builder: (context) {
+          // Now context has access to both BlocProviders
+          final quotationCubit = context.read<QuotationCubit>();
+          final materialSaleCubit = context.read<MaterialSaleCubit>();
 
-          // Tab 2: Material Sale
-          MaterialSaleTabView(
-            onCreateNew: _createNewMaterialSale,
-            onDocumentTap: _openMaterialSaleDocument,
-          ),
-        ],
+          return Scaffold(
+            appBar: _buildAppBar(quotationCubit),
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                // Tab 1: Project
+                ProjectTabView(
+                  onCreateNew: (cubit) => _createNewQuotation(cubit),
+                  onDocumentTap: (doc, cubit) => _openDocument(doc, cubit),
+                ),
+
+                // Tab 2: Material Sale
+                MaterialSaleTabView(
+                  onCreateNew: (cubit) => _createNewMaterialSale(),
+                  onDocumentTap: (doc, cubit) => _openMaterialSaleDocument(doc),
+                ),
+              ],
+            ),
+            floatingActionButton: _buildFloatingActionButton(quotationCubit),
+          );
+        },
       ),
-      floatingActionButton: _buildFloatingActionButton(),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(QuotationCubit quotationCubit) {
     return AppBar(
       title: const Text('Document List'),
       backgroundColor: Colors.purple.shade700,
@@ -219,7 +279,10 @@ class _QuotationListScreenState extends State<QuotationListScreen>
       actions: [
         IconButton(
           icon: const Icon(Icons.refresh),
-          onPressed: () => setState(() {}),
+          onPressed: () {
+            print('🔄 Manual refresh triggered - reloading quotations from backend...');
+            quotationCubit.loadQuotations();
+          },
           tooltip: 'Refresh',
         ),
       ],
@@ -284,12 +347,12 @@ class _QuotationListScreenState extends State<QuotationListScreen>
     );
   }
 
-  Widget? _buildFloatingActionButton() {
+  Widget? _buildFloatingActionButton(QuotationCubit quotationCubit) {
     // Project Tab FAB
     if (_currentTabIndex == 0) {
       return FloatingActionButton.extended(
         heroTag: 'fab_project',
-        onPressed: _createNewQuotation,
+        onPressed: () => _createNewQuotation(quotationCubit),
         label: const Text(
           'New Quotation',
           style: TextStyle(color: Colors.white),

@@ -13,6 +13,26 @@ class InvoiceLineItem {
     this.isOriginalQuotationItem = true,
   });
 
+  // Factory constructor for JSON deserialization
+  factory InvoiceLineItem.fromJson(Map<String, dynamic> json) {
+    return InvoiceLineItem(
+      item: ItemDescription.fromJson(json['item'] as Map<String, dynamic>),
+      quantity: (json['quantity'] as num?)?.toDouble() ?? 0.0,
+      customDescription: json['customDescription'] as String?,
+      isOriginalQuotationItem: json['isOriginalQuotationItem'] as bool? ?? true,
+    );
+  }
+
+  // Convert to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'item': item.toJson(),
+      'quantity': quantity,
+      if (customDescription != null) 'customDescription': customDescription,
+      'isOriginalQuotationItem': isOriginalQuotationItem,
+    };
+  }
+
   double get amount => quantity * item.sellingPrice;
 
   // Helper to get display name

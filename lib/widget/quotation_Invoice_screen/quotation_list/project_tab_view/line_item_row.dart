@@ -94,15 +94,18 @@ class _LineItemRowState extends State<LineItemRow> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Item Dropdown
+          // Activity Item Dropdown
           Expanded(
-            flex: 3,
-            child: _buildItemDropdown(),
+            flex: 2,
+            child: _buildActivityItemDropdown(),
           ),
           const SizedBox(width: 8),
 
-          // Unit Display
-          _buildUnitDisplay(),
+          // Product Name Dropdown
+          Expanded(
+            flex: 2,
+            child: _buildProductNameDropdown(),
+          ),
           const SizedBox(width: 8),
 
           // Quantity
@@ -132,23 +135,77 @@ class _LineItemRowState extends State<LineItemRow> {
     );
   }
 
-  Widget _buildItemDropdown() {
-    return DropdownButtonFormField<ItemDescription>(
-      value: masterItemList.contains(widget.item.item) ? widget.item.item : null,
+  Widget _buildActivityItemDropdown() {
+    // Get unique categories
+    final categories = masterItemList
+        .map((item) => item.category)
+        .where((category) => category.isNotEmpty)
+        .toSet()
+        .toList();
+
+    return DropdownButtonFormField<String>(
+      value: widget.item.item.category.isNotEmpty ? widget.item.item.category : null,
       decoration: InputDecoration(
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         filled: !widget.isDropdownEditable,
         fillColor: widget.isDropdownEditable ? null : Colors.grey.shade100,
-        hintText: 'Select item...',
+        hintText: 'Select category...',
       ),
       isExpanded: true,
-      items: masterItemList
+      items: categories
           .map(
-            (desc) => DropdownMenuItem(
-              value: desc,
+            (category) => DropdownMenuItem(
+              value: category,
               child: Text(
-                desc.name,
+                category,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: widget.isDropdownEditable
+          ? (value) {
+              if (value != null) {
+                // Find the first item in this category to set as default
+                final categoryItems = masterItemList.where((item) => item.category == value).toList();
+                if (categoryItems.isNotEmpty) {
+                  final newItem = categoryItems.first;
+                  widget.onItemChanged(newItem);
+                  setState(() {
+                    _priceController.text = newItem.sellingPrice > 0
+                        ? newItem.sellingPrice.toStringAsFixed(2)
+                        : '';
+                  });
+                }
+              }
+            }
+          : null,
+    );
+  }
+
+  Widget _buildProductNameDropdown() {
+    // Get products for the selected category
+    final categoryProducts = widget.item.item.category.isNotEmpty
+        ? masterItemList.where((item) => item.category == widget.item.item.category).toList()
+        : <ItemDescription>[];
+
+    return DropdownButtonFormField<ItemDescription>(
+      value: categoryProducts.contains(widget.item.item) ? widget.item.item : null,
+      decoration: InputDecoration(
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        filled: !widget.isDropdownEditable,
+        fillColor: widget.isDropdownEditable ? null : Colors.grey.shade100,
+        hintText: 'Select product...',
+      ),
+      isExpanded: true,
+      items: categoryProducts
+          .map<DropdownMenuItem<ItemDescription>>(
+            (item) => DropdownMenuItem<ItemDescription>(
+              value: item,
+              child: Text(
+                item.productName,
                 overflow: TextOverflow.ellipsis,
               ),
             ),

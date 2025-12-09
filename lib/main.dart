@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
-import 'package:tilework/repositories/auth_repository.dart';
+import 'package:tilework/cubits/company/company_cubit.dart';
+import 'package:tilework/repositories/auth/auth_repository.dart';
+import 'package:tilework/repositories/company/company_repository.dart';
 import 'package:tilework/routes/company_routes.dart';
-import 'package:tilework/services/api_service.dart';
+import 'package:tilework/services/auth/api_service.dart';
+import 'package:tilework/services/company/company_api_service.dart';
 
 // -----------------------------------------------------------------------------
 // MAIN APP
@@ -24,6 +27,11 @@ class MyApp extends StatelessWidget {
         BlocProvider(
           create: (context) => AuthCubit(
             AuthRepository(ApiService()),
+          ),
+        ),
+        BlocProvider(
+          create: (context) => CompanyCubit(
+            CompanyRepository(CompanyApiService()),
           ),
         ),
       ],

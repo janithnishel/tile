@@ -5,13 +5,13 @@ import 'package:tilework/models/quotation_Invoice_screen/project/payment_record.
 import 'package:tilework/models/quotation_Invoice_screen/project/quotation_document.dart';
 
 
-// Master Item List
+// Master Item List with Categories
 final List<ItemDescription> masterItemList = [
-  ItemDescription('LVT & installation 2mm', sellingPrice: 365.00, unit: 'sqft'),
-  ItemDescription('Skirting 3" inch', sellingPrice: 410.00, unit: 'linear ft'),
-  ItemDescription('Floor preparation', sellingPrice: 8500.00, unit: 'Lump Sum'),
-  ItemDescription('Transport', sellingPrice: 6850.00, unit: 'Lump Sum'),
-  ItemDescription('Other (Custom Item)', sellingPrice: 0.00, unit: 'units'),
+  ItemDescription('LVT & installation 2mm', sellingPrice: 365.00, unit: 'sqft', category: 'LVT Flooring', productName: '2mm Luxury Vinyl Tile'),
+  ItemDescription('Skirting 3" inch', sellingPrice: 410.00, unit: 'linear ft', category: 'Skirting', productName: '3" PVC Skirting'),
+  ItemDescription('Floor preparation', sellingPrice: 8500.00, unit: 'Lump Sum', category: 'Preparation', productName: 'Floor Preparation Service'),
+  ItemDescription('Transport', sellingPrice: 6850.00, unit: 'Lump Sum', category: 'Services', productName: 'Transportation Service'),
+  ItemDescription('Other (Custom Item)', sellingPrice: 0.00, unit: 'units', category: 'Custom', productName: 'Custom Item'),
 ];
 
 // Mock Document List

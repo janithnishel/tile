@@ -20,7 +20,6 @@ class _LoginScreenState extends State<LoginScreen>
   final _passwordController = TextEditingController();
 
   bool _isPasswordVisible = false;
-  bool _isLoading = false;
   bool _rememberMe = false;
 
   late AnimationController _animationController;
@@ -89,88 +88,26 @@ class _LoginScreenState extends State<LoginScreen>
       },
       builder: (context, state) {
         return Scaffold(
-          body: Stack(
-            children: [
-              // Main content
-              AnnotatedRegion<SystemUiOverlayStyle>(
-                value: SystemUiOverlayStyle.light,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (isDesktop(context)) {
-                      return _buildDesktopLayout(isLoading: state is AuthLoading);
-                    } else if (isTablet(context)) {
-                      return _buildTabletLayout(isLoading: state is AuthLoading);
-                    } else {
-                      return _buildMobileLayout(isLoading: state is AuthLoading);
-                    }
-                  },
-                ),
-              ),
-
-              // Debug overlay
-              Positioned(
-                top: 10,
-                right: 10,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '🔧 Debug Info',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'State: ${_getStateName(state)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                        ),
-                      ),
-                      if (state is AuthError)
-                        Text(
-                          'Error: ${state.message}',
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 10,
-                          ),
-                        ),
-                      if (state is AuthAuthenticated)
-                        Text(
-                          'User: ${state.user.name}',
-                          style: const TextStyle(
-                            color: Colors.green,
-                            fontSize: 10,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          body: AnnotatedRegion<SystemUiOverlayStyle>(
+            value: SystemUiOverlayStyle.light,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (isDesktop(context)) {
+                  return _buildDesktopLayout(isLoading: state is AuthLoading);
+                } else if (isTablet(context)) {
+                  return _buildTabletLayout(isLoading: state is AuthLoading);
+                } else {
+                  return _buildMobileLayout(isLoading: state is AuthLoading);
+                }
+              },
+            ),
           ),
         );
       },
     );
   }
 
-  String _getStateName(AuthState state) {
-    if (state is AuthInitial) return 'Initial';
-    if (state is AuthLoading) return 'Loading';
-    if (state is AuthAuthenticated) return 'Authenticated';
-    if (state is AuthUnauthenticated) return 'Unauthenticated';
-    if (state is AuthError) return 'Error';
-    return 'Unknown';
-  }
+
 
   // ═══════════════════════════════════════
   // 🖥️ DESKTOP LAYOUT - Split Screen

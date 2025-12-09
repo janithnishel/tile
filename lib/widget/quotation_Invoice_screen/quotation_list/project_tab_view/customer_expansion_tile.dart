@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:tilework/cubits/quotation/quotation_cubit.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/quotation_document.dart';
 import 'document_card.dart';
 
@@ -8,7 +9,8 @@ class CustomerExpansionTile extends StatelessWidget {
   final String customerName;
   final List<QuotationDocument> documents;
   final Map<String, dynamic> summary;
-  final Function(QuotationDocument) onDocumentTap;
+  final Function(QuotationDocument, QuotationCubit) onDocumentTap;
+  final QuotationCubit cubit;
 
   const CustomerExpansionTile({
     Key? key,
@@ -16,6 +18,7 @@ class CustomerExpansionTile extends StatelessWidget {
     required this.documents,
     required this.summary,
     required this.onDocumentTap,
+    required this.cubit,
   }) : super(key: key);
 
   @override
@@ -40,7 +43,7 @@ class CustomerExpansionTile extends StatelessWidget {
         children: documents
             .map((doc) => DocumentCard(
                   document: doc,
-                  onTap: () => onDocumentTap(doc),
+                  onTap: () => onDocumentTap(doc, cubit),
                 ))
             .toList(),
       ),

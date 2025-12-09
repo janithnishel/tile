@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:tilework/cubits/auth/auth_cubit.dart';
+import 'package:tilework/routes/company_routes.dart';
 import 'package:tilework/screens/dashboard_screen.dart';
 import 'package:tilework/widget/shared/menu_item.dart';
 import 'package:tilework/screens/job_cost_section.dart';
 import 'package:tilework/screens/quotation_Invoice/quotation_list_screen.dart';
 import 'package:tilework/screens/purchase_order_screen.dart';
 import 'package:tilework/screens/reports_screen.dart';
+import 'package:tilework/widget/super_admin/dialogs/confirm_dialog.dart';
 
-class SidebarScreen extends StatefulWidget {
+class CompanySidebarScreen extends StatefulWidget {
   @override
-  _SidebarScreenState createState() => _SidebarScreenState();
+  _CompanySidebarScreenState createState() => _CompanySidebarScreenState();
 }
 
-class _SidebarScreenState extends State<SidebarScreen> {
+class _CompanySidebarScreenState extends State<CompanySidebarScreen> {
   bool isExpanded = true;
   int selectedIndex = 0;
   late final List<MenuItem> menuItems;
@@ -149,12 +154,10 @@ class _SidebarScreenState extends State<SidebarScreen> {
                         padding: EdgeInsets.symmetric(vertical: 4),
                         child: Material(
                           color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              setState(() {
-                                selectedIndex = index;
-                              });
-                            },
+                        child: InkWell(
+                          onTap: () {
+                            menuItems[index].onTap?.call(); // Call the menu item's onTap function safely
+                          },
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
                               width: double.infinity,
@@ -294,27 +297,41 @@ class _SidebarScreenState extends State<SidebarScreen> {
   }
 
   void _handleLogout() {
-    // TODO: Implement logout logic
-    showDialog(
+    _showLogoutConfirmation();
+  }
+
+  Future<void> _showLogoutConfirmation() async {
+    final result = await ConfirmDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              // Add logout logic here
-              Navigator.of(context).pop();
-            },
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
+      title: 'Logout Confirmation',
+      message: 'Are you sure you want to logout from your account?',
+      confirmText: 'Logout',
+      cancelText: 'Cancel',
+      icon: Icons.logout_rounded,
+      isDanger: true,
     );
+
+    if (result == true) {
+      _performLogout();
+    }
+  }
+
+  Future<void> _performLogout() async {
+    try {
+      // Clear authentication state
+      context.read<AuthCubit>().logout();
+
+      // Navigate to login screen
+      context.go(AppRoutes.login);
+    } catch (e) {
+      // Show error if logout fails
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget getPage(int index) {

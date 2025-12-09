@@ -1,15 +1,17 @@
 // lib/widget/quotation_Invoice_screen/quotation_list/project_tab_view.dart
 
 import 'package:flutter/material.dart';
-import 'package:tilework/data/mock_data.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:tilework/cubits/quotation/quotation_cubit.dart';
+import 'package:tilework/cubits/quotation/quotation_state.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/document_enums.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/quotation_document.dart';
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/project_tab_view/customer_expansion_tile.dart';
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/project_tab_view/search_filter_section.dart';
 
 class ProjectTabView extends StatefulWidget {
-  final VoidCallback onCreateNew;
-  final Function(QuotationDocument) onDocumentTap;
+  final Function(QuotationCubit) onCreateNew;
+  final Function(QuotationDocument, QuotationCubit) onDocumentTap;
 
   const ProjectTabView({
     Key? key,
@@ -40,10 +42,10 @@ class _ProjectTabViewState extends State<ProjectTabView> {
   // FILTER METHODS
   // ============================================
 
-  List<QuotationDocument> _getFilteredDocuments() {
-    return mockDocuments.where((doc) {
+  List<QuotationDocument> _getFilteredDocuments(List<QuotationDocument> documents) {
+    return documents.where((doc) {
       final query = _searchQuery.toLowerCase();
-      
+
       final matchesSearch = query.isEmpty ||
           doc.customerName.toLowerCase().contains(query) ||
           doc.documentNumber.toLowerCase().contains(query) ||
@@ -69,18 +71,18 @@ class _ProjectTabViewState extends State<ProjectTabView> {
     List<QuotationDocument> documents,
   ) {
     final Map<String, List<QuotationDocument>> grouped = {};
-    
+
     for (var doc in documents) {
-      if (doc.customerName.isNotEmpty) {
-        grouped.putIfAbsent(doc.customerName, () => []).add(doc);
-      }
+      // Group by customer name, or use "Unassigned" for documents without customer names
+      final customerKey = doc.customerName.isNotEmpty ? doc.customerName : 'Unassigned Customer';
+      grouped.putIfAbsent(customerKey, () => []).add(doc);
     }
-    
+
     // Sort documents in each group by date (newest first)
     grouped.forEach((customer, docs) {
       docs.sort((a, b) => b.invoiceDate.compareTo(a.invoiceDate));
     });
-    
+
     return grouped;
   }
 
@@ -155,43 +157,69 @@ class _ProjectTabViewState extends State<ProjectTabView> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredDocs = _getFilteredDocuments();
-    final groupedDocs = _groupByCustomer(filteredDocs);
-    final customerNames = groupedDocs.keys.toList()..sort();
+    return BlocConsumer<QuotationCubit, QuotationState>(
+      listener: (context, state) {
+        // Listen for errors and show snackbar
+        if (state.errorMessage != null && !state.isLoading) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.errorMessage!),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+      builder: (context, state) {
+        final filteredDocs = _getFilteredDocuments(state.quotations);
+        final groupedDocs = _groupByCustomer(filteredDocs);
+        final customerNames = groupedDocs.keys.toList()..sort();
 
-    return Column(
-      children: [
-        // Search & Filter Section
-        SearchFilterSection(
-          searchQuery: _searchQuery,
-          typeFilter: _typeFilter,
-          statusFilter: _statusFilter,
-          startDate: _startDate,
-          endDate: _endDate,
-          searchController: _searchController,
-          onSearchChanged: _onSearchChanged,
-          onTypeFilterChanged: _onTypeFilterChanged,
-          onStatusFilterChanged: _onStatusFilterChanged,
-          onStartDateChanged: _onStartDateChanged,
-          onEndDateChanged: _onEndDateChanged,
-          onClearSearch: _clearSearch,
-          onClearDateFilter: _clearDateFilter,
-          customerCount: customerNames.length,
-          quotationCount: filteredDocs
-              .where((d) => d.type == DocumentType.quotation)
-              .length,
-          invoiceCount: filteredDocs
-              .where((d) => d.type == DocumentType.invoice)
-              .length,
-        ),
+        // Debug logging
+        debugPrint('🧪 ProjectTabView: Total quotations: ${state.quotations.length}');
+        debugPrint('🧪 ProjectTabView: Filtered docs: ${filteredDocs.length}');
+        debugPrint('🧪 ProjectTabView: Customer groups: ${customerNames.length}');
+        debugPrint('🧪 ProjectTabView: Customer names: $customerNames');
 
-        // Document List
-        Expanded(
-          child: customerNames.isEmpty
-              ? _buildEmptyState()
-              : _buildDocumentList(customerNames, groupedDocs),
-        ),
-      ],
+        return Column(
+          children: [
+            // Search & Filter Section
+            SearchFilterSection(
+              searchQuery: _searchQuery,
+              typeFilter: _typeFilter,
+              statusFilter: _statusFilter,
+              startDate: _startDate,
+              endDate: _endDate,
+              searchController: _searchController,
+              onSearchChanged: _onSearchChanged,
+              onTypeFilterChanged: _onTypeFilterChanged,
+              onStatusFilterChanged: _onStatusFilterChanged,
+              onStartDateChanged: _onStartDateChanged,
+              onEndDateChanged: _onEndDateChanged,
+              onClearSearch: _clearSearch,
+              onClearDateFilter: _clearDateFilter,
+              customerCount: customerNames.length,
+              quotationCount: filteredDocs
+                  .where((d) => d.type == DocumentType.quotation)
+                  .length,
+              invoiceCount: filteredDocs
+                  .where((d) => d.type == DocumentType.invoice)
+                  .length,
+            ),
+
+            // Document List
+            Expanded(
+              child: state.isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : state.errorMessage != null
+                      ? _buildErrorState(state.errorMessage!)
+                      : customerNames.isEmpty
+                          ? _buildEmptyState()
+                          : _buildDocumentList(customerNames, groupedDocs),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -212,8 +240,84 @@ class _ProjectTabViewState extends State<ProjectTabView> {
           documents: customerDocs,
           summary: summary,
           onDocumentTap: widget.onDocumentTap,
+          cubit: context.read<QuotationCubit>(),
         );
       },
+    );
+  }
+
+  Widget _buildErrorState(String errorMessage) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Error Icon
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.red.shade400,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Title
+          Text(
+            'Failed to load quotations',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.red.shade700,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Error Message
+          Text(
+            errorMessage,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.red.shade600,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Additional Info
+          Text(
+            'Please check your backend server and internet connection',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade500,
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Retry Button
+          ElevatedButton.icon(
+            onPressed: () => context.read<QuotationCubit>().loadQuotations(),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Retry'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade700,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -260,7 +364,7 @@ class _ProjectTabViewState extends State<ProjectTabView> {
 
           // Create Button
           ElevatedButton.icon(
-            onPressed: widget.onCreateNew,
+            onPressed: () => widget.onCreateNew(context.read<QuotationCubit>()),
             icon: const Icon(Icons.add),
             label: const Text('Create New Quotation'),
             style: ElevatedButton.styleFrom(

@@ -23,20 +23,15 @@ class DocumentDetailsSection extends StatelessWidget {
       children: [
         Text(
           document.isQuotation ? 'Quotation Details' : 'Invoice Details',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
 
-        // First Row: Document Number + Date
+        // 💡 වෙනස: Document Number ක්ෂේත්‍රය ඉවත් කර ඇත.
+        // දැන් මෙම පේළියේ Invoice/Quotation Date සහ Due Date පමණක් අඩංගු වේ.
         Row(
           children: [
-            Expanded(
-              child: _buildDocumentNumberField(),
-            ),
-            const SizedBox(width: 16),
+            // 1. Invoice/Quotation Date Field
             Expanded(
               child: DatePickerRow(
                 label: document.isQuotation ? 'Quotation Date' : 'Invoice Date',
@@ -46,13 +41,9 @@ class DocumentDetailsSection extends StatelessWidget {
                 onDateChanged: onInvoiceDateChanged,
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 16),
+            const SizedBox(width: 16),
 
-        // Second Row: Due Date
-        Row(
-          children: [
+            // 2. Due Date Field (Previous Due Date Row එක මෙයට ඒකාබද්ධ කර ඇත)
             Expanded(
               child: DatePickerRow(
                 label: 'Due Date',
@@ -62,27 +53,11 @@ class DocumentDetailsSection extends StatelessWidget {
                 onDateChanged: onDueDateChanged,
               ),
             ),
-            const SizedBox(width: 16),
-            const Expanded(child: SizedBox.shrink()),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildDocumentNumberField() {
-    return TextField(
-      controller: TextEditingController(
-        text: document.displayDocumentNumber,
-      ),
-      readOnly: true,
-      decoration: InputDecoration(
-        labelText: 'Document Number',
-        prefixIcon: const Icon(Icons.numbers),
-        border: const OutlineInputBorder(),
-        filled: true,
-        fillColor: Colors.grey.shade100,
-      ),
-    );
-  }
+  // ❌ _buildDocumentNumberField() method එක සම්පූර්ණයෙන්ම ඉවත් කර ඇත.
 }

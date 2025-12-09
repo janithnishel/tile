@@ -1,6 +1,10 @@
 // lib/screens/super_admin/super_admin_dashboard.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:tilework/cubits/auth/auth_cubit.dart';
+import 'package:tilework/routes/company_routes.dart';
 import 'package:tilework/screens/super_admin/app_theme.dart';
 import 'package:tilework/widget/super_admin/dialogs/confirm_dialog.dart';
 import 'dashboard_content.dart';
@@ -341,7 +345,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
 
   void _handleMenuTap(int index) {
     if (menuItems[index].isLogout) {
-      _handleLogout();
+      _showLogoutConfirmation();
     } else {
       setState(() {
         selectedIndex = index;
@@ -349,11 +353,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     }
   }
 
-  Future<void> _handleLogout() async {
+
+
+  Future<void> _showLogoutConfirmation() async {
     final result = await ConfirmDialog.show(
       context: context,
-      title: 'Logout',
-      message: 'Are you sure you want to logout from the system?',
+      title: 'Logout Confirmation',
+      message: 'Are you sure you want to logout from your account?',
       confirmText: 'Logout',
       cancelText: 'Cancel',
       icon: Icons.logout_rounded,
@@ -361,8 +367,25 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     );
 
     if (result == true) {
-      // Handle logout
-      Navigator.of(context).pop();
+      _performLogout();
+    }
+  }
+
+  Future<void> _performLogout() async {
+    try {
+      // Clear authentication state
+      context.read<AuthCubit>().logout();
+
+      // Navigate to login screen
+      context.go(AppRoutes.login);
+    } catch (e) {
+      // Show error if logout fails
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }

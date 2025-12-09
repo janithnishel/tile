@@ -138,46 +138,97 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
               ),
               child: Form(
                 key: _formKey,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: AppTextField(
-                        label: 'Item Name',
-                        hint: 'Ex: Skirting - 4 Inch',
-                        controller: _itemNameController,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: AppTextField(
-                        label: 'Base Unit',
-                        hint: 'Ex: Linear Meter',
-                        controller: _baseUnitController,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: AppTextField(
-                        label: 'Sqft per Unit',
-                        hint: 'Ex: 0.33',
-                        controller: _sqftPerUnitController,
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 28),
-                      child: AppButton(
-                        text: 'Add',
-                        icon: Icons.add_rounded,
-                        onPressed: _addItem,
-                      ),
-                    ),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final maxWidth = constraints.maxWidth;
+                    final useVerticalLayout = maxWidth < 600; // Breakpoint for responsive layout
+
+                    if (useVerticalLayout) {
+                      // Vertical layout for smaller screens
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AppTextField(
+                            label: 'Item Name',
+                            hint: 'Ex: Skirting - 4 Inch',
+                            controller: _itemNameController,
+                          ),
+                          const SizedBox(height: 12),
+                          AppTextField(
+                            label: 'Base Unit',
+                            hint: 'Ex: Linear Meter',
+                            controller: _baseUnitController,
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: AppTextField(
+                                  label: 'Sqft per Unit',
+                                  hint: 'Ex: 0.33',
+                                  controller: _sqftPerUnitController,
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 1,
+                                child: AppButton(
+                                  text: 'Add',
+                                  icon: Icons.add_rounded,
+                                  onPressed: _addItem,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    } else {
+                      // Horizontal layout for larger screens
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: AppTextField(
+                              label: 'Item Name',
+                              hint: 'Ex: Skirting - 4 Inch',
+                              controller: _itemNameController,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: AppTextField(
+                              label: 'Base Unit',
+                              hint: 'Ex: Linear Meter',
+                              controller: _baseUnitController,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: AppTextField(
+                              label: 'Sqft per Unit',
+                              hint: 'Ex: 0.33',
+                              controller: _sqftPerUnitController,
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 28),
+                            child: AppButton(
+                              text: 'Add',
+                              icon: Icons.add_rounded,
+                              onPressed: _addItem,
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                  },
                 ),
               ),
             ),
@@ -215,75 +266,163 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                         final item = _items[index];
                         return AppCard(
                           padding: const EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              // Icon
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.success.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.inventory_rounded,
-                                  color: AppTheme.success,
-                                  size: 20,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final maxWidth = constraints.maxWidth;
+                              final useCompactLayout = maxWidth < 500; // Breakpoint for compact layout
 
-                              // Name
-                              Expanded(
-                                flex: 3,
-                                child: Column(
+                              if (useCompactLayout) {
+                                // Compact vertical layout for very small screens
+                                return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      item.itemName,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 15,
-                                      ),
+                                    Row(
+                                      children: [
+                                        // Icon
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.success.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: const Icon(
+                                            Icons.inventory_rounded,
+                                            color: AppTheme.success,
+                                            size: 16,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        // Name
+                                        Expanded(
+                                          child: Text(
+                                            item.itemName,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                        // Delete button
+                                        IconButton(
+                                          onPressed: () => _deleteItem(index),
+                                          icon: const Icon(
+                                            Icons.delete_outline_rounded,
+                                            color: AppTheme.error,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    Text(
-                                      'Base Unit: ${item.baseUnit}',
-                                      style: AppTheme.bodyMedium,
+                                    const SizedBox(height: 4),
+                                    // Base unit and sqft info
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            'Base Unit: ${item.baseUnit}',
+                                            style: AppTheme.bodyMedium.copyWith(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ),
+                                        // Sqft per unit badge (smaller)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.primaryAccent.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            '${item.sqftPerUnit} sqft/unit',
+                                            style: TextStyle(
+                                              color: AppTheme.primaryAccent,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
-                                ),
-                              ),
+                                );
+                              } else {
+                                // Normal horizontal layout for larger screens
+                                return Row(
+                                  children: [
+                                    // Icon
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.success.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(
+                                        Icons.inventory_rounded,
+                                        color: AppTheme.success,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
 
-                              // Sqft per unit
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryAccent.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '${item.sqftPerUnit} sqft/unit',
-                                  style: TextStyle(
-                                    color: AppTheme.primaryAccent,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
+                                    // Name
+                                    Expanded(
+                                      flex: 3,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            item.itemName,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 15,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Base Unit: ${item.baseUnit}',
+                                            style: AppTheme.bodyMedium,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
 
-                              const SizedBox(width: 12),
+                                    // Sqft per unit
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primaryAccent.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${item.sqftPerUnit} sqft/unit',
+                                        style: TextStyle(
+                                          color: AppTheme.primaryAccent,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
 
-                              // Delete button
-                              IconButton(
-                                onPressed: () => _deleteItem(index),
-                                icon: const Icon(
-                                  Icons.delete_outline_rounded,
-                                  color: AppTheme.error,
-                                ),
-                              ),
-                            ],
+                                    const SizedBox(width: 12),
+
+                                    // Delete button
+                                    IconButton(
+                                      onPressed: () => _deleteItem(index),
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                        color: AppTheme.error,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+                            },
                           ),
                         );
                       },

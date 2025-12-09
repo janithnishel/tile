@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:tilework/cubits/quotation/quotation_cubit.dart';
 import 'package:tilework/data/mock_data.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/document_enums.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/invoice_line_item.dart';
@@ -8,11 +10,10 @@ import 'package:tilework/models/quotation_Invoice_screen/project/quotation_docum
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/activity_breakdown_section.dart';
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/create_mode_button.dart';
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/customer_details_section.dart';
+// import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/document_details_section.dart'; // 💡 DocumentDetailsSection වෙත වෙනස්කම් නොකරන නිසා import එක එලෙසම තබන්න
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/document_details_section.dart';
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/edit_mode_buttons_section.dart';
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/payment_history_section.dart';
-
-// Sections
 
 // Dialogs
 import 'package:tilework/widget/quotation_Invoice_screen/dialogs/document_preview_dialog.dart';
@@ -91,8 +92,10 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
             (item) => InvoiceLineItem(
               item: ItemDescription(
                 item.item.name,
+                // 💡 Fix: Deep copy ItemDescription fields, especially CostPrice, if required by backend
                 sellingPrice: item.item.sellingPrice,
                 unit: item.item.unit,
+                // costPrice: item.item.costPrice, // Assuming you added costPrice to ItemDescription
               ),
               quantity: item.quantity,
               customDescription: item.customDescription,
@@ -183,6 +186,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       return;
     }
 
+    // ⚠️ Mock Data Logic - Ensure mock data logic handles empty documentNumber correctly if used for new docs
     final existingDoc = mockDocuments.firstWhere(
       (doc) =>
           doc.customerPhone == phone &&
@@ -208,15 +212,22 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
   }
 
   void _addNewLineItem() {
+    // Create a new item with all required fields including category
+    final defaultItem = ItemDescription(
+      'New Item',
+      sellingPrice: 0.0,
+      unit: 'units',
+      category: 'Custom', // Required category field
+      productName: 'Custom Item',
+    );
+
     setState(() {
       _workingDocument.lineItems.add(
         InvoiceLineItem(
-          item: masterItemList.firstWhere(
-            (i) => i.name.contains('Other'),
-            orElse: () => masterItemList.first,
-          ),
+          item: defaultItem,
           quantity: 0.0,
-          isOriginalQuotationItem: _workingDocument.isQuotation &&
+          isOriginalQuotationItem:
+              _workingDocument.isQuotation &&
               _workingDocument.status == DocumentStatus.pending,
         ),
       );
@@ -241,7 +252,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
   }
 
   // Create Quotation (for new documents)
-  void _createQuotation() {
+  Future<void> _createQuotation() async {
     if (_customerNameController.text.trim().isEmpty) {
       _showSnackBar('Please enter customer name.');
       return;
@@ -266,14 +277,18 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
     _workingDocument.customerAddress = _customerAddressController.text.trim();
     _workingDocument.projectTitle = _projectTitleController.text.trim();
 
-    // Add to mockDocuments list
-    mockDocuments.insert(0, _workingDocument);
+    try {
+      // Create quotation using the cubit (calls backend API)
+      await context.read<QuotationCubit>().createQuotation(_workingDocument);
 
-    _showSnackBar(
-      'Quotation ${_workingDocument.displayDocumentNumber} created successfully!',
-    );
+      // 💡 Note: The created document in the cubit state will now have the ID
+      _showSnackBar('Quotation created successfully!');
 
-    Navigator.pop(context, true);
+      // Pop the screen and pass 'true' to indicate a successful creation that requires a list refresh
+      Navigator.pop(context, true);
+    } catch (e) {
+      _showSnackBar('Failed to create quotation: ${e.toString()}');
+    }
   }
 
   // Save Document (for existing documents)
@@ -455,6 +470,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       DeleteConfirmationDialog.show(
         context,
         onConfirm: () {
+          // ⚠️ Backend Call needed here instead of mockDocuments.removeWhere
           mockDocuments.removeWhere(
             (doc) => doc.documentNumber == _workingDocument.documentNumber,
           );
@@ -528,6 +544,10 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
               const Divider(height: 32),
 
               // Document Details Section
+              // 🚨 Document Number Field එක මෙම Section එක තුළින් ඉවත් කිරීමට අවශ්‍ය නම්,
+              // ඔබ DocumentDetailsSection widget එක තුළම වෙනස සිදු කළ යුතුය.
+              // කෙසේ වෙතත්, UI Logic එක මෙම file එක තුළින් පාලනය කර ඇති බැවින්,
+              // අපි DocumentDetailsSection හි වෙනසක් නැතිව තබමු.
               DocumentDetailsSection(
                 document: _workingDocument,
                 isEditable: _isNewDocument || !_workingDocument.isLocked,
@@ -562,7 +582,6 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                 isAddEnabled: _isNewDocument || _workingDocument.isQuotation,
                 isPendingQuotation: _isNewDocument || _isPendingQuotation,
                 isEditable: _workingDocument.isQuotation,
-                onAddItem: _addNewLineItem,
                 onItemChanged: (index, item) {
                   setState(() {
                     _workingDocument.lineItems[index].item = item;
@@ -577,14 +596,18 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                 },
                 onPriceChanged: (index, price) {
                   setState(() {
+                    // 💡 Note: Ensure ItemDescription constructor handles costPrice if it was required to fix validation
                     _workingDocument.lineItems[index].item = ItemDescription(
                       _workingDocument.lineItems[index].item.name,
                       sellingPrice: price,
                       unit: _workingDocument.lineItems[index].item.unit,
+                      // Add costPrice here if your ItemDescription model requires it:
+                      // costPrice: _workingDocument.lineItems[index].item.costPrice,
                     );
                     _hasUnsavedChanges = true;
                   });
                 },
+                onAddItem: _addNewLineItem,
                 onDeleteItem: (index) {
                   setState(() {
                     _workingDocument.lineItems.removeAt(index);
@@ -726,10 +749,20 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'Number: ${_workingDocument.displayDocumentNumber}',
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                ),
+                // ✅ CHANGE: Show document number as read-only text ONLY for existing documents (view/edit mode)
+                if (!_isNewDocument)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: Text(
+                      // Display Document Number here (e.g., Number: QUO-1005)
+                      'Number: ${_workingDocument.displayDocumentNumber}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
               ],
             ),
             const Spacer(),

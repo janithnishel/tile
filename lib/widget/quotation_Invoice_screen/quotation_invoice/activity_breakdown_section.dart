@@ -124,13 +124,21 @@ class ActivityBreakdownSection extends StatelessWidget {
         child: const Row(
           children: [
             Expanded(
-              flex: 3,
+              flex: 2,
               child: Text(
-                'Activity/Item',
+                'Activity Item',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-            SizedBox(width: 78),
+            SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: Text(
+                'Product Name',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            SizedBox(width: 8),
             Expanded(
               flex: 1,
               child: Text(
