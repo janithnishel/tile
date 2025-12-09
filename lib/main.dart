@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/super_admin/category/category_cubit.dart';
 import 'package:tilework/cubits/super_admin/company/company_cubit.dart';
+import 'package:tilework/cubits/super_admin/dashboard/dashboard_cubit.dart';
 import 'package:tilework/repositories/auth/auth_repository.dart';
 import 'package:tilework/repositories/super_admin/company_repository.dart';
 import 'package:tilework/repositories/super_admin/category_repository.dart';
+import 'package:tilework/repositories/super_admin/dashboard_repository.dart';
 import 'package:tilework/routes/company_routes.dart';
 import 'package:tilework/services/auth/api_service.dart';
 import 'package:tilework/services/super_admin/company_api_service.dart';
@@ -39,6 +41,11 @@ class MyApp extends StatelessWidget {
         BlocProvider(
           create: (context) => CategoryCubit(
             CategoryRepository(),
+          ),
+        ),
+        BlocProvider(
+          create: (context) => DashboardCubit(
+            DashboardRepository(),
           ),
         ),
       ],
