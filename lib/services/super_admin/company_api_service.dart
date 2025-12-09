@@ -72,6 +72,22 @@ class CompanyApiService {
     return await delete('$companiesEndpoint/$id', token: token);
   }
 
+  // Generic POST request
+  Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data, {String? token}) async {
+    try {
+      final headers = _getHeaders(token);
+      final response = await _client.post(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+        body: json.encode(data),
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
   // Helper methods
   Map<String, String> _getHeaders(String? token) {
     final headers = <String, String>{

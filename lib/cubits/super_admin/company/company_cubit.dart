@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
+import 'package:tilework/cubits/company/company_state.dart';
 import 'package:tilework/models/super_admin/company_model.dart';
-import 'package:tilework/repositories/company/company_repository.dart';
-import 'company_state.dart';
+import 'package:tilework/repositories/super_admin/company_repository.dart';
 
 class CompanyCubit extends Cubit<CompanyState> {
   final CompanyRepository _companyRepository;

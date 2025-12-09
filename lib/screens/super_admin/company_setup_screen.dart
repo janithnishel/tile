@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:tilework/models/super_admin/category_model.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:tilework/cubits/auth/auth_cubit.dart';
+import 'package:tilework/cubits/auth/auth_state.dart';
+import 'package:tilework/cubits/super_admin/category/category_cubit.dart';
+import 'package:tilework/cubits/super_admin/category/category_state.dart';
+import 'package:tilework/models/category_model.dart';
 import 'package:tilework/models/super_admin/company_model.dart';
 import 'package:tilework/theme/theme.dart';
 import 'package:tilework/widget/super_admin/app_button.dart';
 import 'package:tilework/widget/super_admin/app_card.dart';
 import 'package:tilework/widget/super_admin/app_text_field.dart';
 import 'package:tilework/widget/super_admin/dialogs/confirm_dialog.dart';
-import 'package:tilework/widget/super_admin/dialogs/item_template_dialog.dart';
 import 'package:tilework/widget/super_admin/section_header.dart';
 
 class CompanySetupScreen extends StatefulWidget {
@@ -24,91 +28,78 @@ class CompanySetupScreen extends StatefulWidget {
 }
 
 class _CompanySetupScreenState extends State<CompanySetupScreen> {
-  // Categories list
-  final List<CategoryModel> _categories = [
-    CategoryModel(id: '1', name: 'LVT', companyId: '1'),
-    CategoryModel(id: '2', name: 'Skirting', companyId: '1'),
-    CategoryModel(id: '3', name: 'Labor', companyId: '1'),
-    CategoryModel(id: '4', name: 'Ceramic Tiles', companyId: '1'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Load categories when screen opens
+    final token = _getToken();
+    if (token != null) {
+      context.read<CategoryCubit>().loadCategories(token: token);
+    }
+  }
 
-  // Store item templates per category
-  final Map<String, List<ItemTemplateModel>> _itemTemplates = {};
+  String? _getToken() {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is AuthAuthenticated) {
+      return authState.token;
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // ═══════════════════════════════════════
-        // 🔝 HEADER WITH BACK BUTTON
-        // ═══════════════════════════════════════
-        _buildHeader(),
+    return BlocBuilder<CategoryCubit, CategoryState>(
+      builder: (context, state) {
+        return Column(
+          children: [
+            // ═══════════════════════════════════════
+            // 🔝 HEADER WITH BACK BUTTON
+            // ═══════════════════════════════════════
+            _buildHeader(),
 
-        // ═══════════════════════════════════════
-        // 📋 SETUP CONTENT
-        // ═══════════════════════════════════════
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppTheme.spacingLg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Company Info Card
-                _buildCompanyInfoCard(),
+            // ═══════════════════════════════════════
+            // 📋 SETUP CONTENT
+            // ═══════════════════════════════════════
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppTheme.spacingLg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Company Info Card
+                    _buildCompanyInfoCard(state.categories.length),
 
-                const SizedBox(height: 32),
+                    const SizedBox(height: 32),
 
-                // Category Setup
-                SectionHeader(
-                  title: 'Category Setup',
-                  subtitle: 'Manage product categories for this company',
-                  icon: Icons.category_rounded,
-                  action: AppButton(
-                    text: 'Add Category',
-                    icon: Icons.add_rounded,
-                    type: AppButtonType.secondary,
-                    onPressed: _showAddCategoryDialog, // 👈 Fixed!
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Categories Grid
-                _categories.isEmpty
-                    ? _buildEmptyCategoryState()
-                    : LayoutBuilder(
-                        builder: (context, constraints) {
-                          // Calculate responsive crossAxisCount based on available width
-                          final availableWidth = constraints.maxWidth;
-                          final cardMinWidth = 200.0; // Minimum card width
-                          final crossAxisCount = (availableWidth / cardMinWidth)
-                              .floor()
-                              .clamp(1, 4);
-
-                          return GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: crossAxisCount,
-                                  crossAxisSpacing: 16,
-                                  mainAxisSpacing: 16,
-                                  childAspectRatio: crossAxisCount <= 2
-                                      ? 1.8
-                                      : 1.5,
-                                ),
-                            itemCount: _categories.length,
-                            itemBuilder: (context, index) {
-                              return _buildCategoryCard(_categories[index]);
-                            },
-                          );
-                        },
+                    // Category Setup
+                    SectionHeader(
+                      title: 'Category Setup',
+                      subtitle: 'Manage product categories for this company',
+                      icon: Icons.category_rounded,
+                      action: AppButton(
+                        text: 'Add Category',
+                        icon: Icons.add_rounded,
+                        type: AppButtonType.secondary,
+                        onPressed: _showAddCategoryDialog,
                       ),
-              ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Loading state
+                    if (state.isLoading)
+                      const Center(child: CircularProgressIndicator())
+                    else if (state.categories.isEmpty)
+                      _buildEmptyCategoryState()
+                    else
+                      _buildCategoriesGrid(state.categories),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -201,7 +192,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
   // ═══════════════════════════════════════
   // 📄 COMPANY INFO CARD
   // ═══════════════════════════════════════
-  Widget _buildCompanyInfoCard() {
+  Widget _buildCompanyInfoCard(int categoryCount) {
     return AppCard(
       child: Row(
         children: [
@@ -233,7 +224,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
             child: _buildInfoItem(
               Icons.category_outlined,
               'Categories',
-              '${_categories.length} categories',
+              '$categoryCount categories',
             ),
           ),
         ],
@@ -319,13 +310,39 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
   }
 
   // ═══════════════════════════════════════
+  // 📦 CATEGORIES GRID
+  // ═══════════════════════════════════════
+  Widget _buildCategoriesGrid(List<CategoryModel> categories) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final cardMinWidth = 200.0;
+        final crossAxisCount = (availableWidth / cardMinWidth).floor().clamp(1, 4);
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: crossAxisCount <= 2 ? 1.8 : 1.5,
+          ),
+          itemCount: categories.length,
+          itemBuilder: (context, index) {
+            return _buildCategoryCard(categories[index]);
+          },
+        );
+      },
+    );
+  }
+
+  // ═══════════════════════════════════════
   // 📦 CATEGORY CARD
   // ═══════════════════════════════════════
   Widget _buildCategoryCard(CategoryModel category) {
-    final itemCount = _itemTemplates[category.id]?.length ?? 0;
-
     return AppCard(
-      onTap: () => _openItemTemplateDialog(category),
+      onTap: () => _showItemManagementDialog(category),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -344,32 +361,29 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                 ),
               ),
               const Spacer(),
-              // Item count badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: itemCount > 0
+                  color: category.items.isNotEmpty
                       ? AppTheme.success.withOpacity(0.1)
                       : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  '$itemCount items',
+                  '${category.items.length} items',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: itemCount > 0 ? AppTheme.success : Colors.grey,
+                    color: category.items.isNotEmpty ? AppTheme.success : Colors.grey,
                   ),
                 ),
               ),
               const SizedBox(width: 4),
-              // Edit button
               _buildCardAction(
                 icon: Icons.edit_outlined,
                 color: AppTheme.primaryAccent,
                 onTap: () => _showEditCategoryDialog(category),
               ),
-              // Delete button
               _buildCardAction(
                 icon: Icons.delete_outline,
                 color: AppTheme.error,
@@ -415,145 +429,97 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
   Future<void> _showAddCategoryDialog() async {
     final nameController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    bool isLoading = false;
 
-    final result = await showDialog<String>(
+    await showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        ),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.success.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setState) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.success.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.add_rounded,
+                          color: AppTheme.success,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.add_rounded,
-                        color: AppTheme.success,
+                      const SizedBox(width: 12),
+                      const Text('Add New Category', style: AppTheme.heading3),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  AppTextField(
+                    label: 'Category Name',
+                    hint: 'Enter category name (e.g., LVT, Ceramic)',
+                    controller: nameController,
+                    prefixIcon: Icons.category_outlined,
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Category name is required';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppButton(
+                          text: 'Cancel',
+                          type: AppButtonType.outlined,
+                          onPressed: () => Navigator.pop(dialogContext),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text('Add New Category', style: AppTheme.heading3),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Input
-                AppTextField(
-                  label: 'Category Name',
-                  hint: 'Enter category name (e.g., LVT, Ceramic)',
-                  controller: nameController,
-                  prefixIcon: Icons.category_outlined,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Category name is required';
-                    }
-                    // Check if category already exists
-                    if (_categories.any(
-                      (c) => c.name.toLowerCase() == value.toLowerCase(),
-                    )) {
-                      return 'Category already exists';
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 24),
-
-                // Actions - Responsive layout
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final maxWidth = constraints.maxWidth;
-                    final useVerticalLayout =
-                        maxWidth < 350; // Breakpoint for vertical layout
-
-                    if (useVerticalLayout) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          AppButton(
-                            text: 'Add Category',
-                            icon: Icons.add_rounded,
-                            onPressed: () {
-                              if (formKey.currentState!.validate()) {
-                                Navigator.pop(
-                                  context,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppButton(
+                          text: 'Add Category',
+                          icon: Icons.add_rounded,
+                          isLoading: isLoading,
+                          onPressed: () async {
+                            if (formKey.currentState!.validate()) {
+                              setState(() => isLoading = true);
+                              try {
+                                final token = _getToken();
+                                await context.read<CategoryCubit>().createCategory(
                                   nameController.text.trim(),
+                                  token: token,
                                 );
+                                Navigator.pop(dialogContext);
+                                _showSuccessSnackBar('Category added successfully!');
+                              } catch (e) {
+                                _showErrorSnackBar('Failed to add category: ${e.toString()}');
                               }
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          AppButton(
-                            text: 'Cancel',
-                            type: AppButtonType.outlined,
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      );
-                    } else {
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: AppButton(
-                              text: 'Cancel',
-                              type: AppButtonType.outlined,
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: AppButton(
-                              text: 'Add Category',
-                              icon: Icons.add_rounded,
-                              onPressed: () {
-                                if (formKey.currentState!.validate()) {
-                                  Navigator.pop(
-                                    context,
-                                    nameController.text.trim(),
-                                  );
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      );
-                    }
-                  },
-                ),
-              ],
+                              setState(() => isLoading = false);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
-
-    if (result != null && result.isNotEmpty) {
-      setState(() {
-        _categories.add(
-          CategoryModel(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            name: result,
-            companyId: widget.company.id,
-          ),
-        );
-      });
-      _showSuccessSnackBar('Category "$result" added successfully!');
-    }
   }
 
   // ═══════════════════════════════════════
@@ -562,148 +528,98 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
   Future<void> _showEditCategoryDialog(CategoryModel category) async {
     final nameController = TextEditingController(text: category.name);
     final formKey = GlobalKey<FormState>();
+    bool isLoading = false;
 
-    final result = await showDialog<String>(
+    await showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        ),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryAccent.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setState) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryAccent.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.edit_rounded,
+                          color: AppTheme.primaryAccent,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.edit_rounded,
-                        color: AppTheme.primaryAccent,
+                      const SizedBox(width: 12),
+                      const Text('Edit Category', style: AppTheme.heading3),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  AppTextField(
+                    label: 'Category Name',
+                    hint: 'Enter category name',
+                    controller: nameController,
+                    prefixIcon: Icons.category_outlined,
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Category name is required';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppButton(
+                          text: 'Cancel',
+                          type: AppButtonType.outlined,
+                          onPressed: () => Navigator.pop(dialogContext),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text('Edit Category', style: AppTheme.heading3),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Input
-                AppTextField(
-                  label: 'Category Name',
-                  hint: 'Enter category name',
-                  controller: nameController,
-                  prefixIcon: Icons.category_outlined,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Category name is required';
-                    }
-                    // Check if category already exists (except current)
-                    if (_categories.any(
-                      (c) =>
-                          c.id != category.id &&
-                          c.name.toLowerCase() == value.toLowerCase(),
-                    )) {
-                      return 'Category already exists';
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 24),
-
-                // Actions - Responsive layout
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final maxWidth = constraints.maxWidth;
-                    final useVerticalLayout =
-                        maxWidth < 350; // Breakpoint for vertical layout
-
-                    if (useVerticalLayout) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          AppButton(
-                            text: 'Update',
-                            icon: Icons.check_rounded,
-                            onPressed: () {
-                              if (formKey.currentState!.validate()) {
-                                Navigator.pop(
-                                  context,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppButton(
+                          text: 'Update',
+                          icon: Icons.check_rounded,
+                          isLoading: isLoading,
+                          onPressed: () async {
+                            if (formKey.currentState!.validate()) {
+                              setState(() => isLoading = true);
+                              try {
+                                final token = _getToken();
+                                await context.read<CategoryCubit>().updateCategory(
+                                  category.id,
                                   nameController.text.trim(),
+                                  token: token,
                                 );
+                                Navigator.pop(dialogContext);
+                                _showSuccessSnackBar('Category updated successfully!');
+                              } catch (e) {
+                                _showErrorSnackBar('Failed to update category: ${e.toString()}');
                               }
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          AppButton(
-                            text: 'Cancel',
-                            type: AppButtonType.outlined,
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      );
-                    } else {
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: AppButton(
-                              text: 'Cancel',
-                              type: AppButtonType.outlined,
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: AppButton(
-                              text: 'Update',
-                              icon: Icons.check_rounded,
-                              onPressed: () {
-                                if (formKey.currentState!.validate()) {
-                                  Navigator.pop(
-                                    context,
-                                    nameController.text.trim(),
-                                  );
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      );
-                    }
-                  },
-                ),
-              ],
+                              setState(() => isLoading = false);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
-
-    if (result != null && result.isNotEmpty) {
-      setState(() {
-        final index = _categories.indexWhere((c) => c.id == category.id);
-        if (index != -1) {
-          _categories[index] = CategoryModel(
-            id: category.id,
-            name: result,
-            companyId: category.companyId,
-          );
-        }
-      });
-      _showSuccessSnackBar('Category updated successfully!');
-    }
   }
 
   // ═══════════════════════════════════════
@@ -713,8 +629,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
     final result = await ConfirmDialog.show(
       context: context,
       title: 'Delete Category',
-      message:
-          'Are you sure you want to delete "${category.name}"?\n\nAll item templates in this category will also be deleted.',
+      message: 'Are you sure you want to delete "${category.name}"?\n\nAll items in this category will also be deleted.',
       confirmText: 'Delete',
       cancelText: 'Cancel',
       icon: Icons.delete_forever_rounded,
@@ -722,35 +637,496 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
     );
 
     if (result == true) {
-      setState(() {
-        _categories.removeWhere((c) => c.id == category.id);
-        _itemTemplates.remove(category.id);
-      });
-      _showSuccessSnackBar('Category "${category.name}" deleted!');
+      try {
+        final token = _getToken();
+        await context.read<CategoryCubit>().deleteCategory(category.id, token: token);
+        _showSuccessSnackBar('Category "${category.name}" deleted successfully!');
+      } catch (e) {
+        _showErrorSnackBar('Failed to delete category: ${e.toString()}');
+      }
     }
   }
 
   // ═══════════════════════════════════════
-  // 📦 ITEM TEMPLATE DIALOG
+  // 📦 ITEM MANAGEMENT DIALOG
   // ═══════════════════════════════════════
-  Future<void> _openItemTemplateDialog(CategoryModel category) async {
-    final currentItems = _itemTemplates[category.id] ?? [];
+  Future<void> _showItemManagementDialog(CategoryModel category) async {
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        ),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 600, maxHeight: 500),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryAccent,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(AppTheme.radiusLg),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.inventory_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${category.name} - Items',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            '${category.items.length} items',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      icon: const Icon(Icons.close, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
 
-    final result = await ItemTemplateDialog.show(
-      context,
-      category,
-      currentItems,
+              // Content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Add Item Button
+                      AppButton(
+                        text: 'Add Item',
+                        icon: Icons.add_rounded,
+                        type: AppButtonType.secondary,
+                        onPressed: () => _showAddItemDialog(dialogContext, category),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Items List
+                      if (category.items.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(40),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 48,
+                                  color: Colors.grey.shade300,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No items in this category',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        ...category.items.map((item) => _buildItemTile(item, category, dialogContext)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemTile(ItemModel item, CategoryModel category, BuildContext dialogContext) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryAccent.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.inventory_2_rounded,
+              color: AppTheme.primaryAccent,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.itemName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      'Unit: ${item.baseUnit}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      'Sqft/Unit: ${item.sqftPerUnit}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => _showEditItemDialog(dialogContext, item, category),
+            icon: const Icon(Icons.edit_outlined),
+            color: AppTheme.primaryAccent,
+          ),
+          IconButton(
+            onPressed: () => _showDeleteItemDialog(item, category),
+            icon: const Icon(Icons.delete_outline),
+            color: AppTheme.error,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAddItemDialog(BuildContext dialogContext, CategoryModel category) async {
+    final itemNameController = TextEditingController();
+    final baseUnitController = TextEditingController();
+    final sqftController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isLoading = false;
+
+    await showDialog(
+      context: dialogContext,
+      barrierDismissible: false,
+      builder: (itemDialogContext) => StatefulBuilder(
+        builder: (itemDialogContext, setState) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.success.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.add_rounded,
+                          color: AppTheme.success,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text('Add New Item', style: AppTheme.heading3),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  AppTextField(
+                    label: 'Item Name',
+                    hint: 'Enter item name',
+                    controller: itemNameController,
+                    prefixIcon: Icons.inventory_2_outlined,
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Item name is required';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppTextField(
+                          label: 'Base Unit',
+                          hint: 'e.g., sqft, meter',
+                          controller: baseUnitController,
+                          prefixIcon: Icons.straighten_outlined,
+                          validator: (value) {
+                            if (value?.isEmpty ?? true) return 'Base unit is required';
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppTextField(
+                          label: 'Sqft per Unit',
+                          hint: 'e.g., 100',
+                          controller: sqftController,
+                          prefixIcon: Icons.calculate_outlined,
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value?.isEmpty ?? true) return 'Sqft per unit is required';
+                            final num = double.tryParse(value!);
+                            if (num == null || num <= 0) return 'Enter valid number';
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppButton(
+                          text: 'Cancel',
+                          type: AppButtonType.outlined,
+                          onPressed: () => Navigator.pop(itemDialogContext),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppButton(
+                          text: 'Add Item',
+                          icon: Icons.add_rounded,
+                          isLoading: isLoading,
+                          onPressed: () async {
+                            if (formKey.currentState!.validate()) {
+                              setState(() => isLoading = true);
+                              try {
+                                final token = _getToken();
+                                await context.read<CategoryCubit>().addItemToCategory(
+                                  category.id,
+                                  itemNameController.text.trim(),
+                                  baseUnitController.text.trim(),
+                                  double.parse(sqftController.text.trim()),
+                                  token: token,
+                                );
+                                Navigator.pop(itemDialogContext);
+                                _showSuccessSnackBar('Item added successfully!');
+                              } catch (e) {
+                                _showErrorSnackBar('Failed to add item: ${e.toString()}');
+                              }
+                              setState(() => isLoading = false);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showEditItemDialog(BuildContext dialogContext, ItemModel item, CategoryModel category) async {
+    final itemNameController = TextEditingController(text: item.itemName);
+    final baseUnitController = TextEditingController(text: item.baseUnit);
+    final sqftController = TextEditingController(text: item.sqftPerUnit.toString());
+    final formKey = GlobalKey<FormState>();
+    bool isLoading = false;
+
+    await showDialog(
+      context: dialogContext,
+      barrierDismissible: false,
+      builder: (itemDialogContext) => StatefulBuilder(
+        builder: (itemDialogContext, setState) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryAccent.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.edit_rounded,
+                          color: AppTheme.primaryAccent,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text('Edit Item', style: AppTheme.heading3),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  AppTextField(
+                    label: 'Item Name',
+                    hint: 'Enter item name',
+                    controller: itemNameController,
+                    prefixIcon: Icons.inventory_2_outlined,
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Item name is required';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppTextField(
+                          label: 'Base Unit',
+                          hint: 'e.g., sqft, meter',
+                          controller: baseUnitController,
+                          prefixIcon: Icons.straighten_outlined,
+                          validator: (value) {
+                            if (value?.isEmpty ?? true) return 'Base unit is required';
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppTextField(
+                          label: 'Sqft per Unit',
+                          hint: 'e.g., 100',
+                          controller: sqftController,
+                          prefixIcon: Icons.calculate_outlined,
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value?.isEmpty ?? true) return 'Sqft per unit is required';
+                            final num = double.tryParse(value!);
+                            if (num == null || num <= 0) return 'Enter valid number';
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppButton(
+                          text: 'Cancel',
+                          type: AppButtonType.outlined,
+                          onPressed: () => Navigator.pop(itemDialogContext),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppButton(
+                          text: 'Update',
+                          icon: Icons.check_rounded,
+                          isLoading: isLoading,
+                          onPressed: () async {
+                            if (formKey.currentState!.validate()) {
+                              setState(() => isLoading = true);
+                              try {
+                                final token = _getToken();
+                                await context.read<CategoryCubit>().updateItem(
+                                  category.id,
+                                  item.id,
+                                  itemNameController.text.trim(),
+                                  baseUnitController.text.trim(),
+                                  double.parse(sqftController.text.trim()),
+                                  token: token,
+                                );
+                                Navigator.pop(itemDialogContext);
+                                _showSuccessSnackBar('Item updated successfully!');
+                              } catch (e) {
+                                _showErrorSnackBar('Failed to update item: ${e.toString()}');
+                              }
+                              setState(() => isLoading = false);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showDeleteItemDialog(ItemModel item, CategoryModel category) async {
+    final result = await ConfirmDialog.show(
+      context: context,
+      title: 'Delete Item',
+      message: 'Are you sure you want to delete "${item.itemName}"?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      icon: Icons.delete_rounded,
+      isDanger: true,
     );
 
-    if (result != null) {
-      setState(() {
-        _itemTemplates[category.id] = result;
-      });
+    if (result == true) {
+      try {
+        final token = _getToken();
+        await context.read<CategoryCubit>().deleteItem(category.id, item.id, token: token);
+        _showSuccessSnackBar('Item "${item.itemName}" deleted successfully!');
+      } catch (e) {
+        _showErrorSnackBar('Failed to delete item: ${e.toString()}');
+      }
     }
   }
 
   // ═══════════════════════════════════════
-  // ✅ SUCCESS SNACKBAR
+  // ✅ SUCCESS & ❌ ERROR SNACKBARS
   // ═══════════════════════════════════════
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -781,6 +1157,42 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
         duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.error_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                message,
+                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppTheme.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 5),
       ),
     );
   }

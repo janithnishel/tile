@@ -1,0 +1,169 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+class CategoryApiService {
+  static const String baseUrl = 'http://localhost:5000/api'; // Update this to your backend URL
+
+  // Category endpoints
+  static const String categoriesEndpoint = '/categories';
+
+  final http.Client _client;
+
+  CategoryApiService({http.Client? client}) : _client = client ?? http.Client();
+
+  // Generic GET request
+  Future<Map<String, dynamic>> get(String endpoint, {String? token}) async {
+    try {
+      final headers = _getHeaders(token);
+      final response = await _client.get(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Generic POST request
+  Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data, {String? token}) async {
+    try {
+      final headers = _getHeaders(token);
+      final response = await _client.post(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+        body: json.encode(data),
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Generic PUT request
+  Future<Map<String, dynamic>> put(String endpoint, Map<String, dynamic> data, {String? token}) async {
+    try {
+      final headers = _getHeaders(token);
+      final response = await _client.put(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+        body: json.encode(data),
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Generic DELETE request
+  Future<Map<String, dynamic>> delete(String endpoint, {String? token}) async {
+    try {
+      final headers = _getHeaders(token);
+      final response = await _client.delete(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // =================== CATEGORY API METHODS ===================
+
+  // Get all categories for current company
+  Future<Map<String, dynamic>> getCategories({String? token}) async {
+    return await get(categoriesEndpoint, token: token);
+  }
+
+  // Create new category
+  Future<Map<String, dynamic>> createCategory(String name, {String? token}) async {
+    return await post(categoriesEndpoint, {'name': name}, token: token);
+  }
+
+  // Update category
+  Future<Map<String, dynamic>> updateCategory(String id, String name, {String? token}) async {
+    return await put('$categoriesEndpoint/$id', {'name': name}, token: token);
+  }
+
+  // Delete category
+  Future<Map<String, dynamic>> deleteCategory(String id, {String? token}) async {
+    return await delete('$categoriesEndpoint/$id', token: token);
+  }
+
+  // =================== ITEM API METHODS ===================
+
+  // Add item to category
+  Future<Map<String, dynamic>> addItemToCategory(
+    String categoryId,
+    String itemName,
+    String baseUnit,
+    double sqftPerUnit, {
+    String? token
+  }) async {
+    return await post(
+      '$categoriesEndpoint/$categoryId/items',
+      {
+        'itemName': itemName,
+        'baseUnit': baseUnit,
+        'sqftPerUnit': sqftPerUnit,
+      },
+      token: token,
+    );
+  }
+
+  // Update item
+  Future<Map<String, dynamic>> updateItem(
+    String categoryId,
+    String itemId,
+    String itemName,
+    String baseUnit,
+    double sqftPerUnit, {
+    String? token
+  }) async {
+    return await put(
+      '$categoriesEndpoint/$categoryId/items/$itemId',
+      {
+        'itemName': itemName,
+        'baseUnit': baseUnit,
+        'sqftPerUnit': sqftPerUnit,
+      },
+      token: token,
+    );
+  }
+
+  // Delete item
+  Future<Map<String, dynamic>> deleteItem(String categoryId, String itemId, {String? token}) async {
+    return await delete('$categoriesEndpoint/$categoryId/items/$itemId', token: token);
+  }
+
+  // Helper methods
+  Map<String, String> _getHeaders(String? token) {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    return headers;
+  }
+
+  Map<String, dynamic> _handleResponse(http.Response response) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return json.decode(response.body);
+    } else {
+      final errorData = json.decode(response.body);
+      throw Exception(errorData['message'] ?? 'API Error: ${response.statusCode}');
+    }
+  }
+
+  void dispose() {
+    _client.close();
+  }
+}
