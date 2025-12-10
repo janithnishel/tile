@@ -1,9 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
-import 'package:tilework/cubits/company/company_state.dart';
+import 'package:tilework/cubits/super_admin/company/company_state.dart';
 import 'package:tilework/models/super_admin/company_model.dart';
 import 'package:tilework/repositories/super_admin/company_repository.dart';
 

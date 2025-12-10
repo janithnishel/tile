@@ -335,12 +335,20 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   Widget _getPage(int index) {
     switch (index) {
       case 0:
-        return const DashboardContent();
+        return DashboardContent(
+          onNavigateToCompanyManagement: () => _navigateToCompanyManagement(),
+        );
       case 1:
         return const CompanyManagementScreen();
       default:
         return const Center(child: Text('Page not found'));
     }
+  }
+
+  void _navigateToCompanyManagement() {
+    setState(() {
+      selectedIndex = 1; // Switch to Company Management tab
+    });
   }
 
   void _handleMenuTap(int index) {

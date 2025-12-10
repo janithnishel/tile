@@ -6,10 +6,17 @@ import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
 import 'package:tilework/theme/theme.dart';
 import '../../widget/super_admin/stat_card.dart';
+import '../../widget/super_admin/dialogs/company_register_dialog.dart';
+import '../super_admin/company_management_screen.dart';
 import '../../routes/company_routes.dart';
 
 class DashboardContent extends StatefulWidget {
-  const DashboardContent({Key? key}) : super(key: key);
+  final VoidCallback? onNavigateToCompanyManagement;
+
+  const DashboardContent({
+    Key? key,
+    this.onNavigateToCompanyManagement,
+  }) : super(key: key);
 
   @override
   State<DashboardContent> createState() => _DashboardContentState();
@@ -571,6 +578,10 @@ class _DashboardContentState extends State<DashboardContent> {
         return Icons.delete_rounded;
       case 'CREATE_CATEGORY':
         return Icons.category_rounded;
+      case 'UPDATE_CATEGORY':
+        return Icons.edit_rounded;
+      case 'DELETE_CATEGORY':
+        return Icons.delete_outline_rounded;
       default:
         return Icons.info_outline;
     }
@@ -586,6 +597,10 @@ class _DashboardContentState extends State<DashboardContent> {
         return 'Company removed';
       case 'CREATE_CATEGORY':
         return 'Category added';
+      case 'UPDATE_CATEGORY':
+        return 'Category updated';
+      case 'DELETE_CATEGORY':
+        return 'Category deleted';
       default:
         return 'Activity';
     }
@@ -594,15 +609,19 @@ class _DashboardContentState extends State<DashboardContent> {
   Color _getActivityColor(String action) {
     switch (action) {
       case 'CREATE_COMPANY':
-        return const Color(0xFF10B981);
+        return const Color(0xFF10B981); // Green
       case 'UPDATE_COMPANY':
-        return const Color(0xFF3B82F6);
+        return const Color(0xFF3B82F6); // Blue
       case 'DELETE_COMPANY':
-        return const Color(0xFFEF4444);
+        return const Color(0xFFEF4444); // Red
       case 'CREATE_CATEGORY':
-        return const Color(0xFF8B5CF6);
+        return const Color(0xFF8B5CF6); // Purple
+      case 'UPDATE_CATEGORY':
+        return const Color(0xFFF59E0B); // Orange
+      case 'DELETE_CATEGORY':
+        return const Color(0xFFEF4444); // Red
       default:
-        return const Color(0xFF6B7280);
+        return const Color(0xFF6B7280); // Gray
     }
   }
 
@@ -673,25 +692,85 @@ class _DashboardContentState extends State<DashboardContent> {
             icon: Icons.add_business_rounded,
             label: 'Register Company',
             color: const Color(0xFF3B82F6),
-            onTap: () {},
+            onTap: _registerCompany,
           ),
           const SizedBox(height: 12),
           _buildQuickActionButton(
             icon: Icons.business_rounded,
             label: 'Manage Companies',
             color: const Color(0xFF10B981),
-            onTap: () {},
+            onTap: _manageCompanies,
           ),
           const SizedBox(height: 12),
           _buildQuickActionButton(
             icon: Icons.logout_rounded,
             label: 'Logout',
             color: const Color(0xFFEF4444),
-            onTap: () {},
+            onTap: _logout,
           ),
         ],
       ),
     );
+  }
+
+  // ═══════════════════════════════════════
+  // 🎯 QUICK ACTION HANDLERS
+  // ═══════════════════════════════════════
+
+  // Register Company - Opens registration dialog
+  Future<void> _registerCompany() async {
+    try {
+      // Import the dialog
+      final dialogResult = await showDialog<Map<String, dynamic>>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const CompanyRegisterDialog(),
+      );
+
+      if (dialogResult != null && mounted) {
+        // Use AuthCubit to register the company
+        final authCubit = context.read<AuthCubit>();
+        final token = _getToken();
+
+        await authCubit.registerCompany(
+          ownerName: dialogResult['ownerName'],
+          ownerEmail: dialogResult['ownerEmail'],
+          password: dialogResult['password'],
+          ownerPhone: dialogResult['ownerPhone'],
+          companyName: dialogResult['companyName'],
+          companyAddress: dialogResult['companyAddress'],
+          companyPhone: dialogResult['companyPhone'],
+        );
+
+        // Refresh dashboard data to show updated counts
+        if (token != null) {
+          context.read<DashboardCubit>().refreshData(token: token);
+        }
+
+        _showSuccessSnackBar('Company registered successfully!');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Registration failed: ${e.toString()}');
+    }
+  }
+
+  // Manage Companies - Switch to company management tab
+  void _manageCompanies() {
+    // Use the callback to navigate to company management
+    widget.onNavigateToCompanyManagement?.call();
+  }
+
+  // Logout - Perform logout without confirmation (quick action)
+  Future<void> _logout() async {
+    try {
+      // Perform logout directly using AuthCubit
+      context.read<AuthCubit>().logout();
+
+      // Show success message
+      _showSuccessSnackBar('Logged out successfully!');
+    } catch (e) {
+      _showErrorSnackBar('Logout failed: ${e.toString()}');
+    }
   }
 
   Widget _buildQuickActionButton({
@@ -967,6 +1046,88 @@ class _DashboardContentState extends State<DashboardContent> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════
+  // ✅ SUCCESS & ❌ ERROR SNACKBARS
+  // ═══════════════════════════════════════
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              message,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF10B981),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.error_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 5),
       ),
     );
   }
