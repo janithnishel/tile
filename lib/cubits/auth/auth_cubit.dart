@@ -142,11 +142,39 @@ class AuthCubit extends Cubit<AuthState> {
         emit(AuthAuthenticated(user: user, token: token));
       } else {
         debugPrint('❌ AuthCubit: Invalid response format: $data');
-        emit(AuthError(message: 'Invalid response from server'));
+        emit(AuthError(message: 'Login failed: Invalid credentials or server error'));
       }
     } catch (e) {
       debugPrint('💥 AuthCubit: Login failed with error: $e');
-      emit(AuthError(message: e.toString()));
+
+      // Provide user-friendly error messages based on error type
+      String errorMessage = 'Login failed';
+
+      final errorString = e.toString().toLowerCase();
+
+      if (errorString.contains('invalid credentials') ||
+          errorString.contains('wrong password') ||
+          errorString.contains('user not found') ||
+          errorString.contains('401')) {
+        errorMessage = 'Invalid email or password. Please check your credentials.';
+      } else if (errorString.contains('network') ||
+                 errorString.contains('connection') ||
+                 errorString.contains('timeout')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (errorString.contains('server') ||
+                 errorString.contains('500') ||
+                 errorString.contains('503')) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (errorString.contains('account') ||
+                 errorString.contains('disabled') ||
+                 errorString.contains('suspended')) {
+        errorMessage = 'Your account has been disabled. Please contact support.';
+      } else {
+        // Keep original error for debugging
+        errorMessage = 'Login failed: ${e.toString()}';
+      }
+
+      emit(AuthError(message: errorMessage));
     }
   }
 

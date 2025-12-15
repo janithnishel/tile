@@ -34,7 +34,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
     // Load categories when screen opens
     final token = _getToken();
     if (token != null) {
-      context.read<CategoryCubit>().loadCategories(token: token);
+      context.read<CategoryCubit>().loadCategories(token: token, companyId: widget.company.id);
     }
   }
 
@@ -500,6 +500,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                                 await context.read<CategoryCubit>().createCategory(
                                   nameController.text.trim(),
                                   token: token,
+                                  companyId: widget.company.id,
                                 );
                                 Navigator.pop(dialogContext);
                                 _showSuccessSnackBar('Category added successfully!');

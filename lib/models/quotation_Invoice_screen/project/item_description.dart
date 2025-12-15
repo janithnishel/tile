@@ -1,6 +1,7 @@
 class ItemDescription {
   final String name;
   final String category;
+  final String categoryId;
   final String productName;
   final double sellingPrice;
   final String unit;
@@ -10,6 +11,7 @@ class ItemDescription {
     required this.sellingPrice,
     this.unit = 'units',
     this.category = '',
+    this.categoryId = '',
     this.productName = '',
   });
 
@@ -20,6 +22,7 @@ class ItemDescription {
       sellingPrice: (json['sellingPrice'] as num?)?.toDouble() ?? 0.0,
       unit: json['unit'] as String? ?? 'units',
       category: json['category'] as String? ?? '',
+      categoryId: json['categoryId'] as String? ?? '',
       productName: json['productName'] as String? ?? '',
     );
   }
@@ -29,6 +32,7 @@ class ItemDescription {
     return {
       'name': name,
       'category': category,
+      'categoryId': categoryId,
       'productName': productName,
       'sellingPrice': sellingPrice,
       'unit': unit,
@@ -39,6 +43,7 @@ class ItemDescription {
   ItemDescription copyWith({
     String? name,
     String? category,
+    String? categoryId,
     String? productName,
     double? sellingPrice,
     String? unit,
@@ -48,6 +53,7 @@ class ItemDescription {
       sellingPrice: sellingPrice ?? this.sellingPrice,
       unit: unit ?? this.unit,
       category: category ?? this.category,
+      categoryId: categoryId ?? this.categoryId,
       productName: productName ?? this.productName,
     );
   }

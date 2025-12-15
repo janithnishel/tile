@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class CustomerDetailsSection extends StatelessWidget {
   final TextEditingController nameController;
@@ -6,8 +7,10 @@ class CustomerDetailsSection extends StatelessWidget {
   final TextEditingController addressController;
   final TextEditingController projectTitleController;
   final bool isEditable;
+  final bool showSearchButton;
   final VoidCallback? onSearchByPhone;
   final VoidCallback? onNameChanged;
+  final String? Function(String?)? phoneValidator;
 
   const CustomerDetailsSection({
     Key? key,
@@ -16,8 +19,10 @@ class CustomerDetailsSection extends StatelessWidget {
     required this.addressController,
     required this.projectTitleController,
     required this.isEditable,
+    this.showSearchButton = false,
     this.onSearchByPhone,
     this.onNameChanged,
+    this.phoneValidator,
   }) : super(key: key);
 
   @override
@@ -69,46 +74,70 @@ class CustomerDetailsSection extends StatelessWidget {
   }
 
   Widget _buildPhoneField() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: TextField(
-            controller: phoneController,
-            decoration: InputDecoration(
-              labelText: 'Customer Phone (Unique Key)',
-              hintText: 'Enter customer phone number',
-              prefixIcon: const Icon(Icons.phone),
-              border: const OutlineInputBorder(),
-              filled: !isEditable,
-              fillColor: isEditable ? null : Colors.grey.shade100,
-              helperText: 'Enter phone number to search existing customer',
-              helperStyle: TextStyle(
-                fontSize: 11,
-                color: Colors.grey.shade600,
+    if (showSearchButton) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: TextField(
+              controller: phoneController,
+              decoration: InputDecoration(
+                labelText: 'Customer Phone (Unique Key)',
+                hintText: 'Enter customer phone number',
+                prefixIcon: const Icon(Icons.phone),
+                border: const OutlineInputBorder(),
+                filled: !isEditable,
+                fillColor: isEditable ? null : Colors.grey.shade100,
+                helperText: 'Enter phone number to search existing customer',
+                helperStyle: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey.shade600,
+                ),
+                errorText: phoneValidator != null ? phoneValidator!(phoneController.text) : null,
+              ),
+              readOnly: !isEditable,
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly, // Only allow digits
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            height: 56,
+            child: ElevatedButton.icon(
+              onPressed: isEditable ? onSearchByPhone : null,
+              icon: const Icon(Icons.search, size: 20),
+              label: const Text('Search'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple.shade600,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey.shade300,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
             ),
-            readOnly: !isEditable,
-            keyboardType: TextInputType.phone,
           ),
+        ],
+      );
+    } else {
+      return TextField(
+        controller: phoneController,
+        decoration: InputDecoration(
+          labelText: 'Customer Phone',
+          hintText: 'Enter customer phone number',
+          prefixIcon: const Icon(Icons.phone),
+          border: const OutlineInputBorder(),
+          filled: !isEditable,
+          fillColor: isEditable ? null : Colors.grey.shade100,
+          errorText: phoneValidator != null ? phoneValidator!(phoneController.text) : null,
         ),
-        const SizedBox(width: 12),
-        SizedBox(
-          height: 56,
-          child: ElevatedButton.icon(
-            onPressed: isEditable ? onSearchByPhone : null,
-            icon: const Icon(Icons.search, size: 20),
-            label: const Text('Search'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple.shade600,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: Colors.grey.shade300,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-            ),
-          ),
-        ),
-      ],
-    );
+        readOnly: !isEditable,
+        keyboardType: TextInputType.phone,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly, // Only allow digits
+        ],
+      );
+    }
   }
 
   Widget _buildTextField({

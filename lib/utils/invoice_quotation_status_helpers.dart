@@ -26,7 +26,7 @@ class StatusHelpers {
   // Get background color for document card
   static Color getDocumentCardColor(QuotationDocument doc) {
     if (doc.type == DocumentType.quotation) {
-      if (doc.status == DocumentStatus.approved) return Colors.blue.shade100;
+      if (doc.status == DocumentStatus.approved) return Colors.blue.shade100; // Blue color for approved quotations (ready for conversion)
       return Colors.orange.shade100;
     } else {
       if (doc.status == DocumentStatus.partial ||
@@ -43,7 +43,14 @@ class StatusHelpers {
 
   // Get status display text
   static String getStatusDisplayText(DocumentStatus status) {
-    return status == DocumentStatus.paid ? 'PAID' : status.name.toUpperCase();
+    switch (status) {
+      case DocumentStatus.paid:
+        return 'PAID';
+      case DocumentStatus.converted:
+        return 'CONVERTED';
+      default:
+        return status.name.toUpperCase();
+    }
   }
 
   // Get document type icon

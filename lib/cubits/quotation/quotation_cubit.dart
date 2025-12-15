@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
@@ -15,8 +16,13 @@ class QuotationCubit extends Cubit<QuotationState> {
   // Helper method to get current token
   String? get _currentToken {
     if (_authCubit.state is AuthAuthenticated) {
-      return (_authCubit.state as AuthAuthenticated).token;
+      final token = (_authCubit.state as AuthAuthenticated).token;
+      debugPrint('🔑 QuotationCubit: Retrieved token: ${token.substring(0, min(20, token.length))}...');
+      debugPrint('🔑 QuotationCubit: Token length: ${token.length}');
+      debugPrint('🔑 QuotationCubit: Token starts with: ${token.substring(0, 10)}');
+      return token;
     }
+    debugPrint('❌ QuotationCubit: No valid token found. Auth state: ${_authCubit.state.runtimeType}');
     return null;
   }
 
@@ -25,7 +31,7 @@ class QuotationCubit extends Cubit<QuotationState> {
     emit(state.copyWith(isLoading: true, errorMessage: null));
     try {
       debugPrint('🚀 QuotationCubit: Starting to load quotations...');
-      final loadedQuotations = await _quotationRepository.fetchQuotations(queryParams: queryParams);
+      final loadedQuotations = await _quotationRepository.fetchQuotations(queryParams: queryParams, token: _currentToken);
       debugPrint('📦 QuotationCubit: Loaded ${loadedQuotations.length} quotations');
       emit(state.copyWith(quotations: loadedQuotations, isLoading: false));
       debugPrint('✅ QuotationCubit: Successfully updated state with quotations');
@@ -58,7 +64,7 @@ class QuotationCubit extends Cubit<QuotationState> {
       }
 
       debugPrint('✅ QuotationCubit: Validation passed, sending to backend...');
-      final createdQuotation = await _quotationRepository.createQuotation(quotation);
+      final createdQuotation = await _quotationRepository.createQuotation(quotation, token: _currentToken);
       debugPrint('✨ QuotationCubit: Quotation created successfully: ${createdQuotation.documentNumber}');
 
       // Add to local state
@@ -75,7 +81,7 @@ class QuotationCubit extends Cubit<QuotationState> {
   // 3. ✏️ Update Quotation
   Future<void> updateQuotation(QuotationDocument quotation) async {
     try {
-      final updatedQuotation = await _quotationRepository.updateQuotation(quotation);
+      final updatedQuotation = await _quotationRepository.updateQuotation(quotation, token: _currentToken);
 
       // Update local state
       final updatedList = state.quotations.map((q) {
@@ -93,7 +99,7 @@ class QuotationCubit extends Cubit<QuotationState> {
   // 4. 🗑️ Delete Quotation
   Future<void> deleteQuotation(String id) async {
     try {
-      await _quotationRepository.deleteQuotation(id);
+      await _quotationRepository.deleteQuotation(id, token: _currentToken);
 
       // Remove from local state
       final updatedList = state.quotations.where((q) => q.id != id).toList();
@@ -108,7 +114,7 @@ class QuotationCubit extends Cubit<QuotationState> {
   // 5. 💰 Add Payment to Quotation
   Future<void> addPayment(String id, Map<String, dynamic> paymentData) async {
     try {
-      final updatedQuotation = await _quotationRepository.addPayment(id, paymentData);
+      final updatedQuotation = await _quotationRepository.addPayment(id, paymentData, token: _currentToken);
 
       // Update local state
       final updatedList = state.quotations.map((q) {
@@ -124,9 +130,9 @@ class QuotationCubit extends Cubit<QuotationState> {
   }
 
   // 6. 🔄 Convert Quotation to Invoice
-  Future<void> convertToInvoice(String id) async {
+  Future<QuotationDocument> convertToInvoice(String id) async {
     try {
-      final convertedInvoice = await _quotationRepository.convertToInvoice(id);
+      final convertedInvoice = await _quotationRepository.convertToInvoice(id, token: _currentToken);
 
       // Update local state
       final updatedList = state.quotations.map((q) {
@@ -134,9 +140,29 @@ class QuotationCubit extends Cubit<QuotationState> {
       }).toList();
 
       emit(state.copyWith(quotations: updatedList));
+
+      return convertedInvoice;
     } catch (e) {
       debugPrint('💥 QuotationCubit: Failed to convert quotation: $e');
       emit(state.copyWith(errorMessage: 'Failed to convert quotation to invoice.'));
+      rethrow;
+    }
+  }
+
+  // 7. 📊 Update Quotation Status
+  Future<void> updateQuotationStatus(String id, Map<String, dynamic> statusData) async {
+    try {
+      final updatedQuotation = await _quotationRepository.updateQuotationStatus(id, statusData, token: _currentToken);
+
+      // Update local state
+      final updatedList = state.quotations.map((q) {
+        return q.id == updatedQuotation.id ? updatedQuotation : q;
+      }).toList();
+
+      emit(state.copyWith(quotations: updatedList));
+    } catch (e) {
+      debugPrint('💥 QuotationCubit: Failed to update quotation status: $e');
+      emit(state.copyWith(errorMessage: 'Failed to update quotation status.'));
       rethrow;
     }
   }

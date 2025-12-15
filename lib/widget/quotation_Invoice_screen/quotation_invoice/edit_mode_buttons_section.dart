@@ -5,7 +5,11 @@ import 'package:tilework/models/quotation_Invoice_screen/project/quotation_docum
 class EditModeButtonsSection extends StatelessWidget {
   final QuotationDocument document;
   final bool hasUnsavedChanges;
+  final bool isValid;
+  final bool isSaving;
+  final bool isNewDocument;
   final VoidCallback onSave;
+  final VoidCallback? onApprove;
   final VoidCallback onConvert;
   final VoidCallback onAddAdvance;
   final VoidCallback onRecordPayment;
@@ -17,7 +21,11 @@ class EditModeButtonsSection extends StatelessWidget {
     Key? key,
     required this.document,
     required this.hasUnsavedChanges,
+    this.isValid = false,
+    this.isSaving = false,
+    this.isNewDocument = false,
     required this.onSave,
+    this.onApprove,
     required this.onConvert,
     required this.onAddAdvance,
     required this.onRecordPayment,
@@ -35,6 +43,9 @@ class EditModeButtonsSection extends StatelessWidget {
       document.isInvoice && !document.isLocked && document.amountDue > 0;
 
   bool get _isDeleteVisible =>
+      document.isQuotation && document.status == DocumentStatus.pending;
+
+  bool get _isApproveVisible =>
       document.isQuotation && document.status == DocumentStatus.pending;
 
   @override
@@ -169,9 +180,18 @@ class EditModeButtonsSection extends StatelessWidget {
         if (_isSaveVisible)
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: hasUnsavedChanges ? onSave : null,
-              icon: const Icon(Icons.save),
-              label: Text('Save ${document.type.name}'),
+              onPressed: (!isSaving && hasUnsavedChanges) ? onSave : null, // Enable only when there are unsaved changes
+              icon: isSaving
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.save),
+              label: Text(isSaving ? 'Saving...' : 'Save ${document.type.name}'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.all(16),
                 backgroundColor: Colors.indigo,
@@ -181,7 +201,24 @@ class EditModeButtonsSection extends StatelessWidget {
             ),
           ),
 
-        if (_isSaveVisible) const SizedBox(width: 16),
+        if (_isSaveVisible && (_isConvertVisible || _isPaymentVisible || _isApproveVisible)) const SizedBox(width: 16),
+
+        // Approve Button (for pending quotations)
+        if (_isApproveVisible && onApprove != null)
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: onApprove,
+              icon: const Icon(Icons.check_circle),
+              label: const Text('Approve'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.all(16),
+                backgroundColor: Colors.green.shade600,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+
+        if ((_isSaveVisible || _isApproveVisible) && (_isConvertVisible || _isPaymentVisible)) const SizedBox(width: 16),
 
         // Convert Button
         if (_isConvertVisible)
@@ -237,6 +274,22 @@ class EditModeButtonsSection extends StatelessWidget {
         else
           const Expanded(child: SizedBox.shrink()),
       ],
+    );
+  }
+
+  Widget _buildApproveButton() {
+    return Center(
+      child: ElevatedButton.icon(
+        onPressed: onApprove,
+        icon: const Icon(Icons.check_circle),
+        label: const Text('Approve Quotation'),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          backgroundColor: Colors.green.shade600,
+          foregroundColor: Colors.white,
+          elevation: 2,
+        ),
+      ),
     );
   }
 

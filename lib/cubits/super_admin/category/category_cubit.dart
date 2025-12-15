@@ -20,10 +20,10 @@ class CategoryCubit extends Cubit<CategoryState> {
   // =================== CATEGORY OPERATIONS ===================
 
   // 1. Load Categories
-  Future<void> loadCategories({String? token}) async {
+  Future<void> loadCategories({String? token, String? companyId}) async {
     emit(state.copyWith(isLoading: true, errorMessage: null));
     try {
-      final categories = await _categoryRepository.fetchCategories(token: token);
+      final categories = await _categoryRepository.fetchCategories(token: token, companyId: companyId);
       emit(state.copyWith(categories: categories, isLoading: false));
     } catch (e) {
       debugPrint('💥 CategoryCubit: Failed to load categories: $e');
@@ -35,9 +35,9 @@ class CategoryCubit extends Cubit<CategoryState> {
   }
 
   // 2. Create Category
-  Future<void> createCategory(String name, {String? token}) async {
+  Future<void> createCategory(String name, {String? token, String? companyId}) async {
     try {
-      final newCategory = await _categoryRepository.createCategory(name, token: token);
+      final newCategory = await _categoryRepository.createCategory(name, token: token, companyId: companyId);
       final updatedCategories = [...state.categories, newCategory];
       emit(state.copyWith(categories: updatedCategories));
     } catch (e) {

@@ -348,6 +348,11 @@
 // lib/screens/dashboard_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:tilework/cubits/auth/auth_cubit.dart';
+import 'package:tilework/cubits/auth/auth_state.dart';
+import 'package:tilework/cubits/material_sale/material_sale_cubit.dart';
+
 import 'package:tilework/models/dashboard/dashboard_models.dart';
 import 'package:tilework/widget/dashboard/dashboard_period_selector.dart';
 import 'package:tilework/widget/dashboard/material_sales/material_sales_dashboard_tab.dart';
@@ -368,9 +373,26 @@ class _DashboardScreenState extends State<DashboardScreen>
   DashboardPeriod _selectedPeriod = DashboardPeriod.last30Days;
   DateTimeRange? _customDateRange;
 
-  // TODO: Get from auth/provider - For now using sample data
-  final String _companyName = 'ABC Tiles Ltd';
-  final String _userName = 'John Smith';
+  // Get real user data from authentication
+  String get _companyName {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is AuthAuthenticated) {
+      final user = authState.user;
+      // Use real company name from user data
+      return user.companyName ?? 'ABC Tiles Ltd';
+    }
+    return 'ABC Tiles Ltd'; // Fallback
+  }
+
+  String get _userName {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is AuthAuthenticated) {
+      final user = authState.user;
+      // Use real user name from user data
+      return user.name;
+    }
+    return 'John Smith'; // Fallback
+  }
 
   @override
   void initState() {
@@ -393,8 +415,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       body: Column(
         children: [
           // Custom App Bar
-
-          Text("hi"),
           _buildCustomAppBar(),
 
           // Scrollable Content
@@ -841,6 +861,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     return 'Good Evening';
   }
 
+
+
   // ═══════════════════════════════════════
   // 📑 TAB BAR
   // ═══════════════════════════════════════
@@ -988,11 +1010,14 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _showProfile() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _buildProfileSheet(),
+    // Navigate to Profile section in sidebar
+    // Assuming we're in a sidebar context, we need to find the parent sidebar
+    // and navigate to the profile index
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Navigate to Profile section'),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 

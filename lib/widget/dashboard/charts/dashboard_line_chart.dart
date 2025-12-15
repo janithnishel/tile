@@ -93,13 +93,14 @@ class _DashboardLineChartState extends State<DashboardLineChart> {
 
     final maxY = widget.data.map((e) => e.value).reduce((a, b) => a > b ? a : b);
     final minY = widget.data.map((e) => e.value).reduce((a, b) => a < b ? a : b);
-    final padding = (maxY - minY) * 0.1;
+    final range = maxY - minY;
+    final padding = range * 0.1;
 
     return LineChartData(
       gridData: FlGridData(
         show: widget.showGrid,
         drawVerticalLine: false,
-        horizontalInterval: (maxY - minY) / 4,
+        horizontalInterval: range == 0 ? 1 : range / 4, // Prevent division by zero
         getDrawingHorizontalLine: (value) {
           return FlLine(
             color: Colors.grey.shade200,

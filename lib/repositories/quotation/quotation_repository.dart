@@ -8,10 +8,11 @@ class QuotationRepository {
   QuotationRepository(this._apiService, [this._token]);
 
   // GET: Fetch all quotations
-  Future<List<QuotationDocument>> fetchQuotations({Map<String, String>? queryParams}) async {
+  Future<List<QuotationDocument>> fetchQuotations({Map<String, String>? queryParams, String? token}) async {
     try {
+      final currentToken = token ?? _token;
       // Backend returns: {success: true, data: [...]}
-      final response = await _apiService.getAllQuotations(token: _token, queryParams: queryParams);
+      final response = await _apiService.getAllQuotations(token: currentToken, queryParams: queryParams);
       print('🔍 Raw API Response: $response');
       print('🔍 Response type: ${response.runtimeType}');
 
@@ -52,7 +53,7 @@ class QuotationRepository {
   }
 
   // POST: Create a new quotation
-  Future<QuotationDocument> createQuotation(QuotationDocument quotation) async {
+  Future<QuotationDocument> createQuotation(QuotationDocument quotation, {String? token}) async {
     try {
       final jsonData = quotation.toJson();
       print('📤 Creating quotation with data: $jsonData');
@@ -65,7 +66,8 @@ class QuotationRepository {
       print('   - type: ${jsonData['type']}');
       print('   - status: ${jsonData['status']}');
 
-      final response = await _apiService.createQuotation(jsonData, token: _token);
+      final currentToken = token ?? _token;
+      final response = await _apiService.createQuotation(jsonData, token: currentToken);
       print('📥 Create quotation API response: $response');
 
       // Backend should return the created quotation data
@@ -104,9 +106,10 @@ class QuotationRepository {
   }
 
   // PUT: Update a quotation
-  Future<QuotationDocument> updateQuotation(QuotationDocument quotation) async {
+  Future<QuotationDocument> updateQuotation(QuotationDocument quotation, {String? token}) async {
     try {
-      final response = await _apiService.updateQuotation(quotation.id ?? '', quotation.toJson(), token: _token);
+      final currentToken = token ?? _token;
+      final response = await _apiService.updateQuotation(quotation.id ?? '', quotation.toJson(), token: currentToken);
 
       // Backend should return the updated quotation data
       final data = response['data'];
@@ -117,18 +120,20 @@ class QuotationRepository {
   }
 
   // DELETE: Delete a quotation
-  Future<void> deleteQuotation(String id) async {
+  Future<void> deleteQuotation(String id, {String? token}) async {
     try {
-      await _apiService.deleteQuotation(id, token: _token);
+      final currentToken = token ?? _token;
+      await _apiService.deleteQuotation(id, token: currentToken);
     } catch (e) {
       throw Exception('Failed to delete quotation: $e');
     }
   }
 
   // POST: Add payment to quotation
-  Future<QuotationDocument> addPayment(String id, Map<String, dynamic> paymentData) async {
+  Future<QuotationDocument> addPayment(String id, Map<String, dynamic> paymentData, {String? token}) async {
     try {
-      final response = await _apiService.addPayment(id, paymentData, token: _token);
+      final currentToken = token ?? _token;
+      final response = await _apiService.addPayment(id, paymentData, token: currentToken);
 
       // Backend should return the updated quotation data
       final data = response['data'];
@@ -139,15 +144,35 @@ class QuotationRepository {
   }
 
   // PATCH: Convert quotation to invoice
-  Future<QuotationDocument> convertToInvoice(String id) async {
+  Future<QuotationDocument> convertToInvoice(String id, {String? token}) async {
     try {
-      final response = await _apiService.convertToInvoice(id, token: _token);
+      final currentToken = token ?? _token;
+      print('🔄 Converting quotation $id to invoice...');
+      print('🔑 Token available: ${currentToken != null ? "Yes (${currentToken!.substring(0, 20)}...)" : "No"}');
+
+      final response = await _apiService.convertToInvoice(id, token: currentToken);
+      print('✅ Convert to invoice API response: $response');
 
       // Backend should return the converted invoice data
       final data = response['data'];
       return QuotationDocument.fromJson(data);
     } catch (e) {
+      print('❌ Failed to convert quotation to invoice: $e');
       throw Exception('Failed to convert quotation to invoice: $e');
+    }
+  }
+
+  // PATCH: Update quotation status
+  Future<QuotationDocument> updateQuotationStatus(String id, Map<String, dynamic> statusData, {String? token}) async {
+    try {
+      final currentToken = token ?? _token;
+      final response = await _apiService.updateQuotationStatus(id, statusData, token: currentToken);
+
+      // Backend should return the updated quotation data
+      final data = response['data'];
+      return QuotationDocument.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to update quotation status: $e');
     }
   }
 }

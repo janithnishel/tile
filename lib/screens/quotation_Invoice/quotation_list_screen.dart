@@ -39,6 +39,11 @@ class _QuotationListScreenState extends State<QuotationListScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
+
+    // Load quotations when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<QuotationCubit>().loadQuotations();
+    });
   }
 
   void _onTabChanged() {
@@ -56,33 +61,7 @@ class _QuotationListScreenState extends State<QuotationListScreen>
     super.dispose();
   }
 
-  // Create QuotationCubit with proper context access
-  QuotationCubit _createQuotationCubit(BuildContext context) {
-    final authCubit = context.read<AuthCubit>();
-    final token = (authCubit.state as AuthAuthenticated?)?.token;
-
-    return QuotationCubit(
-      QuotationRepository(
-        QuotationApiService(),
-        token,
-      ),
-      authCubit,
-    )..loadQuotations();
-  }
-
-  // Create MaterialSaleCubit with proper context access
-  MaterialSaleCubit _createMaterialSaleCubit(BuildContext context) {
-    final authCubit = context.read<AuthCubit>();
-    final token = (authCubit.state as AuthAuthenticated?)?.token;
-
-    return MaterialSaleCubit(
-      MaterialSaleRepository(
-        MaterialSaleApiService(),
-        token,
-      ),
-      authCubit,
-    );
-  }
+  // Cubits are now provided globally in main.dart, no need to create local instances
 
   // Refresh callback for app bar
   void _refreshQuotations() {
@@ -95,22 +74,24 @@ class _QuotationListScreenState extends State<QuotationListScreen>
   // ============================================
 
   void _openDocument(QuotationDocument doc, QuotationCubit cubit) {
+    debugPrint('📂 Opening document: ${doc.documentNumber} (${doc.type})');
     Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => BlocProvider<QuotationCubit>.value(
-          value: cubit,
-          child: QuotationInvoiceScreen(
-            document: doc,
-            isNewDocument: false,
-          ),
+        builder: (context) => QuotationInvoiceScreen(
+          document: doc,
+          isNewDocument: false,
         ),
       ),
     ).then((result) {
+      debugPrint('📂 Document screen closed with result: $result');
       if (result == true || result == null) {
         // Refresh quotations list after editing
+        debugPrint('🔄 Refreshing quotations list after editing...');
         cubit.loadQuotations();
       }
+    }).catchError((error) {
+      debugPrint('❌ Error opening document: $error');
     });
   }
 
@@ -144,7 +125,8 @@ class _QuotationListScreenState extends State<QuotationListScreen>
       ),
     ).then((result) {
       if (result == true) {
-        // Refresh quotations from API after successful creation
+        // Force refresh quotations from API after successful creation
+        debugPrint('🔄 Refreshing quotations list after creation...');
         cubit.loadQuotations();
       }
     });
@@ -230,43 +212,29 @@ class _QuotationListScreenState extends State<QuotationListScreen>
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (context) => _createQuotationCubit(context),
-        ),
-        BlocProvider(
-          create: (context) => _createMaterialSaleCubit(context),
-        ),
-      ],
-      child: Builder(
-        builder: (context) {
-          // Now context has access to both BlocProviders
-          final quotationCubit = context.read<QuotationCubit>();
-          final materialSaleCubit = context.read<MaterialSaleCubit>();
+    // Use global BlocProviders from main.dart instead of local ones
+    final quotationCubit = context.read<QuotationCubit>();
+    final materialSaleCubit = context.read<MaterialSaleCubit>();
 
-          return Scaffold(
-            appBar: _buildAppBar(quotationCubit),
-            body: TabBarView(
-              controller: _tabController,
-              children: [
-                // Tab 1: Project
-                ProjectTabView(
-                  onCreateNew: (cubit) => _createNewQuotation(cubit),
-                  onDocumentTap: (doc, cubit) => _openDocument(doc, cubit),
-                ),
+    return Scaffold(
+      appBar: _buildAppBar(quotationCubit),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // Tab 1: Project
+          ProjectTabView(
+            onCreateNew: (cubit) => _createNewQuotation(cubit),
+            onDocumentTap: (doc, cubit) => _openDocument(doc, cubit),
+          ),
 
-                // Tab 2: Material Sale
-                MaterialSaleTabView(
-                  onCreateNew: (cubit) => _createNewMaterialSale(),
-                  onDocumentTap: (doc, cubit) => _openMaterialSaleDocument(doc),
-                ),
-              ],
-            ),
-            floatingActionButton: _buildFloatingActionButton(quotationCubit),
-          );
-        },
+          // Tab 2: Material Sale
+          MaterialSaleTabView(
+            onCreateNew: (cubit) => _createNewMaterialSale(),
+            onDocumentTap: (doc, cubit) => _openMaterialSaleDocument(doc),
+          ),
+        ],
       ),
+      floatingActionButton: _buildFloatingActionButton(quotationCubit),
     );
   }
 

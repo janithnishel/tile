@@ -76,13 +76,18 @@ class CategoryApiService {
   // =================== CATEGORY API METHODS ===================
 
   // Get all categories for current company
-  Future<Map<String, dynamic>> getCategories({String? token}) async {
-    return await get(categoriesEndpoint, token: token);
+  Future<Map<String, dynamic>> getCategories({String? token, String? companyId}) async {
+    final endpoint = companyId != null ? '$categoriesEndpoint?companyId=$companyId' : categoriesEndpoint;
+    return await get(endpoint, token: token);
   }
 
   // Create new category
-  Future<Map<String, dynamic>> createCategory(String name, {String? token}) async {
-    return await post(categoriesEndpoint, {'name': name}, token: token);
+  Future<Map<String, dynamic>> createCategory(String name, {String? token, String? companyId}) async {
+    final data = {'name': name};
+    if (companyId != null) {
+      data['companyId'] = companyId;
+    }
+    return await post(categoriesEndpoint, data, token: token);
   }
 
   // Update category

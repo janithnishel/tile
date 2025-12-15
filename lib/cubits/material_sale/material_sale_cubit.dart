@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
@@ -11,14 +12,28 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
   final AuthCubit _authCubit;
 
   MaterialSaleCubit(this._materialSaleRepository, this._authCubit) : super(const MaterialSaleState()) {
-    loadMaterialSales();
+    // Listen to auth state changes
+    _authCubit.stream.listen((authState) {
+      if (authState is AuthAuthenticated && state.materialSales.isEmpty) {
+        // Load material sales when user logs in and we haven't loaded data yet
+        loadMaterialSales();
+      }
+    });
+
+    // Only load if already authenticated
+    if (_authCubit.state is AuthAuthenticated) {
+      loadMaterialSales();
+    }
   }
 
   // Helper method to get current token
   String? get _currentToken {
     if (_authCubit.state is AuthAuthenticated) {
-      return (_authCubit.state as AuthAuthenticated).token;
+      final token = (_authCubit.state as AuthAuthenticated).token;
+      debugPrint('🔑 MaterialSaleCubit: Retrieved token: ${token.substring(0, min(20, token.length))}...');
+      return token;
     }
+    debugPrint('❌ MaterialSaleCubit: No valid token found. Auth state: ${_authCubit.state.runtimeType}');
     return null;
   }
 
@@ -27,7 +42,7 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
     emit(state.copyWith(isLoading: true, errorMessage: null));
     try {
       debugPrint('🚀 MaterialSaleCubit: Loading material sales...');
-      final materialSales = await _materialSaleRepository.fetchMaterialSales(queryParams: queryParams);
+      final materialSales = await _materialSaleRepository.fetchMaterialSales(queryParams: queryParams, token: _currentToken);
       debugPrint('📦 MaterialSaleCubit: Loaded ${materialSales.length} material sales');
       emit(state.copyWith(materialSales: materialSales, isLoading: false));
     } catch (e) {
@@ -56,7 +71,7 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
       }
 
       debugPrint('✅ MaterialSaleCubit: Validation passed, creating material sale...');
-      final createdSale = await _materialSaleRepository.createMaterialSale(materialSale);
+      final createdSale = await _materialSaleRepository.createMaterialSale(materialSale, token: _currentToken);
       debugPrint('✨ MaterialSaleCubit: Material sale created: ${createdSale.invoiceNumber}');
 
       // Add to local state
@@ -73,7 +88,7 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
   // 3. Update Material Sale
   Future<void> updateMaterialSale(MaterialSaleDocument materialSale) async {
     try {
-      final updatedSale = await _materialSaleRepository.updateMaterialSale(materialSale);
+      final updatedSale = await _materialSaleRepository.updateMaterialSale(materialSale, token: _currentToken);
 
       // Update local state
       final updatedList = state.materialSales.map((sale) {
@@ -91,7 +106,7 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
   // 4. Delete Material Sale
   Future<void> deleteMaterialSale(String id) async {
     try {
-      await _materialSaleRepository.deleteMaterialSale(id);
+      await _materialSaleRepository.deleteMaterialSale(id, token: _currentToken);
 
       // Remove from local state
       final updatedList = state.materialSales.where((sale) => sale.id != id).toList();
@@ -106,7 +121,7 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
   // 5. Add Payment
   Future<void> addPayment(String id, Map<String, dynamic> paymentData) async {
     try {
-      final updatedSale = await _materialSaleRepository.addPayment(id, paymentData);
+      final updatedSale = await _materialSaleRepository.addPayment(id, paymentData, token: _currentToken);
 
       // Update local state
       final updatedList = state.materialSales.map((sale) {
@@ -124,7 +139,7 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
   // 6. Update Status
   Future<void> updateStatus(String id, String status) async {
     try {
-      final updatedSale = await _materialSaleRepository.updateStatus(id, status);
+      final updatedSale = await _materialSaleRepository.updateStatus(id, status, token: _currentToken);
 
       // Update local state
       final updatedList = state.materialSales.map((sale) {

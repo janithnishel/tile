@@ -159,8 +159,8 @@ class _ProjectTabViewState extends State<ProjectTabView> {
   Widget build(BuildContext context) {
     return BlocConsumer<QuotationCubit, QuotationState>(
       listener: (context, state) {
-        // Listen for errors and show snackbar
-        if (state.errorMessage != null && !state.isLoading) {
+        // Listen for errors and show snackbar, but skip if we just navigated back from editing
+        if (state.errorMessage != null && !state.isLoading && ModalRoute.of(context)?.isCurrent == true) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.errorMessage!),

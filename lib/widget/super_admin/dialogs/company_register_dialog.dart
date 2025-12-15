@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tilework/models/super_admin/company_model.dart';
+import 'package:tilework/models/category_model.dart';
 import 'package:tilework/theme/theme.dart';
 import 'package:tilework/widget/super_admin/app_button.dart';
 import 'package:tilework/widget/super_admin/app_text_field.dart';
@@ -47,6 +48,9 @@ class _CompanyRegisterDialogState extends State<CompanyRegisterDialog> {
 
   // Status
   late bool _isActive;
+
+  // Categories for new company registration
+  List<Map<String, dynamic>> _initialCategories = [];
 
   bool get _isEditMode => widget.company != null;
 
@@ -486,6 +490,68 @@ class _CompanyRegisterDialogState extends State<CompanyRegisterDialog> {
                           ),
                         ),
                       ],
+
+                      // ═══════════════════════════════════════
+                      // 📦 INITIAL CATEGORIES (New Company Registration Only)
+                      // ═══════════════════════════════════════
+                      if (!_isEditMode) ...[
+                        const SizedBox(height: 24),
+                        const SectionHeader(
+                          title: 'Initial Categories',
+                          subtitle: 'Setup product categories for this company',
+                          icon: Icons.category_rounded,
+                        ),
+
+                        // Add Category Button
+                        AppButton(
+                          text: 'Add Category',
+                          icon: Icons.add_rounded,
+                          type: AppButtonType.secondary,
+                          onPressed: _showAddCategoryDialog,
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Categories List
+                        if (_initialCategories.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: const Center(
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.category_outlined,
+                                    size: 48,
+                                    color: Colors.grey,
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'No categories added yet',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Click "Add Category" to get started',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else
+                          ..._initialCategories.map((category) => _buildCategoryTile(category)),
+                      ],
                     ],
                   ),
                 ),
@@ -562,6 +628,7 @@ class _CompanyRegisterDialogState extends State<CompanyRegisterDialog> {
             'companyName': _companyNameController.text.trim(),
             'companyAddress': _companyAddressController.text.trim(),
             'companyPhone': _companyPhoneController.text.trim(),
+            'initialCategories': _initialCategories,
           });
         }
       } catch (e) {
@@ -576,5 +643,168 @@ class _CompanyRegisterDialogState extends State<CompanyRegisterDialog> {
 
       setState(() => _isLoading = false);
     }
+  }
+
+  // ═══════════════════════════════════════
+  // ➕ ADD CATEGORY DIALOG
+  // ═══════════════════════════════════════
+  Future<void> _showAddCategoryDialog() async {
+    final categoryNameController = TextEditingController();
+    final categoryFormKey = GlobalKey<FormState>();
+    bool isCategoryLoading = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (categoryDialogContext) => StatefulBuilder(
+        builder: (categoryDialogContext, setState) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: categoryFormKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.success.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.add_rounded,
+                          color: AppTheme.success,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text('Add Category', style: AppTheme.heading3),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  AppTextField(
+                    label: 'Category Name',
+                    hint: 'Enter category name',
+                    controller: categoryNameController,
+                    prefixIcon: Icons.category_outlined,
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Category name is required';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppButton(
+                          text: 'Cancel',
+                          type: AppButtonType.outlined,
+                          onPressed: () => Navigator.pop(categoryDialogContext),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppButton(
+                          text: 'Add',
+                          icon: Icons.add_rounded,
+                          isLoading: isCategoryLoading,
+                          onPressed: () async {
+                            if (categoryFormKey.currentState!.validate()) {
+                              setState(() => isCategoryLoading = true);
+                              try {
+                                // Add category to the list
+                                final newCategory = {
+                                  'name': categoryNameController.text.trim(),
+                                  'items': <Map<String, dynamic>>[],
+                                };
+                                this.setState(() {
+                                  _initialCategories.add(newCategory);
+                                });
+                                Navigator.pop(categoryDialogContext);
+                              } catch (e) {
+                                // Handle error
+                              }
+                              setState(() => isCategoryLoading = false);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════
+  // 📦 CATEGORY TILE
+  // ═══════════════════════════════════════
+  Widget _buildCategoryTile(Map<String, dynamic> category) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryAccent.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.category_rounded,
+              color: AppTheme.primaryAccent,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  category['name'],
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  'Will be created for this company',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () {
+              setState(() {
+                _initialCategories.remove(category);
+              });
+            },
+            icon: const Icon(Icons.delete_outline),
+            color: AppTheme.error,
+          ),
+        ],
+      ),
+    );
   }
 }

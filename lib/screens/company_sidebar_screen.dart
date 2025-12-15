@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/routes/company_routes.dart';
 import 'package:tilework/screens/dashboard_screen.dart';
+import 'package:tilework/screens/profile_screen.dart' as profile;
 import 'package:tilework/widget/shared/menu_item.dart';
 import 'package:tilework/screens/job_cost_section.dart';
 import 'package:tilework/screens/quotation_Invoice/quotation_list_screen.dart';
@@ -51,16 +52,9 @@ class _CompanySidebarScreenState extends State<CompanySidebarScreen> {
         onTap: () => _navigateToPage(4),
       ),
       MenuItem(
-        icon: Icons.notifications,
-        title: 'Notifications',
+        icon: Icons.person_outline_rounded,
+        title: 'Profile',
         onTap: () => _navigateToPage(5),
-        badgeCount: 3, // Example badge
-        badgeColor: Colors.red,
-      ),
-      MenuItem(
-        icon: Icons.settings,
-        title: 'Settings',
-        onTap: () => _navigateToPage(6),
       ),
       MenuItem(
         icon: Icons.logout,
@@ -346,6 +340,8 @@ class _CompanySidebarScreenState extends State<CompanySidebarScreen> {
         return JobCostScreen();
       case 4:
         return ReportsScreen();
+      case 5:
+        return profile.ProfileScreen();
 
       default:
         return Center(

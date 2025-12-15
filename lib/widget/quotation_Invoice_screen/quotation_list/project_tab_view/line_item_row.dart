@@ -6,6 +6,7 @@ import 'package:tilework/models/quotation_Invoice_screen/project/item_descriptio
 class LineItemRow extends StatefulWidget {
   final int index;
   final InvoiceLineItem item;
+  final List<ItemDescription> availableItems;
   final bool isDropdownEditable;
   final bool isValueEditable;
   final bool isDeleteEnabled;
@@ -19,6 +20,7 @@ class LineItemRow extends StatefulWidget {
     Key? key,
     required this.index,
     required this.item,
+    required this.availableItems,
     required this.isDropdownEditable,
     required this.isValueEditable,
     required this.isDeleteEnabled,
@@ -108,6 +110,10 @@ class _LineItemRowState extends State<LineItemRow> {
           ),
           const SizedBox(width: 8),
 
+          // Unit Display
+          _buildUnitDisplay(),
+          const SizedBox(width: 8),
+
           // Quantity
           Expanded(
             flex: 1,
@@ -136,15 +142,24 @@ class _LineItemRowState extends State<LineItemRow> {
   }
 
   Widget _buildActivityItemDropdown() {
-    // Get unique categories
-    final categories = masterItemList
+    // Get unique categories from available items
+    final categories = widget.availableItems
         .map((item) => item.category)
         .where((category) => category.isNotEmpty)
         .toSet()
         .toList();
 
+    // Find the matching category from available categories
+    String? selectedCategory;
+    if (widget.item.item.category.isNotEmpty) {
+      final matchingCategories = categories.where(
+        (category) => category == widget.item.item.category,
+      );
+      selectedCategory = matchingCategories.isNotEmpty ? matchingCategories.first : null;
+    }
+
     return DropdownButtonFormField<String>(
-      value: widget.item.item.category.isNotEmpty ? widget.item.item.category : null,
+      value: selectedCategory,
       decoration: InputDecoration(
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
@@ -168,7 +183,7 @@ class _LineItemRowState extends State<LineItemRow> {
           ? (value) {
               if (value != null) {
                 // Find the first item in this category to set as default
-                final categoryItems = masterItemList.where((item) => item.category == value).toList();
+                final categoryItems = widget.availableItems.where((item) => item.category == value).toList();
                 if (categoryItems.isNotEmpty) {
                   final newItem = categoryItems.first;
                   widget.onItemChanged(newItem);
@@ -185,22 +200,34 @@ class _LineItemRowState extends State<LineItemRow> {
   }
 
   Widget _buildProductNameDropdown() {
-    // Get products for the selected category
+    // Get products for the selected category from available items
     final categoryProducts = widget.item.item.category.isNotEmpty
-        ? masterItemList.where((item) => item.category == widget.item.item.category).toList()
+        ? widget.availableItems.where((item) => item.category == widget.item.item.category).toList()
         : <ItemDescription>[];
 
+    // Filter out placeholder items (items with "No Items Available")
+    final validProducts = categoryProducts.where((item) => item.productName != 'No Items Available').toList();
+
+    // Find the matching item from validProducts that has the same productName and category
+    ItemDescription? selectedItem;
+    if (widget.item.item.productName.isNotEmpty) {
+      final matchingItems = validProducts.where(
+        (item) => item.productName == widget.item.item.productName && item.category == widget.item.item.category,
+      );
+      selectedItem = matchingItems.isNotEmpty ? matchingItems.first : null;
+    }
+
     return DropdownButtonFormField<ItemDescription>(
-      value: categoryProducts.contains(widget.item.item) ? widget.item.item : null,
+      value: selectedItem,
       decoration: InputDecoration(
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         filled: !widget.isDropdownEditable,
         fillColor: widget.isDropdownEditable ? null : Colors.grey.shade100,
-        hintText: 'Select product...',
+        hintText: validProducts.isEmpty ? 'No products available' : 'Select product...',
       ),
       isExpanded: true,
-      items: categoryProducts
+      items: validProducts
           .map<DropdownMenuItem<ItemDescription>>(
             (item) => DropdownMenuItem<ItemDescription>(
               value: item,
@@ -211,7 +238,7 @@ class _LineItemRowState extends State<LineItemRow> {
             ),
           )
           .toList(),
-      onChanged: widget.isDropdownEditable
+      onChanged: (widget.isDropdownEditable && validProducts.isNotEmpty)
           ? (value) {
               if (value != null) {
                 widget.onItemChanged(value);

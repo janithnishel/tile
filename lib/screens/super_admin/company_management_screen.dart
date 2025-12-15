@@ -1347,6 +1347,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
+import 'package:tilework/cubits/super_admin/category/category_cubit.dart';
 import 'package:tilework/cubits/super_admin/company/company_cubit.dart';
 import 'package:tilework/cubits/super_admin/company/company_state.dart';
 import 'package:tilework/models/super_admin/company_model.dart';
@@ -1807,11 +1808,39 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
         debugPrint('👤 Created user: ${user?.email}');
         debugPrint('🏢 Company: ${user?.companyName}');
 
-        // 2. සාර්ථක නම්, CompanyCubit මඟින් list එක refresh කිරීම
+        // 2. Create initial categories if provided
+        final initialCategories = result['initialCategories'] as List<dynamic>?;
+        if (initialCategories != null && initialCategories.isNotEmpty) {
+          debugPrint('📦 Creating ${initialCategories.length} initial categories...');
+
+          final token = _getToken();
+          final categoryCubit = context.read<CategoryCubit>();
+
+          for (final categoryData in initialCategories) {
+            try {
+              await categoryCubit.createCategory(
+                categoryData['name'],
+                token: token,
+                companyId: user!.id, // Use the newly created company's ID
+              );
+              debugPrint('✅ Created category: ${categoryData['name']}');
+            } catch (categoryError) {
+              debugPrint('❌ Failed to create category ${categoryData['name']}: $categoryError');
+              // Continue with other categories even if one fails
+            }
+          }
+        }
+
+        // 3. සාර්ථක නම්, CompanyCubit මඟින් list එක refresh කිරීම
         debugPrint('🔄 Refreshing company list...');
         final token = _getToken();
         await context.read<CompanyCubit>().loadCompanies(token: token);
-        _showSuccessSnackBar('Company registered and user created successfully!');
+
+        final successMessage = initialCategories != null && initialCategories.isNotEmpty
+            ? 'Company registered with ${initialCategories.length} categories successfully!'
+            : 'Company registered and user created successfully!';
+
+        _showSuccessSnackBar(successMessage);
 
         debugPrint('🎉 Company registration process completed successfully!');
 

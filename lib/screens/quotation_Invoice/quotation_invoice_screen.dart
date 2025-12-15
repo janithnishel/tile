@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:tilework/cubits/auth/auth_cubit.dart';
+import 'package:tilework/cubits/auth/auth_state.dart';
 import 'package:tilework/cubits/quotation/quotation_cubit.dart';
+import 'package:tilework/cubits/super_admin/category/category_cubit.dart';
+import 'package:tilework/cubits/super_admin/category/category_state.dart';
 import 'package:tilework/data/mock_data.dart';
+import 'package:tilework/models/category_model.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/document_enums.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/invoice_line_item.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/item_description.dart';
@@ -47,7 +52,9 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
   // Working copy of the document (for edit protection)
   late QuotationDocument _workingDocument;
   late bool _isNewDocument;
+  late QuotationDocument _originalDocument; // Store original values for comparison
   bool _hasUnsavedChanges = false;
+  bool _isSaving = false; // Track save operation status
 
   @override
   void initState() {
@@ -56,6 +63,8 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
 
     // Create a DEEP COPY of the document for editing
     _workingDocument = _deepCopyDocument(widget.document);
+    // Store original values for change detection
+    _originalDocument = _deepCopyDocument(widget.document);
 
     _customerNameController = TextEditingController(
       text: _workingDocument.customerName,
@@ -71,15 +80,19 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
     );
 
     // Listen for changes
-    _customerNameController.addListener(_markAsChanged);
-    _customerPhoneController.addListener(_markAsChanged);
-    _customerAddressController.addListener(_markAsChanged);
-    _projectTitleController.addListener(_markAsChanged);
+    _customerNameController.addListener(_checkForChanges);
+    _customerPhoneController.addListener(_checkForChanges);
+    _customerAddressController.addListener(_checkForChanges);
+    _projectTitleController.addListener(_checkForChanges);
+
+    // Load categories from API
+    _loadCategories();
   }
 
   // Deep copy document to prevent direct modifications
   QuotationDocument _deepCopyDocument(QuotationDocument original) {
     return QuotationDocument(
+      id: original.id, // 🔧 FIX: Preserve the document ID!
       documentNumber: original.documentNumber,
       customerName: original.customerName,
       customerPhone: original.customerPhone,
@@ -95,6 +108,9 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                 // 💡 Fix: Deep copy ItemDescription fields, especially CostPrice, if required by backend
                 sellingPrice: item.item.sellingPrice,
                 unit: item.item.unit,
+                category: item.item.category,
+                categoryId: item.item.categoryId,
+                productName: item.item.productName,
                 // costPrice: item.item.costPrice, // Assuming you added costPrice to ItemDescription
               ),
               quantity: item.quantity,
@@ -113,8 +129,54 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
     );
   }
 
+  // Check for actual changes by comparing with original values
+  void _checkForChanges() {
+    if (!mounted) return;
+
+    // Check if any field has changed from original values
+    final hasNameChanged = _customerNameController.text.trim() != _originalDocument.customerName;
+    final hasPhoneChanged = _customerPhoneController.text.trim() != _originalDocument.customerPhone;
+    final hasAddressChanged = _customerAddressController.text.trim() != _originalDocument.customerAddress;
+    final hasTitleChanged = _projectTitleController.text.trim() != _originalDocument.projectTitle;
+
+    // Check if document dates have changed
+    final hasDateChanges = _workingDocument.invoiceDate != _originalDocument.invoiceDate ||
+                          _workingDocument.dueDate != _originalDocument.dueDate;
+
+    // Check if line items have changed (quantity, price, or items added/removed)
+    final hasItemChanges = _workingDocument.lineItems.length != _originalDocument.lineItems.length ||
+                          _workingDocument.lineItems.any((item) =>
+                            !_originalDocument.lineItems.any((origItem) =>
+                              origItem.quantity == item.quantity &&
+                              origItem.item.sellingPrice == item.item.sellingPrice &&
+                              origItem.item.name == item.item.name
+                            )
+                          );
+
+    // Check if status has changed
+    final hasStatusChanged = _workingDocument.status != _originalDocument.status;
+
+    final hasAnyChanges = hasNameChanged || hasPhoneChanged || hasAddressChanged ||
+                         hasTitleChanged || hasDateChanges || hasItemChanges || hasStatusChanged;
+
+    // Debug logging
+    if (hasAnyChanges != _hasUnsavedChanges) {
+      debugPrint('🔄 Change detected: hasUnsavedChanges $_hasUnsavedChanges -> $hasAnyChanges');
+      debugPrint('   Name changed: $hasNameChanged (${_customerNameController.text.trim()} vs ${_originalDocument.customerName})');
+      debugPrint('   Phone changed: $hasPhoneChanged (${_customerPhoneController.text.trim()} vs ${_originalDocument.customerPhone})');
+      debugPrint('   Address changed: $hasAddressChanged (${_customerAddressController.text.trim()} vs ${_originalDocument.customerAddress})');
+      debugPrint('   Title changed: $hasTitleChanged (${_projectTitleController.text.trim()} vs ${_originalDocument.projectTitle})');
+    }
+
+    if (hasAnyChanges != _hasUnsavedChanges) {
+      setState(() {
+        _hasUnsavedChanges = hasAnyChanges;
+      });
+    }
+  }
+
   void _markAsChanged() {
-    if (!_hasUnsavedChanges) {
+    if (mounted && !_hasUnsavedChanges) {
       setState(() {
         _hasUnsavedChanges = true;
       });
@@ -123,10 +185,10 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
 
   @override
   void dispose() {
-    _customerNameController.removeListener(_markAsChanged);
-    _customerPhoneController.removeListener(_markAsChanged);
-    _customerAddressController.removeListener(_markAsChanged);
-    _projectTitleController.removeListener(_markAsChanged);
+    _customerNameController.removeListener(_checkForChanges);
+    _customerPhoneController.removeListener(_checkForChanges);
+    _customerAddressController.removeListener(_checkForChanges);
+    _projectTitleController.removeListener(_checkForChanges);
 
     _customerNameController.dispose();
     _customerPhoneController.dispose();
@@ -147,13 +209,50 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       _workingDocument.status == DocumentStatus.pending;
 
   bool get _isValidForCreation {
-    return _customerNameController.text.trim().isNotEmpty &&
-        _customerPhoneController.text.trim().isNotEmpty &&
-        _workingDocument.lineItems.any((item) => item.quantity > 0.0);
+    final hasName = _customerNameController.text.trim().isNotEmpty;
+    final phoneValid = _validatePhoneNumber(_customerPhoneController.text.trim()) == null;
+    final hasValidItems = _workingDocument.lineItems.any((item) =>
+      item.quantity > 0.0 && item.item.sellingPrice > 0.0
+    );
+
+    debugPrint('🔍 Validation check - Name: $hasName, Phone: $phoneValid, Items: $hasValidItems (${_workingDocument.lineItems.length} total items)');
+    if (_workingDocument.lineItems.isNotEmpty) {
+      debugPrint('   Item details:');
+      for (var i = 0; i < _workingDocument.lineItems.length; i++) {
+        final item = _workingDocument.lineItems[i];
+        debugPrint('     $i. "${item.item.name}" - Qty: ${item.quantity}, Price: ${item.item.sellingPrice}');
+      }
+    }
+
+    return hasName && phoneValid && hasValidItems;
+  }
+
+  // For existing documents, only check if there are unsaved changes (don't enforce validation)
+  bool get _canSaveExistingDocument => _hasUnsavedChanges && !_isSaving;
+
+
+
+
+  bool get _showSearchButton => _isNewDocument; // Search button only for new quotations
+
+  // Phone Validation - Basic required field validation
+  String? _validatePhoneNumber(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Phone number is required'; // Show requirement for empty field
+    }
+
+    // Valid input - no format restrictions
+    return null;
   }
 
   // Handle back button with unsaved changes warning
   Future<bool> _onWillPop() async {
+    // Prevent navigation during save operation
+    if (_isSaving) {
+      _showSnackBar('Please wait for save operation to complete.');
+      return false;
+    }
+
     if (_isNewDocument) {
       return await DiscardChangesDialog.show(
         context,
@@ -186,11 +285,53 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       return;
     }
 
-    // ⚠️ Mock Data Logic - Ensure mock data logic handles empty documentNumber correctly if used for new docs
-    final existingDoc = mockDocuments.firstWhere(
-      (doc) =>
-          doc.customerPhone == phone &&
-          doc.documentNumber != _workingDocument.documentNumber,
+    // Debug: Log search attempt
+    debugPrint('🔍 Searching for phone: $phone');
+
+    // Normalize phone number for comparison (remove spaces and standardize format)
+    final normalizedPhone = phone.replaceAll(' ', '').replaceAll('+94', '0');
+    debugPrint('🔄 Normalized phone: $normalizedPhone');
+
+    // First check if it matches the current logged-in user's phone (from seed data)
+    final authState = context.read<AuthCubit>().state;
+    if (authState is AuthAuthenticated) {
+      // Current user info (from seed script)
+      final currentUserPhone = '+94 11 234 5678'.replaceAll(' ', '').replaceAll('+94', '0');
+      debugPrint('👤 Current user phone: $currentUserPhone');
+      if (normalizedPhone == currentUserPhone) {
+        debugPrint('✅ Found current user match');
+        if (mounted) {
+          setState(() {
+            _customerNameController.text = 'Admin User'; // From seed script
+            _customerAddressController.text = '123 Main Street, Colombo 07, Sri Lanka'; // From seed script
+            _projectTitleController.text = 'Personal Project';
+          });
+        }
+        _showSnackBar('Customer found: Admin User (Current User)');
+        return;
+      }
+    }
+
+    // Search in actual quotations from the system (not mock data)
+    final quotationState = context.read<QuotationCubit>().state;
+    final allQuotations = quotationState.quotations;
+
+    debugPrint('📊 Searching ${allQuotations.length} saved quotations/invoices...');
+    for (final doc in allQuotations) {
+      final docPhone = doc.customerPhone.replaceAll(' ', '').replaceAll('+94', '0');
+      debugPrint('   Checking: ${doc.customerName} - ${docPhone} (${doc.type.name})');
+    }
+
+    final existingDoc = allQuotations.firstWhere(
+      (doc) {
+        final docPhone = doc.customerPhone.replaceAll(' ', '').replaceAll('+94', '0');
+        final matches = docPhone == normalizedPhone &&
+                       doc.documentNumber != _workingDocument.documentNumber;
+        if (matches) {
+          debugPrint('✅ Found match: ${doc.customerName} (${docPhone}) from ${doc.type.name} ${doc.documentNumber}');
+        }
+        return matches;
+      },
       orElse: () => QuotationDocument(
         documentNumber: '',
         customerName: '',
@@ -199,16 +340,24 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       ),
     );
 
+    // If found in saved quotations, use that customer data (but keep project title empty)
     if (existingDoc.customerPhone.isNotEmpty) {
-      setState(() {
-        _customerNameController.text = existingDoc.customerName;
-        _customerAddressController.text = existingDoc.customerAddress;
-        _projectTitleController.text = existingDoc.projectTitle;
-      });
+      debugPrint('🎯 Using customer data from ${existingDoc.type.name}: ${existingDoc.customerName}');
+      if (mounted) {
+        setState(() {
+          _customerNameController.text = existingDoc.customerName;
+          _customerAddressController.text = existingDoc.customerAddress;
+          // Keep project title empty for new project
+          _projectTitleController.text = '';
+        });
+      }
       _showSnackBar('Customer found: ${existingDoc.customerName}');
-    } else {
-      _showSnackBar('Customer not found. Please enter new details.');
+      return;
     }
+
+    // If no match found, show not found message
+    debugPrint('❌ No customer found for phone: $normalizedPhone');
+    _showSnackBar('Customer not found. Please enter new details.');
   }
 
   void _addNewLineItem() {
@@ -221,18 +370,20 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       productName: 'Custom Item',
     );
 
-    setState(() {
-      _workingDocument.lineItems.add(
-        InvoiceLineItem(
-          item: defaultItem,
-          quantity: 0.0,
-          isOriginalQuotationItem:
-              _workingDocument.isQuotation &&
-              _workingDocument.status == DocumentStatus.pending,
-        ),
-      );
-      _hasUnsavedChanges = true;
-    });
+    if (mounted) {
+      setState(() {
+        _workingDocument.lineItems.add(
+          InvoiceLineItem(
+            item: defaultItem,
+            quantity: 0.0,
+            isOriginalQuotationItem:
+                _workingDocument.isQuotation &&
+                _workingDocument.status == DocumentStatus.pending,
+          ),
+        );
+        _hasUnsavedChanges = true;
+      });
+    }
   }
 
   void _showCustomItemDialog(InvoiceLineItem item) {
@@ -241,11 +392,13 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       builder: (context) => CustomItemDialog(
         item: item,
         onSave: (description, newItem) {
-          setState(() {
-            item.customDescription = description;
-            item.item = newItem;
-            _hasUnsavedChanges = true;
-          });
+          if (mounted) {
+            setState(() {
+              item.customDescription = description;
+              item.item = newItem;
+              _hasUnsavedChanges = true;
+            });
+          }
         },
       ),
     );
@@ -282,17 +435,29 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       await context.read<QuotationCubit>().createQuotation(_workingDocument);
 
       // 💡 Note: The created document in the cubit state will now have the ID
-      _showSnackBar('Quotation created successfully!');
+      if (mounted) {
+        _showSnackBar('Quotation created successfully!');
 
-      // Pop the screen and pass 'true' to indicate a successful creation that requires a list refresh
-      Navigator.pop(context, true);
+        // Pop the screen and pass 'true' to indicate a successful creation that requires a list refresh
+        Navigator.pop(context, true);
+      }
     } catch (e) {
-      _showSnackBar('Failed to create quotation: ${e.toString()}');
+      if (mounted) {
+        _showSnackBar('Failed to create quotation: ${e.toString()}');
+      }
     }
   }
 
   // Save Document (for existing documents)
-  void _saveDocument() {
+  Future<void> _saveDocument() async {
+    if (_isSaving) return; // Prevent multiple save operations
+
+    if (mounted) {
+      setState(() {
+        _isSaving = true;
+      });
+    }
+
     // Copy all changes from working document to original
     widget.document.customerName = _customerNameController.text.trim();
     widget.document.customerPhone = _customerPhoneController.text.trim();
@@ -305,19 +470,59 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
     widget.document.type = _workingDocument.type;
     widget.document.status = _workingDocument.status;
 
-    setState(() {
-      _hasUnsavedChanges = false;
-    });
+    try {
+      // Update quotation using the cubit (calls backend API)
+      await context.read<QuotationCubit>().updateQuotation(widget.document);
 
-    _showSnackBar(
-      '${_workingDocument.type.name.toUpperCase()} ${_workingDocument.displayDocumentNumber} Saved.',
-    );
+      if (mounted) {
+        setState(() {
+          _hasUnsavedChanges = false;
+          _isSaving = false;
+        });
+
+        _showSnackBar(
+          '${_workingDocument.type.name.toUpperCase()} ${_workingDocument.displayDocumentNumber} Saved.',
+        );
+
+        // Navigate back to update the list immediately
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+        _showSnackBar('Failed to save document: ${e.toString()}');
+      }
+    }
   }
 
   // Show Convert to Invoice Dialog
-  void _showConversionDialog() {
+  void _showConversionDialog() async {
     if (_workingDocument.status != DocumentStatus.approved) {
-      _showSnackBar('Quotation must be Approved before conversion.');
+      if (mounted) {
+        _showSnackBar('Quotation must be Approved before conversion.');
+      }
+      return;
+    }
+
+    if (_workingDocument.id == null || _workingDocument.id!.trim().isEmpty) {
+      if (mounted) {
+        _showSnackBar('Cannot convert quotation: Document ID is missing. Please save the document first.');
+      }
+      return;
+    }
+
+    // Debug: Check authentication state
+    final authState = context.read<AuthCubit>().state;
+    debugPrint('🔐 Auth state during conversion: ${authState.runtimeType}');
+    if (authState is AuthAuthenticated) {
+      debugPrint('🔑 Token available: ${authState.token.substring(0, 20)}...');
+    } else {
+      debugPrint('❌ No valid authentication');
+      if (mounted) {
+        _showSnackBar('Authentication error. Please log in again.');
+      }
       return;
     }
 
@@ -325,28 +530,72 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       context: context,
       builder: (context) => ConvertToInvoiceDialog(
         quotationTotal: _workingDocument.subtotal,
-        onConvert: (List<PaymentRecord> advancePayments) {
-          setState(() {
-            _workingDocument.type = DocumentType.invoice;
-            _workingDocument.status = DocumentStatus.converted;
+        onConvert: (List<PaymentRecord> advancePayments) async {
+          try {
+            // First convert the quotation to invoice via API
+            debugPrint('🔄 Converting quotation ${_workingDocument.id} to invoice...');
+            final convertedInvoice = await context.read<QuotationCubit>().convertToInvoice(_workingDocument.id!);
+            debugPrint('✅ Conversion successful: ${convertedInvoice.documentNumber}');
+
+            // Update working document with converted data
+            final updatedInvoice = _deepCopyDocument(convertedInvoice);
+            updatedInvoice.type = DocumentType.invoice;
+            updatedInvoice.status = DocumentStatus.converted; // Show as converted status
 
             if (advancePayments.isNotEmpty) {
-              _workingDocument.paymentHistory = List.from(
-                _workingDocument.paymentHistory,
+              updatedInvoice.paymentHistory = List.from(
+                updatedInvoice.paymentHistory,
               )..addAll(advancePayments);
 
-              if (_workingDocument.amountDue > 0) {
-                _workingDocument.status = DocumentStatus.partial;
+              if (updatedInvoice.amountDue > 0) {
+                updatedInvoice.status = DocumentStatus.partial;
               } else {
-                _workingDocument.status = DocumentStatus.paid;
+                updatedInvoice.status = DocumentStatus.paid;
               }
             }
-            _hasUnsavedChanges = true;
-          });
 
-          _showSnackBar(
-            'Quotation converted to Invoice: ${_workingDocument.displayDocumentNumber}',
-          );
+            setState(() {
+              _workingDocument = updatedInvoice;
+              // Update original document for proper change detection
+              _originalDocument = _deepCopyDocument(updatedInvoice);
+              _hasUnsavedChanges = false; // Reset since we just converted
+
+              // Also update the widget.document to ensure consistency
+              widget.document.type = DocumentType.invoice;
+              widget.document.status = updatedInvoice.status;
+              widget.document.paymentHistory = updatedInvoice.paymentHistory;
+              widget.document.id = updatedInvoice.id;
+              widget.document.documentNumber = updatedInvoice.documentNumber;
+            });
+
+            // Show success message before closing dialog
+            if (mounted) {
+              _showSnackBar(
+                'Quotation converted to Invoice: ${_workingDocument.displayDocumentNumber}',
+              );
+
+              // Close the dialog after showing snackbar
+              Navigator.of(context).pop();
+            }
+          } catch (e) {
+            debugPrint('❌ Conversion failed: $e');
+            String errorMessage = 'Failed to convert quotation';
+
+            // Provide more specific error messages
+            if (e.toString().contains('Not authorized')) {
+              errorMessage = 'Authentication error. Please log in again.';
+            } else if (e.toString().contains('not found')) {
+              errorMessage = 'Quotation not found. It may have been deleted.';
+            } else if (e.toString().contains('already')) {
+              errorMessage = 'This quotation has already been converted to an invoice.';
+            } else if (e.toString().contains('Network')) {
+              errorMessage = 'Network error. Please check your connection.';
+            }
+
+            if (mounted) {
+              _showSnackBar('$errorMessage: ${e.toString()}');
+            }
+          }
         },
       ),
     );
@@ -369,22 +618,24 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       builder: (context) => AddAdvancePaymentDialog(
         currentDue: _workingDocument.amountDue,
         onAddPayments: (List<PaymentRecord> newPayments) {
-          setState(() {
-            _workingDocument.paymentHistory = List.from(
-              _workingDocument.paymentHistory,
-            )..addAll(newPayments);
+          if (mounted) {
+            setState(() {
+              _workingDocument.paymentHistory = List.from(
+                _workingDocument.paymentHistory,
+              )..addAll(newPayments);
 
-            // Update status based on payment
-            if (_workingDocument.amountDue <= 0) {
-              _workingDocument.status = DocumentStatus.paid;
-            } else if (_workingDocument.paymentHistory.isNotEmpty) {
-              _workingDocument.status = DocumentStatus.partial;
-            }
+              // Update status based on payment
+              if (_workingDocument.amountDue <= 0) {
+                _workingDocument.status = DocumentStatus.paid;
+              } else if (_workingDocument.paymentHistory.isNotEmpty) {
+                _workingDocument.status = DocumentStatus.partial;
+              }
 
-            _hasUnsavedChanges = true;
-          });
+              _hasUnsavedChanges = true;
+            });
 
-          _showSnackBar('Advance payment(s) added successfully!');
+            _showSnackBar('Advance payment(s) added successfully!');
+          }
         },
       ),
     );
@@ -404,42 +655,44 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       builder: (context) => RecordPaymentDialog(
         dueAmount: dueAmount,
         onRecordPayment: (paymentAmount) {
-          if (paymentAmount < dueAmount) {
-            // Partial payment
-            setState(() {
-              _workingDocument.paymentHistory =
-                  List.from(_workingDocument.paymentHistory)..add(
-                    PaymentRecord(
-                      paymentAmount,
-                      DateTime.now(),
-                      description: 'Partial Payment',
-                    ),
-                  );
+          if (mounted) {
+            if (paymentAmount < dueAmount) {
+              // Partial payment
+              setState(() {
+                _workingDocument.paymentHistory =
+                    List.from(_workingDocument.paymentHistory)..add(
+                      PaymentRecord(
+                        paymentAmount,
+                        DateTime.now(),
+                        description: 'Partial Payment',
+                      ),
+                    );
 
-              if (_workingDocument.amountDue <= 0) {
+                if (_workingDocument.amountDue <= 0) {
+                  _workingDocument.status = DocumentStatus.paid;
+                }
+                _hasUnsavedChanges = true;
+              });
+              _showSnackBar('Payment recorded successfully!');
+            } else {
+              // Full payment
+              setState(() {
+                _workingDocument.paymentHistory =
+                    List.from(_workingDocument.paymentHistory)..add(
+                      PaymentRecord(
+                        paymentAmount,
+                        DateTime.now(),
+                        description: 'Final Payment (Fully Paid)',
+                      ),
+                    );
                 _workingDocument.status = DocumentStatus.paid;
-              }
-              _hasUnsavedChanges = true;
-            });
-            _showSnackBar('Payment recorded successfully!');
-          } else {
-            // Full payment
-            setState(() {
-              _workingDocument.paymentHistory =
-                  List.from(_workingDocument.paymentHistory)..add(
-                    PaymentRecord(
-                      paymentAmount,
-                      DateTime.now(),
-                      description: 'Final Payment (Fully Paid)',
-                    ),
-                  );
-              _workingDocument.status = DocumentStatus.paid;
-              _hasUnsavedChanges = true;
-            });
+                _hasUnsavedChanges = true;
+              });
 
-            _showSnackBar('Invoice marked as PAID successfully!');
-            _saveDocument();
-            Navigator.pop(context);
+              _showSnackBar('Invoice marked as PAID successfully!');
+              _saveDocument();
+              Navigator.pop(context);
+            }
           }
         },
       ),
@@ -465,17 +718,30 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
     );
   }
 
-  void _deleteDocument() {
+  void _deleteDocument() async {
     if (_workingDocument.isQuotation && _workingDocument.isPending) {
-      DeleteConfirmationDialog.show(
+      // Debug: Check document ID status
+      debugPrint('🗑️ Delete attempt - Document ID: ${_workingDocument.id}');
+      debugPrint('🗑️ Delete attempt - Document Number: ${_workingDocument.documentNumber}');
+      debugPrint('🗑️ Delete attempt - Is new document: $_isNewDocument');
+
+      // Check if document has a valid ID before attempting deletion
+      if (_workingDocument.id == null || _workingDocument.id!.trim().isEmpty) {
+        _showSnackBar('Cannot delete quotation: Document ID is missing. Please refresh and try again.');
+        return;
+      }
+
+      final shouldDelete = await DeleteConfirmationDialog.show(
         context,
-        onConfirm: () {
-          // ⚠️ Backend Call needed here instead of mockDocuments.removeWhere
-          mockDocuments.removeWhere(
-            (doc) => doc.documentNumber == _workingDocument.documentNumber,
-          );
-          _showSnackBar('Quotation Deleted successfully.');
-          Navigator.pop(context, true);
+        onConfirm: () async {
+          try {
+            // Delete quotation using the cubit (calls backend API)
+            await context.read<QuotationCubit>().deleteQuotation(_workingDocument.id!);
+            _showSnackBar('Quotation Deleted successfully.');
+            Navigator.pop(context, true);
+          } catch (e) {
+            _showSnackBar('Failed to delete quotation: ${e.toString()}');
+          }
         },
       );
     }
@@ -495,12 +761,37 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
   }
 
   void _approveQuotation() {
-    setState(() {
-      _workingDocument.status = DocumentStatus.approved;
-      _hasUnsavedChanges = true;
-    });
-    _showSnackBar('Quotation approved successfully!');
+    if (mounted) {
+      setState(() {
+        _workingDocument.status = DocumentStatus.approved;
+        _hasUnsavedChanges = true;
+      });
+      _showSnackBar('Quotation approved successfully!');
+    }
   }
+
+  // Load categories from API
+  Future<void> _loadCategories() async {
+    try {
+      final authState = context.read<AuthCubit>().state;
+      final token = authState is AuthAuthenticated ? authState.token : null;
+
+      debugPrint('📂 Loading categories from backend API...');
+      await context.read<CategoryCubit>().loadCategories(token: token);
+      debugPrint('✅ Categories loaded successfully from backend');
+
+      // Force rebuild to show loaded categories
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      // Categories failed to load, will use fallback
+      debugPrint('❌ Failed to load categories from backend: $e');
+      _showSnackBar('Failed to load categories from server. Using fallback options.');
+    }
+  }
+
+
 
   void _showSnackBar(String message) {
     if (mounted) {
@@ -540,8 +831,14 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                 addressController: _customerAddressController,
                 projectTitleController: _projectTitleController,
                 isEditable: _isCustomerDetailsEditable,
+                showSearchButton: _showSearchButton,
                 onSearchByPhone: _searchCustomerByPhone,
-                onNameChanged: () => setState(() {}),
+                onNameChanged: () {
+                  if (mounted) {
+                    setState(() {});
+                  }
+                },
+                phoneValidator: _validatePhoneNumber,
               ),
               const Divider(height: 32),
 
@@ -554,16 +851,20 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                 document: _workingDocument,
                 isEditable: _isNewDocument || !_workingDocument.isLocked,
                 onInvoiceDateChanged: (date) {
-                  setState(() {
-                    _workingDocument.invoiceDate = date;
-                    _hasUnsavedChanges = true;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _workingDocument.invoiceDate = date;
+                      _hasUnsavedChanges = true;
+                    });
+                  }
                 },
                 onDueDateChanged: (date) {
-                  setState(() {
-                    _workingDocument.dueDate = date;
-                    _hasUnsavedChanges = true;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _workingDocument.dueDate = date;
+                      _hasUnsavedChanges = true;
+                    });
+                  }
                 },
               ),
               const Divider(height: 32),
@@ -579,44 +880,71 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                 ),
 
               // Activity Breakdown Section
-              ActivityBreakdownSection(
-                lineItems: _workingDocument.lineItems,
-                isAddEnabled: _isNewDocument || _workingDocument.isQuotation,
-                isPendingQuotation: _isNewDocument || _isPendingQuotation,
-                isEditable: _workingDocument.isQuotation,
-                onItemChanged: (index, item) {
-                  setState(() {
-                    _workingDocument.lineItems[index].item = item;
-                    _hasUnsavedChanges = true;
-                  });
+              BlocBuilder<CategoryCubit, CategoryState>(
+                builder: (context, categoryState) {
+                  debugPrint('🏗️ ActivityBreakdownSection - Categories loaded: ${categoryState.categories.length}');
+                  debugPrint('🏗️ ActivityBreakdownSection - Is loading: ${categoryState.isLoading}');
+                  debugPrint('🏗️ ActivityBreakdownSection - Error: ${categoryState.errorMessage}');
+
+                  if (categoryState.categories.isNotEmpty) {
+                    debugPrint('🏗️ Available categories:');
+                    for (var category in categoryState.categories) {
+                      debugPrint('   - ${category.name} (${category.items.length} items)');
+                    }
+                  }
+
+                  return ActivityBreakdownSection(
+                    lineItems: _workingDocument.lineItems,
+                    categories: categoryState.categories, // Pass loaded categories
+                    isAddEnabled: _isNewDocument || _workingDocument.isQuotation,
+                    isPendingQuotation: _isNewDocument || _isPendingQuotation,
+                    isEditable: _workingDocument.isQuotation && _workingDocument.status != DocumentStatus.approved,
+                    onItemChanged: (index, item) {
+                      if (mounted) {
+                        setState(() {
+                          _workingDocument.lineItems[index].item = item;
+                          _hasUnsavedChanges = true;
+                        });
+                      }
+                    },
+                    onQuantityChanged: (index, qty) {
+                      if (mounted) {
+                        setState(() {
+                          _workingDocument.lineItems[index].quantity = qty;
+                          _hasUnsavedChanges = true;
+                        });
+                      }
+                    },
+                    onPriceChanged: (index, price) {
+                      if (mounted) {
+                        setState(() {
+                          // 💡 Note: Ensure ItemDescription constructor handles costPrice if it was required to fix validation
+                          _workingDocument.lineItems[index].item = ItemDescription(
+                            _workingDocument.lineItems[index].item.name,
+                            sellingPrice: price,
+                            unit: _workingDocument.lineItems[index].item.unit,
+                            category: _workingDocument.lineItems[index].item.category,
+                            categoryId: _workingDocument.lineItems[index].item.categoryId,
+                            productName: _workingDocument.lineItems[index].item.productName,
+                            // Add costPrice here if your ItemDescription model requires it:
+                            // costPrice: _workingDocument.lineItems[index].item.costPrice,
+                          );
+                          _hasUnsavedChanges = true;
+                        });
+                      }
+                    },
+                    onAddItem: _addNewLineItem,
+                    onDeleteItem: (index) {
+                      if (mounted) {
+                        setState(() {
+                          _workingDocument.lineItems.removeAt(index);
+                          _hasUnsavedChanges = true;
+                        });
+                      }
+                    },
+                    onCustomItemTap: _showCustomItemDialog,
+                  );
                 },
-                onQuantityChanged: (index, qty) {
-                  setState(() {
-                    _workingDocument.lineItems[index].quantity = qty;
-                    _hasUnsavedChanges = true;
-                  });
-                },
-                onPriceChanged: (index, price) {
-                  setState(() {
-                    // 💡 Note: Ensure ItemDescription constructor handles costPrice if it was required to fix validation
-                    _workingDocument.lineItems[index].item = ItemDescription(
-                      _workingDocument.lineItems[index].item.name,
-                      sellingPrice: price,
-                      unit: _workingDocument.lineItems[index].item.unit,
-                      // Add costPrice here if your ItemDescription model requires it:
-                      // costPrice: _workingDocument.lineItems[index].item.costPrice,
-                    );
-                    _hasUnsavedChanges = true;
-                  });
-                },
-                onAddItem: _addNewLineItem,
-                onDeleteItem: (index) {
-                  setState(() {
-                    _workingDocument.lineItems.removeAt(index);
-                    _hasUnsavedChanges = true;
-                  });
-                },
-                onCustomItemTap: _showCustomItemDialog,
               ),
               const Divider(height: 32),
 
@@ -627,6 +955,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                   isValid: _isValidForCreation,
                   customerName: _customerNameController.text,
                   customerPhone: _customerPhoneController.text,
+                  phoneValidator: _validatePhoneNumber,
                   onCancel: _cancelCreation,
                   onCreateQuotation: _createQuotation,
                 )
@@ -634,7 +963,11 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                 EditModeButtonsSection(
                   document: _workingDocument,
                   hasUnsavedChanges: _hasUnsavedChanges,
+                  isValid: _isValidForCreation, // Use same validation logic for save button
+                  isSaving: _isSaving,
+                  isNewDocument: _isNewDocument,
                   onSave: _saveDocument,
+                  onApprove: _approveQuotation,
                   onConvert: _showConversionDialog,
                   onAddAdvance: _showAddAdvancePaymentDialog,
                   onRecordPayment: _recordPaymentDialog,
@@ -691,15 +1024,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
         },
       ),
       actions: [
-        // Approve button for existing pending quotations
-        if (!_isNewDocument &&
-            _workingDocument.isQuotation &&
-            _workingDocument.isPending)
-          TextButton.icon(
-            onPressed: _approveQuotation,
-            icon: const Icon(Icons.check, color: Colors.white),
-            label: const Text('Approve', style: TextStyle(color: Colors.white)),
-          ),
+        // Approve button moved to bottom section
       ],
     );
   }

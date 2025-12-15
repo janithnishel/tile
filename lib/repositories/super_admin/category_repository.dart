@@ -9,9 +9,9 @@ class CategoryRepository {
   // =================== CATEGORY METHODS ===================
 
   // GET: Fetch all categories
-  Future<List<CategoryModel>> fetchCategories({String? token}) async {
+  Future<List<CategoryModel>> fetchCategories({String? token, String? companyId}) async {
     try {
-      final response = await _categoryApiService.getCategories(token: token);
+      final response = await _categoryApiService.getCategories(token: token, companyId: companyId);
       final List data = response['data'] ?? [];
 
       return data.map((json) => CategoryModel.fromJson(json)).toList();
@@ -21,9 +21,9 @@ class CategoryRepository {
   }
 
   // POST: Create new category
-  Future<CategoryModel> createCategory(String name, {String? token}) async {
+  Future<CategoryModel> createCategory(String name, {String? token, String? companyId}) async {
     try {
-      final response = await _categoryApiService.createCategory(name, token: token);
+      final response = await _categoryApiService.createCategory(name, token: token, companyId: companyId);
       final data = response['data'];
 
       return CategoryModel.fromJson(data);

@@ -8,6 +8,7 @@ class CreateModeButtonsSection extends StatelessWidget {
   final String? customerPhone;
   final VoidCallback onCancel;
   final VoidCallback onCreateQuotation;
+  final String? Function(String?)? phoneValidator;
 
   const CreateModeButtonsSection({
     Key? key,
@@ -15,6 +16,7 @@ class CreateModeButtonsSection extends StatelessWidget {
     required this.isValid,
     this.customerName,
     this.customerPhone,
+    this.phoneValidator,
     required this.onCancel,
     required this.onCreateQuotation,
   }) : super(key: key);
@@ -22,11 +24,23 @@ class CreateModeButtonsSection extends StatelessWidget {
   bool get _hasCustomerName =>
       customerName != null && customerName!.trim().isNotEmpty;
 
-  bool get _hasCustomerPhone =>
-      customerPhone != null && customerPhone!.trim().isNotEmpty;
+  bool get _hasValidPhone {
+    if (customerPhone == null || customerPhone!.trim().isEmpty) return false;
+    if (phoneValidator != null) {
+      return phoneValidator!(customerPhone) == null;
+    }
+    return true;
+  }
 
   bool get _hasValidItems =>
       document.lineItems.any((item) => item.quantity > 0);
+
+  String? get _phoneValidationError {
+    if (customerPhone != null && customerPhone!.trim().isNotEmpty && phoneValidator != null) {
+      return phoneValidator!(customerPhone);
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +121,12 @@ class CreateModeButtonsSection extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         if (!_hasCustomerName) const Text('• Enter customer name'),
-                        if (!_hasCustomerPhone) const Text('• Enter customer phone'),
+                        if (!_hasValidPhone) ...[
+                          if (_phoneValidationError != null)
+                            Text('• ${_phoneValidationError}')
+                          else
+                            const Text('• Enter valid customer phone'),
+                        ],
                         if (!_hasValidItems)
                           const Text('• Add at least one item with quantity'),
                       ],

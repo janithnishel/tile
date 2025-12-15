@@ -121,7 +121,14 @@ class QuotationApiService {
 
   // Convert quotation to invoice
   Future<Map<String, dynamic>> convertToInvoice(String id, {String? token}) async {
+    print('🔄 API Service: Converting quotation $id to invoice');
+    print('🔑 API Service: Token provided: ${token != null ? "Yes (${token.substring(0, 20)}...)" : "No"}');
     return await patch('$quotationsEndpoint/$id/convert-to-invoice', {}, token: token);
+  }
+
+  // Update quotation status
+  Future<Map<String, dynamic>> updateQuotationStatus(String id, Map<String, dynamic> statusData, {String? token}) async {
+    return await patch('$quotationsEndpoint/$id/status', statusData, token: token);
   }
 
   // Helper methods
