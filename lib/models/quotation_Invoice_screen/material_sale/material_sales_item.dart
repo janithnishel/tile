@@ -1,9 +1,9 @@
-// lib/models/quotation_Invoice_screen/material_sale/material_sales_item.dart
-
-import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_enums.dart';
+import 'package:tilework/models/category_model.dart';
 
 class MaterialSaleItem {
-  MaterialCategory category;
+  String categoryId;      // Reference to CategoryModel.id
+  String categoryName;    // Display name from CategoryModel.name
+  String itemId;          // Reference to ItemModel.id (if selected from catalog)
   String colorCode;
   String productName;
   double plank;           // Number of planks/boxes
@@ -13,9 +13,11 @@ class MaterialSaleItem {
   double amount;          // Total sale amount
   double costPerSqft;     // Cost per sqft
   double totalCost;       // Total cost
-  
+
   MaterialSaleItem({
-    this.category = MaterialCategory.floorTile,
+    this.categoryId = '',
+    this.categoryName = '',
+    this.itemId = '',
     this.colorCode = '',
     this.productName = '',
     this.plank = 0,
@@ -62,7 +64,9 @@ class MaterialSaleItem {
   // Factory constructor for JSON deserialization
   factory MaterialSaleItem.fromJson(Map<String, dynamic> json) {
     return MaterialSaleItem(
-      category: _categoryFromString(json['category'] as String? ?? 'Floor Tile'),
+      categoryId: json['categoryId'] as String? ?? '',
+      categoryName: json['categoryName'] as String? ?? '',
+      itemId: json['itemId'] as String? ?? '',
       colorCode: json['colorCode'] as String? ?? '',
       productName: json['productName'] as String? ?? '',
       plank: (json['plank'] as num?)?.toDouble() ?? 0,
@@ -78,7 +82,9 @@ class MaterialSaleItem {
   // Convert to JSON
   Map<String, dynamic> toJson() {
     return {
-      'category': _categoryToString(category),
+      'categoryId': categoryId,
+      'categoryName': categoryName,
+      'itemId': itemId,
       'colorCode': colorCode,
       'productName': productName,
       'plank': plank,
@@ -91,55 +97,11 @@ class MaterialSaleItem {
     };
   }
 
-  // Helper method to convert category string to enum
-  static MaterialCategory _categoryFromString(String category) {
-    switch (category) {
-      case 'Floor Tile':
-        return MaterialCategory.floorTile;
-      case 'Wall Tile':
-        return MaterialCategory.wallTile;
-      case 'Granite':
-        return MaterialCategory.granite;
-      case 'Marble':
-        return MaterialCategory.marble;
-      case 'Porcelain':
-        return MaterialCategory.porcelain;
-      case 'Ceramic':
-        return MaterialCategory.ceramic;
-      case 'Mosaic':
-        return MaterialCategory.mosaic;
-      case 'Other':
-        return MaterialCategory.other;
-      default:
-        return MaterialCategory.floorTile;
-    }
-  }
-
-  // Helper method to convert category enum to string
-  static String _categoryToString(MaterialCategory category) {
-    switch (category) {
-      case MaterialCategory.floorTile:
-        return 'Floor Tile';
-      case MaterialCategory.wallTile:
-        return 'Wall Tile';
-      case MaterialCategory.granite:
-        return 'Granite';
-      case MaterialCategory.marble:
-        return 'Marble';
-      case MaterialCategory.porcelain:
-        return 'Porcelain';
-      case MaterialCategory.ceramic:
-        return 'Ceramic';
-      case MaterialCategory.mosaic:
-        return 'Mosaic';
-      case MaterialCategory.other:
-        return 'Other';
-    }
-  }
-
   // Copy method
   MaterialSaleItem copyWith({
-    MaterialCategory? category,
+    String? categoryId,
+    String? categoryName,
+    String? itemId,
     String? colorCode,
     String? productName,
     double? plank,
@@ -151,7 +113,9 @@ class MaterialSaleItem {
     double? totalCost,
   }) {
     return MaterialSaleItem(
-      category: category ?? this.category,
+      categoryId: categoryId ?? this.categoryId,
+      categoryName: categoryName ?? this.categoryName,
+      itemId: itemId ?? this.itemId,
       colorCode: colorCode ?? this.colorCode,
       productName: productName ?? this.productName,
       plank: plank ?? this.plank,

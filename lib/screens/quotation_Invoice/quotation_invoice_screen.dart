@@ -5,7 +5,6 @@ import 'package:tilework/cubits/auth/auth_state.dart';
 import 'package:tilework/cubits/quotation/quotation_cubit.dart';
 import 'package:tilework/cubits/super_admin/category/category_cubit.dart';
 import 'package:tilework/cubits/super_admin/category/category_state.dart';
-import 'package:tilework/data/mock_data.dart';
 import 'package:tilework/models/category_model.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/document_enums.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/invoice_line_item.dart';
@@ -1033,88 +1032,91 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _isNewDocument
-                    ? Colors.purple.shade100
-                    : (_workingDocument.isQuotation
-                          ? Colors.orange.shade100
-                          : Colors.blue.shade100),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                _isNewDocument
-                    ? Icons.add_circle_outline
-                    : (_workingDocument.isQuotation
-                          ? Icons.description_outlined
-                          : Icons.receipt_long),
-                color: _isNewDocument
-                    ? Colors.purple.shade700
-                    : (_workingDocument.isQuotation
-                          ? Colors.orange.shade700
-                          : Colors.blue.shade700),
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isNewDocument
-                      ? 'New Quotation'
+        SizedBox(
+          width: double.infinity,
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _isNewDocument
+                      ? Colors.purple.shade100
                       : (_workingDocument.isQuotation
-                            ? 'Quotation'
-                            : 'Invoice'),
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.purple,
-                  ),
+                            ? Colors.orange.shade100
+                            : Colors.blue.shade100),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 4),
-                // ✅ CHANGE: Show document number as read-only text ONLY for existing documents (view/edit mode)
-                if (!_isNewDocument)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4.0),
-                    child: Text(
-                      // Display Document Number here (e.g., Number: QUO-1005)
-                      'Number: ${_workingDocument.displayDocumentNumber}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
+                child: Icon(
+                  _isNewDocument
+                      ? Icons.add_circle_outline
+                      : (_workingDocument.isQuotation
+                            ? Icons.description_outlined
+                            : Icons.receipt_long),
+                  color: _isNewDocument
+                      ? Colors.purple.shade700
+                      : (_workingDocument.isQuotation
+                            ? Colors.orange.shade700
+                            : Colors.blue.shade700),
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _isNewDocument
+                        ? 'New Quotation'
+                        : (_workingDocument.isQuotation
+                              ? 'Quotation'
+                              : 'Invoice'),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purple,
                     ),
                   ),
-              ],
-            ),
-            const Spacer(),
-            // Status Badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: _getStatusBadgeColor().withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _getStatusBadgeColor().withOpacity(0.5),
+                  const SizedBox(height: 4),
+                  // ✅ CHANGE: Show document number as read-only text ONLY for existing documents (view/edit mode)
+                  if (!_isNewDocument)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4.0),
+                      child: Text(
+                        // Display Document Number here (e.g., Number: QUO-1005)
+                        'Number: ${_workingDocument.displayDocumentNumber}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const Spacer(),
+              // Status Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _getStatusBadgeColor().withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _getStatusBadgeColor().withOpacity(0.5),
+                  ),
+                ),
+                child: Text(
+                  _isNewDocument
+                      ? 'NEW'
+                      : _workingDocument.status.name.toUpperCase(),
+                  style: TextStyle(
+                    color: _getStatusBadgeColor(),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
               ),
-              child: Text(
-                _isNewDocument
-                    ? 'NEW'
-                    : _workingDocument.status.name.toUpperCase(),
-                style: TextStyle(
-                  color: _getStatusBadgeColor(),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );

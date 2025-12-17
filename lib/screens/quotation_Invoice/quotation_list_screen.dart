@@ -8,7 +8,6 @@ import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
 import 'package:tilework/cubits/material_sale/material_sale_cubit.dart';
 import 'package:tilework/cubits/quotation/quotation_cubit.dart';
-import 'package:tilework/data/material_sale_data.dart';
 import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_document.dart';
 import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_enums.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/document_enums.dart';
@@ -19,8 +18,8 @@ import 'package:tilework/screens/quotation_Invoice/material_sale/material_sale_i
 import 'package:tilework/screens/quotation_Invoice/quotation_invoice_screen.dart';
 import 'package:tilework/services/material_sale/material_sale_api_service.dart';
 import 'package:tilework/services/quotation/quotation_api_service.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/project_tab_view/project_tab_view.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/material_sales_tab_view/material_sale_tab_view.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/project_tab_view/project_tab_view.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/material_sales_tab_view/material_sale_tab_view.dart';
 
 class QuotationListScreen extends StatefulWidget {
   const QuotationListScreen({Key? key}) : super(key: key);
@@ -31,33 +30,35 @@ class QuotationListScreen extends StatefulWidget {
 
 class _QuotationListScreenState extends State<QuotationListScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  TabController? _tabController;
   int _currentTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_onTabChanged);
+    _tabController!.addListener(_onTabChanged);
 
     // Load quotations when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<QuotationCubit>().loadQuotations();
+      if (mounted) {
+        context.read<QuotationCubit>().loadQuotations();
+      }
     });
   }
 
   void _onTabChanged() {
-    if (!_tabController.indexIsChanging) {
+    if (_tabController != null && !_tabController!.indexIsChanging) {
       setState(() {
-        _currentTabIndex = _tabController.index;
+        _currentTabIndex = _tabController!.index;
       });
     }
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
-    _tabController.dispose();
+    _tabController!.removeListener(_onTabChanged);
+    _tabController!.dispose();
     super.dispose();
   }
 
@@ -132,8 +133,9 @@ class _QuotationListScreenState extends State<QuotationListScreen>
     });
   }
 
-  Future<void> _openMaterialSaleDocument(MaterialSaleDocument doc) async {
-    final result = await Navigator.push<bool>(
+  void _openMaterialSaleDocument(MaterialSaleDocument doc, MaterialSaleCubit cubit) {
+    debugPrint('📂 Opening material sale: ${doc.invoiceNumber}');
+    Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => MaterialSaleInvoiceScreen(
@@ -141,25 +143,22 @@ class _QuotationListScreenState extends State<QuotationListScreen>
           isNewDocument: false,
         ),
       ),
-    );
-
-    if (result == true || result == null) {
-      setState(() {});
-    }
+    ).then((result) {
+      debugPrint('📂 Material sale screen closed with result: $result');
+      if (result == true || result == null) {
+        // Refresh material sales list after editing
+        debugPrint('🔄 Refreshing material sales list after editing...');
+        cubit.loadMaterialSales();
+      }
+    }).catchError((error) {
+      debugPrint('❌ Error opening material sale: $error');
+    });
   }
 
-  Future<void> _createNewMaterialSale() async {
-    // Generate new invoice number
-    int maxNum = materialSaleDocuments.isEmpty
-        ? 1000
-        : materialSaleDocuments
-            .map((d) => int.tryParse(d.invoiceNumber) ?? 0)
-            .reduce(max);
-    final newNumber = (maxNum + 1).toString();
-
-    // Create new document
+  void _createNewMaterialSale(MaterialSaleCubit cubit) {
+    // Create new document with empty invoiceNumber for backend auto-generation
     final newDoc = MaterialSaleDocument(
-      invoiceNumber: newNumber,
+      invoiceNumber: '', // Backend will auto-generate this
       saleDate: DateTime.now(),
       customerName: '',
       customerPhone: '',
@@ -169,20 +168,25 @@ class _QuotationListScreenState extends State<QuotationListScreen>
       status: MaterialSaleStatus.pending,
     );
 
-    // Navigate to create screen
-    final result = await Navigator.push<bool>(
+    // Navigate to create screen with the same cubit instance
+    Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => MaterialSaleInvoiceScreen(
-          document: newDoc,
-          isNewDocument: true,
+        builder: (context) => BlocProvider<MaterialSaleCubit>.value(
+          value: cubit, // Pass cubit instance
+          child: MaterialSaleInvoiceScreen(
+            document: newDoc,
+            isNewDocument: true,
+          ),
         ),
       ),
-    );
-
-    if (result == true) {
-      setState(() {});
-    }
+    ).then((result) {
+      if (result == true) {
+        // Force refresh material sales from API after successful creation
+        debugPrint('🔄 Refreshing material sales list after creation...');
+        cubit.loadMaterialSales();
+      }
+    });
   }
 
   void _showMaterialSaleComingSoon() {
@@ -229,12 +233,12 @@ class _QuotationListScreenState extends State<QuotationListScreen>
 
           // Tab 2: Material Sale
           MaterialSaleTabView(
-            onCreateNew: (cubit) => _createNewMaterialSale(),
-            onDocumentTap: (doc, cubit) => _openMaterialSaleDocument(doc),
+            onCreateNew: (cubit) => _createNewMaterialSale(cubit),
+            onDocumentTap: (doc, cubit) => _openMaterialSaleDocument(doc, cubit),
           ),
         ],
       ),
-      floatingActionButton: _buildFloatingActionButton(quotationCubit),
+      floatingActionButton: _buildFloatingActionButton(quotationCubit, materialSaleCubit),
     );
   }
 
@@ -315,7 +319,7 @@ class _QuotationListScreenState extends State<QuotationListScreen>
     );
   }
 
-  Widget? _buildFloatingActionButton(QuotationCubit quotationCubit) {
+  Widget? _buildFloatingActionButton(QuotationCubit quotationCubit, MaterialSaleCubit materialSaleCubit) {
     // Project Tab FAB
     if (_currentTabIndex == 0) {
       return FloatingActionButton.extended(
@@ -333,7 +337,7 @@ class _QuotationListScreenState extends State<QuotationListScreen>
     // Material Sale Tab FAB
     return FloatingActionButton.extended(
       heroTag: 'fab_material_sale',
-      onPressed: _createNewMaterialSale,
+      onPressed: () => _createNewMaterialSale(materialSaleCubit),
       label: const Text(
         'New Sale',
         style: TextStyle(color: Colors.white),

@@ -1,140 +1,82 @@
-import 'package:tilework/models/quotation_Invoice_screen/project/document_enums.dart';
-import 'package:tilework/models/quotation_Invoice_screen/project/invoice_line_item.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/item_description.dart';
-import 'package:tilework/models/quotation_Invoice_screen/project/payment_record.dart';
-import 'package:tilework/models/quotation_Invoice_screen/project/quotation_document.dart';
 
-
-// Master Item List with Categories
-final List<ItemDescription> masterItemList = [
-  ItemDescription('LVT & installation 2mm', sellingPrice: 365.00, unit: 'sqft', category: 'LVT Flooring', productName: '2mm Luxury Vinyl Tile'),
-  ItemDescription('Skirting 3" inch', sellingPrice: 410.00, unit: 'linear ft', category: 'Skirting', productName: '3" PVC Skirting'),
-  ItemDescription('Floor preparation', sellingPrice: 8500.00, unit: 'Lump Sum', category: 'Preparation', productName: 'Floor Preparation Service'),
-  ItemDescription('Transport', sellingPrice: 6850.00, unit: 'Lump Sum', category: 'Services', productName: 'Transportation Service'),
-  ItemDescription('Other (Custom Item)', sellingPrice: 0.00, unit: 'units', category: 'Custom', productName: 'Custom Item'),
-];
-
-// Mock Document List
-List<QuotationDocument> mockDocuments = [
-  QuotationDocument(
-    documentNumber: '1499',
-    type: DocumentType.quotation,
-    status: DocumentStatus.pending,
-    customerName: 'Mr. Suresh Jayathunga',
-    customerPhone: '+94 76 553 4844',
-    customerAddress: 'Colombo, LK',
-    projectTitle: 'Villa LVT Flooring',
-    invoiceDate: DateTime(2025, 7, 2),
-    dueDate: DateTime(2025, 7, 9),
-    lineItems: [
-      InvoiceLineItem(
-        item: masterItemList.firstWhere((i) => i.name.contains('LVT')),
-        quantity: 385.0,
-      ),
-      InvoiceLineItem(
-        item: masterItemList.firstWhere((i) => i.name.contains('Skirting')),
-        quantity: 120.0,
-      ),
-      InvoiceLineItem(
-        item: masterItemList.firstWhere((i) => i.name.contains('Floor')),
-        quantity: 1.0,
-      ),
-      InvoiceLineItem(
-        item: masterItemList.firstWhere((i) => i.name.contains('Transport')),
-        quantity: 1.0,
-      ),
-    ],
+// Master item list for fallback when API is not available
+List<ItemDescription> masterItemList = [
+  ItemDescription(
+    'LVT Flooring 2mm',
+    sellingPrice: 365.0,
+    unit: 'sqft',
+    category: 'Flooring',
+    productName: 'LVT Flooring 2mm',
   ),
-  QuotationDocument(
-    documentNumber: '1500',
-    type: DocumentType.invoice,
-    status: DocumentStatus.partial,
-    customerName: 'Mr. Suresh Jayathunga',
-    customerPhone: '+94 76 553 4844',
-    customerAddress: 'Colombo, LK',
-    projectTitle: 'Office Renovation',
-    invoiceDate: DateTime(2025, 6, 15),
-    dueDate: DateTime(2025, 7, 15),
-    lineItems: [
-      InvoiceLineItem(
-        item: masterItemList.firstWhere((i) => i.name.contains('LVT')),
-        quantity: 200.0,
-      ),
-    ],
-    paymentHistory: [
-      PaymentRecord(50000.00, DateTime(2025, 6, 20), description: 'Advance'),
-    ],
+  ItemDescription(
+    'Skirting 3 inch',
+    sellingPrice: 410.0,
+    unit: 'linear ft',
+    category: 'Flooring',
+    productName: 'Skirting 3 inch',
   ),
-  QuotationDocument(
-    documentNumber: '1498',
-    type: DocumentType.invoice,
-    status: DocumentStatus.partial,
-    customerName: 'Mrs. Kumudu Perera',
-    customerPhone: '+94 71 123 4567',
-    customerAddress: 'Kandy, LK',
-    projectTitle: 'Home Flooring Project',
-    invoiceDate: DateTime(2025, 6, 20),
-    dueDate: DateTime(2025, 7, 20),
-    lineItems: [
-      InvoiceLineItem(
-        item: masterItemList.firstWhere((i) => i.name.contains('LVT')),
-        quantity: 200.0,
-      ),
-      InvoiceLineItem(
-        item: masterItemList.firstWhere((i) => i.name.contains('Skirting')),
-        quantity: 80.0,
-      ),
-      InvoiceLineItem(
-        item: masterItemList.firstWhere((i) => i.name.contains('Other')),
-        quantity: 1.0,
-        customDescription: 'Extra Wire',
-        isOriginalQuotationItem: false,
-      ),
-    ],
-    paymentHistory: [
-      PaymentRecord(100000.00, DateTime(2025, 6, 25), description: 'Advance'),
-    ],
+  ItemDescription(
+    'Floor Adhesive',
+    sellingPrice: 850.0,
+    unit: 'kg',
+    category: 'Adhesive',
+    productName: 'Floor Adhesive',
   ),
-  QuotationDocument(
-    documentNumber: '1497',
-    type: DocumentType.invoice,
-    status: DocumentStatus.paid,
-    customerName: 'Mr. Nimal Bandara',
-    customerPhone: '+94 77 987 6543',
-    customerAddress: 'Galle, LK',
-    projectTitle: 'Beach House Flooring',
-    invoiceDate: DateTime(2025, 5, 10),
-    dueDate: DateTime(2025, 6, 10),
-    lineItems: [
-      InvoiceLineItem(
-        item: masterItemList.firstWhere((i) => i.name.contains('LVT')),
-        quantity: 100.0,
-      ),
-      InvoiceLineItem(
-        item: masterItemList.firstWhere((i) => i.name.contains('Transport')),
-        quantity: 1.0,
-      ),
-    ],
-    paymentHistory: [
-      PaymentRecord(42000.00, DateTime(2025, 5, 15), description: 'Advance'),
-      PaymentRecord(12000.00, DateTime(2025, 6, 5), description: 'Final Settlement'),
-    ],
+  ItemDescription(
+    'Transport',
+    sellingPrice: 6850.0,
+    unit: 'trip',
+    category: 'Service',
+    productName: 'Transport',
   ),
-  QuotationDocument(
-    documentNumber: '1496',
-    type: DocumentType.quotation,
-    status: DocumentStatus.approved,
-    customerName: 'Mrs. Kumudu Perera',
-    customerPhone: '+94 71 123 4567',
-    customerAddress: 'Kandy, LK',
-    projectTitle: 'Kitchen Renovation',
-    invoiceDate: DateTime(2025, 7, 1),
-    dueDate: DateTime(2025, 7, 15),
-    lineItems: [
-      InvoiceLineItem(
-        item: masterItemList.firstWhere((i) => i.name.contains('Floor')),
-        quantity: 1.0,
-      ),
-    ],
+  ItemDescription(
+    'Kitchen Tiles',
+    sellingPrice: 1200.0,
+    unit: 'sqft',
+    category: 'Tiles',
+    productName: 'Kitchen Tiles',
+  ),
+  ItemDescription(
+    'Cement',
+    sellingPrice: 2200.0,
+    unit: 'bags',
+    category: 'Cement',
+    productName: 'Cement',
+  ),
+  ItemDescription(
+    'Sand',
+    sellingPrice: 15000.0,
+    unit: 'cubes',
+    category: 'Sand',
+    productName: 'Sand',
+  ),
+  ItemDescription(
+    'Grout',
+    sellingPrice: 450.0,
+    unit: 'kg',
+    category: 'Grout',
+    productName: 'Grout',
+  ),
+  ItemDescription(
+    'Carpet Tiles',
+    sellingPrice: 850.0,
+    unit: 'sqft',
+    category: 'Flooring',
+    productName: 'Carpet Tiles',
+  ),
+  ItemDescription(
+    'Underlay',
+    sellingPrice: 150.0,
+    unit: 'sqft',
+    category: 'Flooring',
+    productName: 'Underlay',
+  ),
+  ItemDescription(
+    'Installation Materials',
+    sellingPrice: 25000.0,
+    unit: 'set',
+    category: 'Materials',
+    productName: 'Installation Materials',
   ),
 ];

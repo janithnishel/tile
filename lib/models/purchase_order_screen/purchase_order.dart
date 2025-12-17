@@ -2,6 +2,7 @@ import 'supplier.dart';
 import 'po_item.dart';
 
 class PurchaseOrder {
+  final String? id; // MongoDB ObjectId
   final String poId;
   final String quotationId;
   final String customerName;
@@ -14,6 +15,7 @@ class PurchaseOrder {
   String? notes;
 
   PurchaseOrder({
+    this.id,
     required this.poId,
     required this.quotationId,
     required this.customerName,
@@ -25,6 +27,44 @@ class PurchaseOrder {
     this.invoiceImagePath,
     this.notes,
   });
+
+  // Factory constructor for JSON deserialization
+  factory PurchaseOrder.fromJson(Map<String, dynamic> json) {
+    return PurchaseOrder(
+      id: json['_id'] as String?,
+      poId: json['poId']?.toString() ?? '',
+      quotationId: json['quotationId']?.toString() ?? '',
+      customerName: json['customerName'] as String? ?? '',
+      supplier: Supplier.fromJson(json['supplier'] as Map<String, dynamic>),
+      orderDate: DateTime.parse(json['orderDate'] as String? ?? DateTime.now().toIso8601String()),
+      expectedDelivery: json['expectedDelivery'] != null
+          ? DateTime.parse(json['expectedDelivery'] as String)
+          : null,
+      status: json['status'] as String? ?? 'Draft',
+      items: (json['items'] as List<dynamic>?)
+          ?.map((item) => POItem.fromJson(item as Map<String, dynamic>))
+          .toList() ?? [],
+      invoiceImagePath: json['invoiceImagePath'] as String?,
+      notes: json['notes'] as String?,
+    );
+  }
+
+  // Convert to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) '_id': id,
+      'poId': poId,
+      'quotationId': quotationId,
+      'customerName': customerName,
+      'supplier': supplier.toJson(),
+      'orderDate': orderDate.toIso8601String(),
+      if (expectedDelivery != null) 'expectedDelivery': expectedDelivery!.toIso8601String(),
+      'status': status,
+      'items': items.map((item) => item.toJson()).toList(),
+      if (invoiceImagePath != null) 'invoiceImagePath': invoiceImagePath,
+      if (notes != null) 'notes': notes,
+    };
+  }
 
   // Total amount calculation
   double get totalAmount =>

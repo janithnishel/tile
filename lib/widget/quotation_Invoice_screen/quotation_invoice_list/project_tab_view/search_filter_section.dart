@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tilework/utils/invoice_quotation_status_helpers.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/project_tab_view/stat_item.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/project_tab_view/stat_item.dart';
 
 class SearchFilterSection extends StatelessWidget {
   final String searchQuery;

@@ -14,6 +14,12 @@ class MaterialSaleDocument {
   String customerPhone;
   String? customerAddress;
 
+  // Payment Terms
+  int paymentTerms;
+
+  // Due Date
+  DateTime dueDate;
+
   // Line Items
   List<MaterialSaleItem> items;
 
@@ -31,11 +37,14 @@ class MaterialSaleDocument {
     required this.customerName,
     this.customerPhone = '',
     this.customerAddress,
+    this.paymentTerms = 30,
+    DateTime? dueDate,
     List<MaterialSaleItem>? items,
     List<PaymentRecord>? paymentHistory,
     this.status = MaterialSaleStatus.pending,
     this.notes,
-  }) : items = items ?? [],
+  }) : dueDate = dueDate ?? saleDate.add(const Duration(days: 30)),
+       items = items ?? [],
        paymentHistory = paymentHistory ?? [];
 
   // ============================================
@@ -129,6 +138,8 @@ class MaterialSaleDocument {
       customerName: json['customerName'] as String? ?? '',
       customerPhone: json['customerPhone'] as String? ?? '',
       customerAddress: json['customerAddress'] as String?,
+      paymentTerms: json['paymentTerms'] as int? ?? 30,
+      dueDate: DateTime.parse(json['dueDate'] as String? ?? DateTime.now().add(const Duration(days: 30)).toIso8601String()),
       items: (json['items'] as List<dynamic>?)
           ?.map((item) => MaterialSaleItem.fromJson(item as Map<String, dynamic>))
           .toList() ?? [],
@@ -149,6 +160,8 @@ class MaterialSaleDocument {
       'customerName': customerName,
       'customerPhone': customerPhone,
       if (customerAddress != null) 'customerAddress': customerAddress,
+      'paymentTerms': paymentTerms,
+      'dueDate': _formatDateForBackend(dueDate),
       'items': items.map((item) => item.toJson()).toList(),
       'paymentHistory': paymentHistory.map((payment) => payment.toJson()).toList(),
       'status': _statusToString(status),
@@ -207,6 +220,8 @@ class MaterialSaleDocument {
     String? customerName,
     String? customerPhone,
     String? customerAddress,
+    int? paymentTerms,
+    DateTime? dueDate,
     List<MaterialSaleItem>? items,
     List<PaymentRecord>? paymentHistory,
     MaterialSaleStatus? status,
@@ -218,6 +233,8 @@ class MaterialSaleDocument {
       customerName: customerName ?? this.customerName,
       customerPhone: customerPhone ?? this.customerPhone,
       customerAddress: customerAddress ?? this.customerAddress,
+      paymentTerms: paymentTerms ?? this.paymentTerms,
+      dueDate: dueDate ?? this.dueDate,
       items: items ?? this.items.map((i) => i.copyWith()).toList(),
       paymentHistory:
           paymentHistory ??

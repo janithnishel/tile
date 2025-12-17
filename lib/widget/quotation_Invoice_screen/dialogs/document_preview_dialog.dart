@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/document_enums.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/quotation_document.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/project_tab_view/info_row.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/project_tab_view/total_row.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/project_tab_view/info_row.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/project_tab_view/total_row.dart';
 
 class DocumentPreviewDialog extends StatelessWidget {
   final QuotationDocument document;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/quotation_document.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/project_tab_view/date_picker_row.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/project_tab_view/date_picker_row.dart';
 
 class DocumentDetailsSection extends StatelessWidget {
   final QuotationDocument document;

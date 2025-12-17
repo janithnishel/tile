@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:tilework/data/material_sale_data.dart';
+import 'package:tilework/cubits/auth/auth_cubit.dart';
+import 'package:tilework/cubits/auth/auth_state.dart';
+import 'package:tilework/cubits/material_sale/material_sale_cubit.dart';
+import 'package:tilework/cubits/super_admin/category/category_cubit.dart';
 import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_document.dart';
 import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_enums.dart';
 import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sales_item.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/payment_record.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/material_sales_tab_view/ms_customer_section.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/material_sales_tab_view/ms_product_section.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/material_sales_tab_view/ms_payment_section.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/material_sales_tab_view/dialogs/ms_payment_dialog.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/material_sales_tab_view/dialogs/ms_preview_dialog.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/material_sales_tab_view/dialogs/ms_summary_bottom_sheet.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/material_sales_tab_view/ms_customer_section.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/material_sales_tab_view/ms_product_section.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/material_sales_tab_view/ms_payment_section.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/material_sales_tab_view/dialogs/ms_payment_dialog.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/material_sales_tab_view/dialogs/ms_preview_dialog.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/material_sales_tab_view/dialogs/ms_summary_bottom_sheet.dart';
 
 class MaterialSaleInvoiceScreen extends StatefulWidget {
   final MaterialSaleDocument document;
@@ -52,6 +56,19 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
     _customerNameController.addListener(_markAsChanged);
     _customerPhoneController.addListener(_markAsChanged);
     _customerAddressController.addListener(_markAsChanged);
+
+    // Load categories for product selection
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Get auth token for category loading
+      final authState = context.read<AuthCubit>().state;
+      final token = authState is AuthAuthenticated ? authState.token : null;
+
+      if (token != null) {
+        context.read<CategoryCubit>().loadCategories(token: token);
+      } else {
+        debugPrint('⚠️ No auth token available for loading categories');
+      }
+    });
   }
 
   MaterialSaleDocument _deepCopyDocument(MaterialSaleDocument original) {
@@ -139,7 +156,7 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
     return true;
   }
 
-  void _createSale() {
+  void _createSale() async {
     if (!_isValidForCreation) {
       _showSnackBar('Please fill all required fields and add items.');
       return;
@@ -150,12 +167,15 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
     _workingDocument.customerPhone = _customerPhoneController.text.trim();
     _workingDocument.customerAddress = _customerAddressController.text.trim();
 
-    // Add to data
-    // Assuming materialSaleDocuments is global
-    materialSaleDocuments.insert(0, _workingDocument);
+    try {
+      // Create material sale using the cubit (calls backend API)
+      await context.read<MaterialSaleCubit>().createMaterialSale(_workingDocument);
 
-    _showSnackBar('Material Sale created successfully!');
-    Navigator.pop(context, true);
+      _showSnackBar('Material Sale created successfully!');
+      Navigator.pop(context, true);
+    } catch (e) {
+      _showSnackBar('Failed to create material sale: ${e.toString()}');
+    }
   }
 
   void _saveDocument() {

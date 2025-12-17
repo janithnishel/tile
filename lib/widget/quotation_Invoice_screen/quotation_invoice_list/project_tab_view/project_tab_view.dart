@@ -6,8 +6,8 @@ import 'package:tilework/cubits/quotation/quotation_cubit.dart';
 import 'package:tilework/cubits/quotation/quotation_state.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/document_enums.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/quotation_document.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/project_tab_view/customer_expansion_tile.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/project_tab_view/search_filter_section.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/project_tab_view/customer_expansion_tile.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/project_tab_view/search_filter_section.dart';
 
 class ProjectTabView extends StatefulWidget {
   final Function(QuotationCubit) onCreateNew;

@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/material_sale/material_sale_cubit.dart';
 import 'package:tilework/cubits/material_sale/material_sale_state.dart';
 import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_document.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/material_sales_tab_view/material_sale_list_tile.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/material_sales_tab_view/material_sale_list_tile.dart';
 
 class MaterialSaleTabView extends StatefulWidget {
   final Function(MaterialSaleCubit) onCreateNew;
@@ -22,6 +22,15 @@ class MaterialSaleTabView extends StatefulWidget {
 }
 
 class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
+  @override
+  void initState() {
+    super.initState();
+    // Load material sales when the tab is first opened
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MaterialSaleCubit>().loadMaterialSales();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<MaterialSaleCubit, MaterialSaleState>(

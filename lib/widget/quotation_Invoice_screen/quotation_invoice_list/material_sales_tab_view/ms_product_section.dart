@@ -1,8 +1,10 @@
 // lib/widget/material_sale/sections/ms_product_section.dart
 
 import 'package:flutter/material.dart';
-import 'package:tilework/data/material_sale_data.dart';
-import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_enums.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:tilework/cubits/super_admin/category/category_cubit.dart';
+import 'package:tilework/cubits/super_admin/category/category_state.dart';
+import 'package:tilework/models/category_model.dart';
 import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sales_item.dart';
 
 class MSProductSection extends StatelessWidget {
@@ -199,8 +201,8 @@ class _ProductItemCardState extends State<_ProductItemCard> {
   late TextEditingController _costController;
   late TextEditingController _colorCodeController;
 
-  MaterialCategory? _selectedCategory;
-  ProductCatalogItem? _selectedProduct;
+  CategoryModel? _selectedCategory;
+  ItemModel? _selectedItem;
 
   @override
   void initState() {
@@ -224,7 +226,6 @@ class _ProductItemCardState extends State<_ProductItemCard> {
     _colorCodeController = TextEditingController(
       text: widget.item.colorCode,
     );
-    _selectedCategory = widget.item.category;
   }
 
   @override
@@ -244,11 +245,13 @@ class _ProductItemCardState extends State<_ProductItemCard> {
     final cost = double.tryParse(_costController.text) ?? 0;
 
     final updatedItem = widget.item.copyWith(
-      category: _selectedCategory,
+      categoryId: _selectedCategory?.id ?? '',
+      categoryName: _selectedCategory?.name ?? '',
+      itemId: _selectedItem?.id ?? '',
       colorCode: _colorCodeController.text,
-      productName: _selectedProduct?.name ?? widget.item.productName,
+      productName: _selectedItem?.itemName ?? widget.item.productName,
       plank: plank,
-      sqftPerPlank: _selectedProduct?.sqftPerPlank ?? widget.item.sqftPerPlank,
+      sqftPerPlank: _selectedItem?.sqftPerUnit ?? widget.item.sqftPerPlank,
       totalSqft: sqft,
       unitPrice: price,
       amount: sqft * price,
@@ -259,19 +262,18 @@ class _ProductItemCardState extends State<_ProductItemCard> {
     widget.onChanged(updatedItem);
   }
 
-  void _onProductSelected(ProductCatalogItem? product) {
-    if (product == null) return;
+  void _onItemSelected(ItemModel? item) {
+    if (item == null) return;
 
     setState(() {
-      _selectedProduct = product;
-      _colorCodeController.text = product.code;
-      _priceController.text = product.sellingPrice.toString();
-      _costController.text = product.costPrice.toString();
-      
+      _selectedItem = item;
+      _priceController.text = '0'; // Default, can be edited
+      _costController.text = '0'; // Default, can be edited
+
       // Auto-calculate sqft if plank is entered
       final plank = double.tryParse(_plankController.text) ?? 0;
       if (plank > 0) {
-        _sqftController.text = (plank * product.sqftPerPlank).toString();
+        _sqftController.text = (plank * item.sqftPerUnit).toString();
       }
     });
     _updateItem();
@@ -279,9 +281,9 @@ class _ProductItemCardState extends State<_ProductItemCard> {
 
   void _onPlankChanged(String value) {
     final plank = double.tryParse(value) ?? 0;
-    if (_selectedProduct != null && plank > 0) {
+    if (_selectedItem != null && plank > 0) {
       setState(() {
-        _sqftController.text = (plank * _selectedProduct!.sqftPerPlank).toString();
+        _sqftController.text = (plank * _selectedItem!.sqftPerUnit).toString();
       });
     }
     _updateItem();
@@ -376,47 +378,49 @@ class _ProductItemCardState extends State<_ProductItemCard> {
   }
 
   Widget _buildCategoryDropdown() {
-    return DropdownButtonFormField<MaterialCategory>(
-      value: _selectedCategory,
-      decoration: InputDecoration(
-        labelText: 'Category',
-        prefixIcon: const Icon(Icons.category_outlined),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      ),
-      items: MaterialCategory.values.map((category) {
-        return DropdownMenuItem(
-          value: category,
-          child: Row(
-            children: [
-              Text(category.icon),
-              const SizedBox(width: 8),
-              Text(category.displayName),
-            ],
+    return BlocBuilder<CategoryCubit, CategoryState>(
+      builder: (context, categoryState) {
+        final categories = categoryState.categories;
+
+        return DropdownButtonFormField<CategoryModel>(
+          value: _selectedCategory,
+          decoration: InputDecoration(
+            labelText: 'Category',
+            prefixIcon: const Icon(Icons.category_outlined),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
+          items: categories.map((category) {
+            return DropdownMenuItem(
+              value: category,
+              child: Text(
+                category.name,
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          }).toList(),
+          onChanged: widget.isEditable
+              ? (value) {
+                  setState(() {
+                    _selectedCategory = value;
+                    _selectedItem = null;
+                  });
+                  _updateItem();
+                }
+              : null,
+          hint: const Text('Select category'),
         );
-      }).toList(),
-      onChanged: widget.isEditable
-          ? (value) {
-              setState(() {
-                _selectedCategory = value;
-                _selectedProduct = null;
-              });
-              _updateItem();
-            }
-          : null,
+      },
     );
   }
 
   Widget _buildProductDropdown() {
-    final products = _selectedCategory != null
-        ? getProductsByCategory(_selectedCategory!)
-        : <ProductCatalogItem>[];
+    final items = _selectedCategory?.items ?? [];
 
-    return DropdownButtonFormField<ProductCatalogItem>(
-      value: _selectedProduct,
+    return DropdownButtonFormField<ItemModel>(
+      value: _selectedItem,
       decoration: InputDecoration(
         labelText: 'Select Product',
         prefixIcon: const Icon(Icons.shopping_bag_outlined),
@@ -425,18 +429,18 @@ class _ProductItemCardState extends State<_ProductItemCard> {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
-      items: products.map((product) {
+      items: items.map((item) {
         return DropdownMenuItem(
-          value: product,
+          value: item,
           child: Text(
-            product.name,
+            item.itemName,
             overflow: TextOverflow.ellipsis,
           ),
         );
       }).toList(),
-      onChanged: widget.isEditable ? _onProductSelected : null,
+      onChanged: widget.isEditable ? _onItemSelected : null,
       hint: Text(
-        products.isEmpty ? 'Select category first' : 'Choose product',
+        items.isEmpty ? 'Select category first' : 'Choose product',
       ),
     );
   }

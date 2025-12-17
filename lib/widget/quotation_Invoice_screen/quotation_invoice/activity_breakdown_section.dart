@@ -3,7 +3,7 @@ import 'package:tilework/data/mock_data.dart';
 import 'package:tilework/models/category_model.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/invoice_line_item.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/item_description.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_list/project_tab_view/line_item_row.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/project_tab_view/line_item_row.dart';
 
 class ActivityBreakdownSection extends StatelessWidget {
   final List<InvoiceLineItem> lineItems;

@@ -64,32 +64,69 @@ class SupplierExpansionTile extends StatelessWidget {
   Widget _buildSubtitle() {
     return Padding(
       padding: const EdgeInsets.only(top: 4),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCategoryBadge(),
-          const SizedBox(width: 8),
-          _buildOrderCountBadge(),
-          const Spacer(),
-          _buildTotalAmount(),
+          _buildCategoriesRow(),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              _buildOrderCountBadge(),
+              const Spacer(),
+              _buildTotalAmount(),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        supplier.category,
-        style: TextStyle(
-          fontSize: 11,
-          color: Colors.grey.shade700,
-        ),
-      ),
+  Widget _buildCategoriesRow() {
+    final categories = supplier.categories;
+    if (categories.isEmpty) return const SizedBox.shrink();
+
+    // Show up to 3 categories, with +X more if there are more
+    final displayCategories = categories.take(3).toList();
+    final remainingCount = categories.length - 3;
+
+    return Wrap(
+      spacing: 4,
+      runSpacing: 2,
+      children: [
+        ...displayCategories.map((category) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200, width: 0.5),
+              ),
+              child: Text(
+                category,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.blue.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            )),
+        if (remainingCount > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300, width: 0.5),
+            ),
+            child: Text(
+              '+$remainingCount',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+      ],
     );
   }
 

@@ -13,7 +13,7 @@ List<Supplier> mockSuppliers = [
     phone: '+94 77 123 4567',
     email: 'abc@hardware.lk',
     address: 'Colombo 10',
-    category: 'Hardware',
+    categories: ['Hardware'],
   ),
   Supplier(
     id: 'SUP002',
@@ -21,7 +21,7 @@ List<Supplier> mockSuppliers = [
     phone: '+94 71 234 5678',
     email: 'cement@lanka.lk',
     address: 'Kelaniya',
-    category: 'Cement & Sand',
+    categories: ['Cement & Sand'],
   ),
   Supplier(
     id: 'SUP003',
@@ -29,7 +29,7 @@ List<Supplier> mockSuppliers = [
     phone: '+94 76 345 6789',
     email: 'tiles@royal.lk',
     address: 'Nugegoda',
-    category: 'Tiles & Flooring',
+    categories: ['Tiles & Flooring'],
   ),
   Supplier(
     id: 'SUP004',
@@ -37,7 +37,7 @@ List<Supplier> mockSuppliers = [
     phone: '+94 72 456 7890',
     email: 'steel@masters.lk',
     address: 'Peliyagoda',
-    category: 'Steel & Metal',
+    categories: ['Steel & Metal'],
   ),
   Supplier(
     id: 'SUP005',
@@ -45,7 +45,7 @@ List<Supplier> mockSuppliers = [
     phone: '+94 78 567 8901',
     email: 'paint@world.lk',
     address: 'Maharagama',
-    category: 'Paints',
+    categories: ['Paints'],
   ),
 ];
 
@@ -59,25 +59,33 @@ List<ApprovedQuotation> mockApprovedQuotations = [
     totalAmount: 206825,
     items: [
       QuotationItem(
+        id: 'QI001',
         name: 'LVT Flooring 2mm',
+        category: 'Flooring',
         quantity: 385,
         unit: 'sqft',
         estimatedPrice: 365,
       ),
       QuotationItem(
+        id: 'QI002',
         name: 'Skirting 3 inch',
+        category: 'Flooring',
         quantity: 120,
         unit: 'linear ft',
         estimatedPrice: 410,
       ),
       QuotationItem(
+        id: 'QI003',
         name: 'Floor Adhesive',
+        category: 'Adhesive',
         quantity: 50,
         unit: 'kg',
         estimatedPrice: 850,
       ),
       QuotationItem(
+        id: 'QI004',
         name: 'Transport',
+        category: 'Service',
         quantity: 1,
         unit: 'trip',
         estimatedPrice: 6850,
@@ -93,25 +101,33 @@ List<ApprovedQuotation> mockApprovedQuotations = [
     totalAmount: 450000,
     items: [
       QuotationItem(
+        id: 'QI005',
         name: 'Kitchen Tiles',
+        category: 'Tiles',
         quantity: 200,
         unit: 'sqft',
         estimatedPrice: 1200,
       ),
       QuotationItem(
+        id: 'QI006',
         name: 'Cement',
+        category: 'Cement',
         quantity: 30,
         unit: 'bags',
         estimatedPrice: 2200,
       ),
       QuotationItem(
+        id: 'QI007',
         name: 'Sand',
+        category: 'Sand',
         quantity: 2,
         unit: 'cubes',
         estimatedPrice: 15000,
       ),
       QuotationItem(
+        id: 'QI008',
         name: 'Grout',
+        category: 'Grout',
         quantity: 20,
         unit: 'kg',
         estimatedPrice: 450,
@@ -126,19 +142,25 @@ List<ApprovedQuotation> mockApprovedQuotations = [
     totalAmount: 680000,
     items: [
       QuotationItem(
+        id: 'QI009',
         name: 'Carpet Tiles',
+        category: 'Flooring',
         quantity: 500,
         unit: 'sqft',
         estimatedPrice: 850,
       ),
       QuotationItem(
+        id: 'QI010',
         name: 'Underlay',
+        category: 'Flooring',
         quantity: 500,
         unit: 'sqft',
         estimatedPrice: 150,
       ),
       QuotationItem(
+        id: 'QI011',
         name: 'Installation Materials',
+        category: 'Materials',
         quantity: 1,
         unit: 'set',
         estimatedPrice: 25000,
