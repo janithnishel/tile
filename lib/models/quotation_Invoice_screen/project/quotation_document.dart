@@ -1,6 +1,8 @@
 import 'document_enums.dart';
 import 'invoice_line_item.dart';
+import 'item_description.dart';
 import 'payment_record.dart';
+import 'service_item.dart';
 
 class QuotationDocument {
   String? id; // MongoDB ObjectId
@@ -14,6 +16,7 @@ class QuotationDocument {
   DateTime invoiceDate;
   DateTime dueDate;
   List<InvoiceLineItem> lineItems;
+  List<ServiceItem> serviceItems;
   List<PaymentRecord> paymentHistory;
 
   QuotationDocument({
@@ -28,8 +31,10 @@ class QuotationDocument {
     required this.invoiceDate,
     required this.dueDate,
     List<InvoiceLineItem>? lineItems,
+    List<ServiceItem>? serviceItems,
     List<PaymentRecord>? paymentHistory,
   })  : lineItems = lineItems ?? [],
+        serviceItems = serviceItems ?? [],
         paymentHistory = paymentHistory ?? [];
 
   // Factory constructor for JSON deserialization
@@ -47,6 +52,9 @@ class QuotationDocument {
       dueDate: DateTime.parse(json['dueDate'] as String? ?? DateTime.now().toIso8601String()),
       lineItems: (json['lineItems'] as List<dynamic>?)
           ?.map((item) => InvoiceLineItem.fromJson(item as Map<String, dynamic>))
+          .toList() ?? [],
+      serviceItems: (json['serviceItems'] as List<dynamic>?)
+          ?.map((item) => ServiceItem.fromJson(item as Map<String, dynamic>))
           .toList() ?? [],
       paymentHistory: (json['paymentHistory'] as List<dynamic>?)
           ?.map((payment) => PaymentRecord.fromJson(payment as Map<String, dynamic>))
@@ -68,6 +76,7 @@ class QuotationDocument {
       'invoiceDate': _formatDateForBackend(invoiceDate),
       'dueDate': _formatDateForBackend(dueDate),
       'lineItems': lineItems.map((item) => item.toJson()).toList(),
+      'serviceItems': serviceItems.map((item) => item.toJson()).toList(),
       'paymentHistory': paymentHistory.map((payment) => payment.toJson()).toList(),
     };
   }
@@ -127,7 +136,27 @@ class QuotationDocument {
   }
 
   // Computed Properties
-  double get subtotal => lineItems.fold(0, (sum, item) => sum + item.amount);
+  double get subtotal {
+    double total = lineItems.fold(0, (sum, item) => sum + item.amount);
+
+    // Add service items to total
+    double serviceTotal = serviceItems.fold(0, (sum, item) {
+      // If service is already paid, subtract it (negative amount)
+      return sum + (item.isAlreadyPaid ? -item.amount : item.amount);
+    });
+
+    total += serviceTotal;
+
+    // Subtract paid site visits from the total (legacy logic for backward compatibility)
+    double siteVisitDeductions = lineItems
+        .where((item) =>
+            item.item.type == ItemType.service &&
+            item.item.name.toLowerCase().contains('site visit') &&
+            item.item.servicePaymentStatus == ServicePaymentStatus.paid)
+        .fold(0, (sum, item) => sum + item.amount);
+
+    return total - siteVisitDeductions;
+  }
 
   double get totalPayments =>
       paymentHistory.fold(0.0, (sum, payment) => sum + payment.amount);

@@ -11,7 +11,9 @@ import 'package:tilework/models/quotation_Invoice_screen/project/invoice_line_it
 import 'package:tilework/models/quotation_Invoice_screen/project/item_description.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/payment_record.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/quotation_document.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/activity_breakdown_section.dart';
+import 'package:tilework/models/quotation_Invoice_screen/project/service_item.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/add_items_section.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/add_services_section.dart';
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/create_mode_button.dart';
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/customer_details_section.dart';
 // import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/document_details_section.dart'; // 💡 DocumentDetailsSection වෙත වෙනස්කම් නොකරන නිසා import එක එලෙසම තබන්න
@@ -110,11 +112,24 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                 category: item.item.category,
                 categoryId: item.item.categoryId,
                 productName: item.item.productName,
+                type: item.item.type,
+                servicePaymentStatus: item.item.servicePaymentStatus,
                 // costPrice: item.item.costPrice, // Assuming you added costPrice to ItemDescription
               ),
               quantity: item.quantity,
               customDescription: item.customDescription,
               isOriginalQuotationItem: item.isOriginalQuotationItem,
+            ),
+          )
+          .toList(),
+      serviceItems: original.serviceItems
+          .map(
+            (item) => ServiceItem(
+              serviceDescription: item.serviceDescription,
+              unitType: item.unitType,
+              quantity: item.quantity,
+              rate: item.rate,
+              isAlreadyPaid: item.isAlreadyPaid,
             ),
           )
           .toList(),
@@ -152,11 +167,23 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                             )
                           );
 
+    // Check if service items have changed
+    final hasServiceChanges = _workingDocument.serviceItems.length != _originalDocument.serviceItems.length ||
+                              _workingDocument.serviceItems.any((item) =>
+                                !_originalDocument.serviceItems.any((origItem) =>
+                                  origItem.serviceDescription == item.serviceDescription &&
+                                  origItem.unitType == item.unitType &&
+                                  origItem.quantity == item.quantity &&
+                                  origItem.rate == item.rate &&
+                                  origItem.isAlreadyPaid == item.isAlreadyPaid
+                                )
+                              );
+
     // Check if status has changed
     final hasStatusChanged = _workingDocument.status != _originalDocument.status;
 
     final hasAnyChanges = hasNameChanged || hasPhoneChanged || hasAddressChanged ||
-                         hasTitleChanged || hasDateChanges || hasItemChanges || hasStatusChanged;
+                         hasTitleChanged || hasDateChanges || hasItemChanges || hasServiceChanges || hasStatusChanged;
 
     // Debug logging
     if (hasAnyChanges != _hasUnsavedChanges) {
@@ -360,13 +387,14 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
   }
 
   void _addNewLineItem() {
-    // Create a new item with all required fields including category
+    // Create a new material item with all required fields including category
     final defaultItem = ItemDescription(
       'New Item',
       sellingPrice: 0.0,
       unit: 'units',
       category: 'Custom', // Required category field
       productName: 'Custom Item',
+      type: ItemType.material,
     );
 
     if (mounted) {
@@ -374,6 +402,33 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
         _workingDocument.lineItems.add(
           InvoiceLineItem(
             item: defaultItem,
+            quantity: 0.0,
+            isOriginalQuotationItem:
+                _workingDocument.isQuotation &&
+                _workingDocument.status == DocumentStatus.pending,
+          ),
+        );
+        _hasUnsavedChanges = true;
+      });
+    }
+  }
+
+  void _addNewServiceItem() {
+    // Create a new service item with all required fields
+    final defaultService = ItemDescription(
+      'New Service',
+      sellingPrice: 0.0,
+      unit: 'units',
+      category: 'Services', // Service category
+      productName: 'Custom Service',
+      type: ItemType.service,
+    );
+
+    if (mounted) {
+      setState(() {
+        _workingDocument.lineItems.add(
+          InvoiceLineItem(
+            item: defaultService,
             quantity: 0.0,
             isOriginalQuotationItem:
                 _workingDocument.isQuotation &&
@@ -401,6 +456,102 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
         },
       ),
     );
+  }
+
+  // Service Item Management Methods
+  void _addNewService() {
+    if (mounted) {
+      setState(() {
+        _workingDocument.serviceItems.add(
+          ServiceItem(
+            serviceDescription: 'Custom Service',
+            unitType: UnitType.fixed,
+            quantity: 1.0,
+            rate: 0.0,
+            isAlreadyPaid: false,
+          ),
+        );
+        _hasUnsavedChanges = true;
+      });
+    }
+  }
+
+  void _updateServiceItem(int index, ServiceItem updatedItem) {
+    if (mounted) {
+      setState(() {
+        _workingDocument.serviceItems[index] = updatedItem;
+        _hasUnsavedChanges = true;
+      });
+    }
+  }
+
+  void _updateServiceUnitType(int index, UnitType unitType) {
+    if (mounted) {
+      setState(() {
+        _workingDocument.serviceItems[index] = ServiceItem(
+          serviceDescription: _workingDocument.serviceItems[index].serviceDescription,
+          unitType: unitType,
+          quantity: unitType == UnitType.fixed ? 1.0 : _workingDocument.serviceItems[index].quantity,
+          rate: _workingDocument.serviceItems[index].rate,
+          isAlreadyPaid: _workingDocument.serviceItems[index].isAlreadyPaid,
+        );
+        _hasUnsavedChanges = true;
+      });
+    }
+  }
+
+  void _updateServiceQuantity(int index, double quantity) {
+    if (mounted) {
+      setState(() {
+        _workingDocument.serviceItems[index] = ServiceItem(
+          serviceDescription: _workingDocument.serviceItems[index].serviceDescription,
+          unitType: _workingDocument.serviceItems[index].unitType,
+          quantity: quantity,
+          rate: _workingDocument.serviceItems[index].rate,
+          isAlreadyPaid: _workingDocument.serviceItems[index].isAlreadyPaid,
+        );
+        _hasUnsavedChanges = true;
+      });
+    }
+  }
+
+  void _updateServiceRate(int index, double rate) {
+    if (mounted) {
+      setState(() {
+        _workingDocument.serviceItems[index] = ServiceItem(
+          serviceDescription: _workingDocument.serviceItems[index].serviceDescription,
+          unitType: _workingDocument.serviceItems[index].unitType,
+          quantity: _workingDocument.serviceItems[index].quantity,
+          rate: rate,
+          isAlreadyPaid: _workingDocument.serviceItems[index].isAlreadyPaid,
+        );
+        _hasUnsavedChanges = true;
+      });
+    }
+  }
+
+  void _updateServiceAlreadyPaid(int index, bool isAlreadyPaid) {
+    if (mounted) {
+      setState(() {
+        _workingDocument.serviceItems[index] = ServiceItem(
+          serviceDescription: _workingDocument.serviceItems[index].serviceDescription,
+          unitType: _workingDocument.serviceItems[index].unitType,
+          quantity: _workingDocument.serviceItems[index].quantity,
+          rate: _workingDocument.serviceItems[index].rate,
+          isAlreadyPaid: isAlreadyPaid,
+        );
+        _hasUnsavedChanges = true;
+      });
+    }
+  }
+
+  void _deleteServiceItem(int index) {
+    if (mounted) {
+      setState(() {
+        _workingDocument.serviceItems.removeAt(index);
+        _hasUnsavedChanges = true;
+      });
+    }
   }
 
   // Create Quotation (for new documents)
@@ -892,7 +1043,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                     }
                   }
 
-                  return ActivityBreakdownSection(
+                  return AddItemsSection(
                     lineItems: _workingDocument.lineItems,
                     categories: categoryState.categories, // Pass loaded categories
                     isAddEnabled: _isNewDocument || _workingDocument.isQuotation,
@@ -925,6 +1076,8 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                             category: _workingDocument.lineItems[index].item.category,
                             categoryId: _workingDocument.lineItems[index].item.categoryId,
                             productName: _workingDocument.lineItems[index].item.productName,
+                            type: _workingDocument.lineItems[index].item.type,
+                            servicePaymentStatus: _workingDocument.lineItems[index].item.servicePaymentStatus,
                             // Add costPrice here if your ItemDescription model requires it:
                             // costPrice: _workingDocument.lineItems[index].item.costPrice,
                           );
@@ -933,6 +1086,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                       }
                     },
                     onAddItem: _addNewLineItem,
+                    onAddService: _addNewServiceItem,
                     onDeleteItem: (index) {
                       if (mounted) {
                         setState(() {
@@ -944,6 +1098,20 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                     onCustomItemTap: _showCustomItemDialog,
                   );
                 },
+              ),
+              const Divider(height: 32),
+
+              // Additional Services Section
+              AddServicesSection(
+                serviceItems: _workingDocument.serviceItems,
+                isAddEnabled: _isNewDocument || _workingDocument.isQuotation,
+                onAddService: _addNewService,
+                onServiceChanged: _updateServiceItem,
+                onUnitTypeChanged: _updateServiceUnitType,
+                onQuantityChanged: _updateServiceQuantity,
+                onRateChanged: _updateServiceRate,
+                onAlreadyPaidChanged: _updateServiceAlreadyPaid,
+                onDeleteService: _deleteServiceItem,
               ),
               const Divider(height: 32),
 
@@ -1140,4 +1308,6 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
         return Colors.purple;
     }
   }
+
+
 }
