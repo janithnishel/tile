@@ -1,20 +1,4 @@
-class SupplierItem {
-  final String id;
-  final String name;
-  final String category;
-  final String unit;
-  final double price;
-  final double? lastPurchasePrice;
-
-  SupplierItem({
-    required this.id,
-    required this.name,
-    required this.category,
-    required this.unit,
-    required this.price,
-    this.lastPurchasePrice,
-  });
-}
+import 'package:tilework/models/purchase_order/supplier_item.dart';
 
 class Supplier {
   final String id;
@@ -33,20 +17,28 @@ class Supplier {
     this.address = '',
     List<String>? categories,
     List<SupplierItem>? availableItems,
-  }) : categories = categories ?? ['General'],
+  }) : categories = categories ?? [],
        availableItems = availableItems ?? [];
 
   // Factory constructor to create Supplier from JSON
   factory Supplier.fromJson(Map<String, dynamic> json) {
+    List<String> categories = [];
+    if (json['categories'] != null) {
+      categories = List<String>.from(json['categories']);
+    } else if (json['category'] != null) {
+      categories = [json['category']];
+    }
+
+    // Filter out 'General' category (case insensitive) as it's a default that shouldn't be displayed
+    categories = categories.where((cat) => !cat.toLowerCase().contains('general')).toList();
+
     return Supplier(
       id: json['_id'] ?? json['id'],
       name: json['name'],
       phone: json['phone'],
       email: json['email'] ?? '',
       address: json['address'] ?? '',
-      categories: json['categories'] != null
-          ? List<String>.from(json['categories'])
-          : [json['category'] ?? 'General'], // Backward compatibility
+      categories: categories,
     );
   }
 

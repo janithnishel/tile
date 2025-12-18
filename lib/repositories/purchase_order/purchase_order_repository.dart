@@ -1,4 +1,4 @@
-import '../../models/purchase_order_screen/purchase_order.dart';
+import '../../models/purchase_order/purchase_order.dart';
 import '../../services/purchase_order/api_service.dart';
 
 class PurchaseOrderRepository {
@@ -14,18 +14,27 @@ class PurchaseOrderRepository {
   }) async {
     try {
       final currentToken = token ?? _token;
+      print('🔄 PurchaseOrderRepository: Calling API with token: ${currentToken?.substring(0, 20)}...');
+      print('🔍 PurchaseOrderRepository: Query params: $queryParams');
+
       final response = await _apiService.getAllPurchaseOrders(
         token: currentToken,
         queryParams: queryParams,
       );
 
+      print('📡 PurchaseOrderRepository: API Response keys: ${response.keys.toList()}');
+      print('📊 PurchaseOrderRepository: Response success: ${response['success']}');
+
       // Backend returns: {success: true, data: [...]}
       List data = [];
       if (response['data'] != null) {
         data = response['data'] as List;
+        print('📦 PurchaseOrderRepository: Found ${data.length} items in data array');
       } else if (response is List) {
         data = response as List;
+        print('📦 PurchaseOrderRepository: Response is direct list with ${data.length} items');
       } else {
+        print('⚠️ PurchaseOrderRepository: No data found in response');
         return [];
       }
 
@@ -33,14 +42,15 @@ class PurchaseOrderRepository {
         try {
           return PurchaseOrder.fromJson(json as Map<String, dynamic>);
         } catch (e) {
-          print('❌ Failed to parse purchase order: $e, JSON: $json');
+          print('❌ PurchaseOrderRepository: Failed to parse purchase order: $e, JSON: $json');
           rethrow;
         }
       }).toList();
 
+      print('✅ PurchaseOrderRepository: Successfully parsed ${purchaseOrders.length} purchase orders');
       return purchaseOrders;
     } catch (e) {
-      print('💥 Failed to fetch purchase orders: $e');
+      print('💥 PurchaseOrderRepository: Failed to fetch purchase orders: $e');
       throw Exception('Failed to fetch purchase orders: $e');
     }
   }

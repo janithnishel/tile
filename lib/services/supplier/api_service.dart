@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../models/purchase_order_screen/supplier.dart';
+import '../../models/purchase_order/supplier.dart';
 
 class SupplierApiService {
   static const String baseUrl = 'http://localhost:5000/api';

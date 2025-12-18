@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
-import 'package:tilework/models/purchase_order_screen/supplier.dart';
+import 'package:tilework/models/purchase_order/supplier.dart';
 import 'package:tilework/repositories/supplier/supplier_repository.dart';
 import 'supplier_state.dart';
 
@@ -75,12 +75,22 @@ class SupplierCubit extends Cubit<SupplierState> {
       final createdSupplier = await _supplierRepository.createSupplier(supplier, token: _currentToken);
       debugPrint('✨ SupplierCubit: Supplier created: ${createdSupplier.name}');
 
+      // Preserve the original categories if the API response doesn't include them
+      final supplierWithCategories = Supplier(
+        id: createdSupplier.id,
+        name: createdSupplier.name,
+        phone: createdSupplier.phone,
+        email: createdSupplier.email,
+        address: createdSupplier.address,
+        categories: createdSupplier.categories.isNotEmpty ? createdSupplier.categories : supplier.categories,
+      );
+
       // Add to local state
-      final updatedList = List<Supplier>.from(state.suppliers)..insert(0, createdSupplier);
+      final updatedList = List<Supplier>.from(state.suppliers)..insert(0, supplierWithCategories);
       emit(state.copyWith(suppliers: updatedList));
       debugPrint('📦 SupplierCubit: Updated local state with ${updatedList.length} suppliers');
 
-      return createdSupplier;
+      return supplierWithCategories;
     } catch (e) {
       debugPrint('💥 SupplierCubit: Failed to create supplier: $e');
       emit(state.copyWith(errorMessage: 'Failed to create supplier: ${e.toString()}'));

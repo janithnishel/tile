@@ -1,4 +1,4 @@
-import 'package:tilework/models/purchase_order_screen/supplier.dart';
+import 'package:tilework/models/purchase_order/supplier.dart';
 
 class SupplierState {
   final List<Supplier> suppliers;

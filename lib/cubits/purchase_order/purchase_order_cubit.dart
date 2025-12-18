@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
-import 'package:tilework/models/purchase_order_screen/purchase_order.dart';
+import 'package:tilework/models/purchase_order/purchase_order.dart';
 import 'package:tilework/repositories/purchase_order/purchase_order_repository.dart';
 import 'purchase_order_state.dart';
 
@@ -29,15 +29,24 @@ class PurchaseOrderCubit extends Cubit<PurchaseOrderState> {
     emit(state.copyWith(isLoading: true, errorMessage: null));
     try {
       debugPrint('🚀 PurchaseOrderCubit: Starting to load purchase orders...');
+      debugPrint('🔍 PurchaseOrderCubit: Query params: $queryParams');
+      debugPrint('🔑 PurchaseOrderCubit: Token available: ${_currentToken != null}');
+
       final loadedPurchaseOrders = await _purchaseOrderRepository.fetchPurchaseOrders(
         queryParams: queryParams,
         token: _currentToken,
       );
+
       debugPrint('📦 PurchaseOrderCubit: Loaded ${loadedPurchaseOrders.length} purchase orders');
+      if (loadedPurchaseOrders.isNotEmpty) {
+        debugPrint('📋 PurchaseOrderCubit: First PO: ${loadedPurchaseOrders.first.poId} - ${loadedPurchaseOrders.first.customerName}');
+      }
+
       emit(state.copyWith(purchaseOrders: loadedPurchaseOrders, isLoading: false));
       debugPrint('✅ PurchaseOrderCubit: Successfully updated state with purchase orders');
     } catch (e) {
       debugPrint('💥 PurchaseOrderCubit: Failed to load purchase orders: $e');
+      debugPrint('🔍 PurchaseOrderCubit: Error details: ${e.toString()}');
       emit(state.copyWith(
         isLoading: false,
         errorMessage: 'Failed to load purchase orders. Please check your connection.',

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:tilework/models/purchase_order_screen/po_item.dart';
+import 'package:tilework/models/purchase_order/po_item.dart';
 
 class OrderItemCard extends StatelessWidget {
   final POItem item;

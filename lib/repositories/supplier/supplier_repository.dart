@@ -1,5 +1,5 @@
 import '../../services/supplier/api_service.dart';
-import '../../models/purchase_order_screen/supplier.dart';
+import '../../models/purchase_order/supplier.dart';
 
 class SupplierRepository {
   final SupplierApiService _apiService;

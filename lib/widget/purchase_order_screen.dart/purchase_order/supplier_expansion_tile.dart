@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:tilework/models/purchase_order_screen/purchase_order.dart';
-import 'package:tilework/models/purchase_order_screen/supplier.dart';
+import 'package:tilework/models/purchase_order/purchase_order.dart';
+import 'package:tilework/models/purchase_order/supplier.dart';
 import 'po_list_tile.dart';
 
 class SupplierExpansionTile extends StatelessWidget {
@@ -83,50 +83,30 @@ class SupplierExpansionTile extends StatelessWidget {
 
   Widget _buildCategoriesRow() {
     final categories = supplier.categories;
-    if (categories.isEmpty) return const SizedBox.shrink();
+    if (categories.isEmpty) {
+      return const SizedBox.shrink(); // Don't show anything if no categories
+    }
 
-    // Show up to 3 categories, with +X more if there are more
-    final displayCategories = categories.take(3).toList();
-    final remainingCount = categories.length - 3;
-
+    // Show all categories in a wrap layout
     return Wrap(
-      spacing: 4,
-      runSpacing: 2,
-      children: [
-        ...displayCategories.map((category) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200, width: 0.5),
-              ),
-              child: Text(
-                category,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.blue.shade700,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            )),
-        if (remainingCount > 0)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      spacing: 6,
+      runSpacing: 4,
+      children: categories.map((category) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300, width: 0.5),
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.shade200, width: 0.5),
             ),
             child: Text(
-              '+$remainingCount',
+              category,
               style: TextStyle(
-                fontSize: 10,
-                color: Colors.grey.shade700,
+                fontSize: 11,
+                color: Colors.blue.shade700,
                 fontWeight: FontWeight.w500,
               ),
             ),
-          ),
-      ],
+          )).toList(),
     );
   }
 

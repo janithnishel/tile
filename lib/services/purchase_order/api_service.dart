@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:tilework/models/purchase_order_screen/purchase_order.dart';
+import 'package:tilework/models/purchase_order/purchase_order.dart';
 
 class PurchaseOrderApiService {
   final String baseUrl;
@@ -14,26 +14,29 @@ class PurchaseOrderApiService {
     return null;
   }
 
-  // GET: Fetch all purchase orders
-  Future<Map<String, dynamic>> getAllPurchaseOrders({
-    String? token,
-    Map<String, String>? queryParams,
-  }) async {
+  // Helper method to get common headers
+  Future<Map<String, String>> _getHeaders({String? token}) async {
     final currentToken = token ?? await _getToken();
     if (currentToken == null) {
       throw Exception('No authentication token available');
     }
 
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $currentToken',
+    };
+  }
+
+  // GET: Fetch all purchase orders
+  Future<Map<String, dynamic>> getAllPurchaseOrders({
+    String? token,
+    Map<String, String>? queryParams,
+  }) async {
+    final headers = await _getHeaders(token: token);
     final uri = Uri.parse('$baseUrl/purchase-orders');
     final finalUri = queryParams != null ? uri.replace(queryParameters: queryParams) : uri;
 
-    final response = await http.get(
-      finalUri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $currentToken',
-      },
-    );
+    final response = await http.get(finalUri, headers: headers);
 
     if (response.statusCode == 200) {
       return json.decode(response.body);
@@ -44,18 +47,8 @@ class PurchaseOrderApiService {
 
   // GET: Fetch single purchase order
   Future<Map<String, dynamic>> getPurchaseOrder(String id, {String? token}) async {
-    final currentToken = token ?? await _getToken();
-    if (currentToken == null) {
-      throw Exception('No authentication token available');
-    }
-
-    final response = await http.get(
-      Uri.parse('$baseUrl/purchase-orders/$id'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $currentToken',
-      },
-    );
+    final headers = await _getHeaders(token: token);
+    final response = await http.get(Uri.parse('$baseUrl/purchase-orders/$id'), headers: headers);
 
     if (response.statusCode == 200) {
       return json.decode(response.body);
@@ -69,17 +62,10 @@ class PurchaseOrderApiService {
     Map<String, dynamic> purchaseOrderData, {
     String? token,
   }) async {
-    final currentToken = token ?? await _getToken();
-    if (currentToken == null) {
-      throw Exception('No authentication token available');
-    }
-
+    final headers = await _getHeaders(token: token);
     final response = await http.post(
       Uri.parse('$baseUrl/purchase-orders'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $currentToken',
-      },
+      headers: headers,
       body: json.encode(purchaseOrderData),
     );
 
@@ -96,17 +82,10 @@ class PurchaseOrderApiService {
     Map<String, dynamic> purchaseOrderData, {
     String? token,
   }) async {
-    final currentToken = token ?? await _getToken();
-    if (currentToken == null) {
-      throw Exception('No authentication token available');
-    }
-
+    final headers = await _getHeaders(token: token);
     final response = await http.put(
       Uri.parse('$baseUrl/purchase-orders/$id'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $currentToken',
-      },
+      headers: headers,
       body: json.encode(purchaseOrderData),
     );
 
@@ -119,18 +98,8 @@ class PurchaseOrderApiService {
 
   // DELETE: Delete purchase order
   Future<void> deletePurchaseOrder(String id, {String? token}) async {
-    final currentToken = token ?? await _getToken();
-    if (currentToken == null) {
-      throw Exception('No authentication token available');
-    }
-
-    final response = await http.delete(
-      Uri.parse('$baseUrl/purchase-orders/$id'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $currentToken',
-      },
-    );
+    final headers = await _getHeaders(token: token);
+    final response = await http.delete(Uri.parse('$baseUrl/purchase-orders/$id'), headers: headers);
 
     if (response.statusCode != 200) {
       throw Exception('Failed to delete purchase order: ${response.statusCode}');
@@ -143,17 +112,10 @@ class PurchaseOrderApiService {
     Map<String, dynamic> statusData, {
     String? token,
   }) async {
-    final currentToken = token ?? await _getToken();
-    if (currentToken == null) {
-      throw Exception('No authentication token available');
-    }
-
+    final headers = await _getHeaders(token: token);
     final response = await http.patch(
       Uri.parse('$baseUrl/purchase-orders/$id/status'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $currentToken',
-      },
+      headers: headers,
       body: json.encode(statusData),
     );
 

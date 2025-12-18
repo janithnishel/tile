@@ -5,7 +5,7 @@ class CategoryApiService {
   static const String baseUrl = 'http://localhost:5000/api'; // Update this to your backend URL
 
   // Category endpoints
-  static const String categoriesEndpoint = '/categories';
+  static const String categoriesEndpoint = '/super-admin/categories';
 
   final http.Client _client;
 
@@ -77,7 +77,7 @@ class CategoryApiService {
 
   // Get all categories for current company
   Future<Map<String, dynamic>> getCategories({String? token, String? companyId}) async {
-    final endpoint = companyId != null ? '$categoriesEndpoint?companyId=$companyId' : categoriesEndpoint;
+    final endpoint = companyId != null ? '/super-admin/companies/$companyId/categories' : categoriesEndpoint;
     return await get(endpoint, token: token);
   }
 
@@ -107,18 +107,21 @@ class CategoryApiService {
     String categoryId,
     String itemName,
     String baseUnit,
+    String? packagingUnit,
     double sqftPerUnit, {
     String? token
   }) async {
-    return await post(
-      '$categoriesEndpoint/$categoryId/items',
-      {
-        'itemName': itemName,
-        'baseUnit': baseUnit,
-        'sqftPerUnit': sqftPerUnit,
-      },
-      token: token,
-    );
+    final data = {
+      'itemName': itemName,
+      'baseUnit': baseUnit,
+      'sqftPerUnit': sqftPerUnit,
+    };
+
+    if (packagingUnit != null) {
+      data['packagingUnit'] = packagingUnit;
+    }
+
+    return await post('$categoriesEndpoint/$categoryId/items', data, token: token);
   }
 
   // Update item
@@ -127,18 +130,21 @@ class CategoryApiService {
     String itemId,
     String itemName,
     String baseUnit,
+    String? packagingUnit,
     double sqftPerUnit, {
     String? token
   }) async {
-    return await put(
-      '$categoriesEndpoint/$categoryId/items/$itemId',
-      {
-        'itemName': itemName,
-        'baseUnit': baseUnit,
-        'sqftPerUnit': sqftPerUnit,
-      },
-      token: token,
-    );
+    final data = {
+      'itemName': itemName,
+      'baseUnit': baseUnit,
+      'sqftPerUnit': sqftPerUnit,
+    };
+
+    if (packagingUnit != null) {
+      data['packagingUnit'] = packagingUnit;
+    }
+
+    return await put('$categoriesEndpoint/$categoryId/items/$itemId', data, token: token);
   }
 
   // Delete item

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tilework/models/purchase_order_screen/approved_quotation.dart';
+import 'package:tilework/models/purchase_order/approved_quotation.dart';
 import 'package:tilework/utils/po_status_helpers.dart';
 
 class POHeaderSection extends StatelessWidget {

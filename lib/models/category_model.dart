@@ -68,6 +68,7 @@ class ItemModel {
   final String id;
   final String itemName;
   final String baseUnit;
+  final String? packagingUnit;
   final double sqftPerUnit;
   final String categoryId;
 
@@ -75,6 +76,7 @@ class ItemModel {
     required this.id,
     required this.itemName,
     required this.baseUnit,
+    this.packagingUnit,
     required this.sqftPerUnit,
     required this.categoryId,
   });
@@ -84,25 +86,33 @@ class ItemModel {
       id: json['_id'] ?? json['id'] ?? '',
       itemName: json['itemName'] ?? '',
       baseUnit: json['baseUnit'] ?? '',
+      packagingUnit: json['packagingUnit'],
       sqftPerUnit: (json['sqftPerUnit'] ?? 0).toDouble(),
       categoryId: json['categoryId'] ?? '',
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
+    final Map<String, dynamic> data = {
       '_id': id,
       'itemName': itemName,
       'baseUnit': baseUnit,
       'sqftPerUnit': sqftPerUnit,
       'categoryId': categoryId,
     };
+
+    if (packagingUnit != null) {
+      data['packagingUnit'] = packagingUnit;
+    }
+
+    return data;
   }
 
   ItemModel copyWith({
     String? id,
     String? itemName,
     String? baseUnit,
+    String? packagingUnit,
     double? sqftPerUnit,
     String? categoryId,
   }) {
@@ -110,6 +120,7 @@ class ItemModel {
       id: id ?? this.id,
       itemName: itemName ?? this.itemName,
       baseUnit: baseUnit ?? this.baseUnit,
+      packagingUnit: packagingUnit ?? this.packagingUnit,
       sqftPerUnit: sqftPerUnit ?? this.sqftPerUnit,
       categoryId: categoryId ?? this.categoryId,
     );

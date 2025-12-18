@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:tilework/models/purchase_order_screen/approved_quotation.dart';
-import 'package:tilework/models/purchase_order_screen/quotation_item.dart';
-import 'package:tilework/models/purchase_order_screen/supplier.dart';
+import 'package:tilework/models/purchase_order/approved_quotation.dart';
+import 'package:tilework/models/purchase_order/quotation_item.dart';
+import 'package:tilework/models/purchase_order/supplier.dart';
+import 'package:tilework/models/purchase_order/supplier_item.dart';
 
 // ========== LOCAL MODEL CLASSES ==========
 
@@ -165,7 +166,7 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
 
   void _initializeItemControllers(String id, int qty, double price) {
     _quantityControllers[id] = TextEditingController(text: qty.toString());
-    _priceControllers[id] = TextEditingController(text: price.toStringAsFixed(2));
+    _priceControllers[id] = TextEditingController(text: ''); // Leave price empty for user input
   }
 
   void _updateCategories() {
@@ -527,9 +528,9 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
       items: widget.suppliers.map((s) {
         return DropdownMenuItem(
           value: s,
-          // 🔧 FIX: Simplified dropdown item without Expanded
+          // 🔧 FIX: Show all categories instead of just first one
           child: Text(
-            '${s.name} - ${s.category}',
+            '${s.name} - ${s.categoriesDisplayText}',
             overflow: TextOverflow.ellipsis,
           ),
         );
@@ -566,7 +567,7 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  s.category,
+                  s.categoriesDisplayText,
                   style: const TextStyle(fontSize: 10),
                 ),
               ),
@@ -1326,11 +1327,6 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
   }
 
   String _formatCurrency(double amount) {
-    if (amount >= 1000000) {
-      return '${(amount / 1000000).toStringAsFixed(2)}M';
-    } else if (amount >= 1000) {
-      return '${(amount / 1000).toStringAsFixed(1)}K';
-    }
     return amount.toStringAsFixed(2);
   }
 }

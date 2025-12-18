@@ -654,110 +654,120 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
   Future<void> _showItemManagementDialog(CategoryModel category) async {
     await showDialog(
       context: context,
-      builder: (dialogContext) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        ),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 600, maxHeight: 500),
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryAccent,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(AppTheme.radiusLg),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.inventory_rounded,
-                      color: Colors.white,
-                      size: 28,
+      builder: (dialogContext) => BlocBuilder<CategoryCubit, CategoryState>(
+        builder: (dialogContext, state) {
+          // Find the updated category from the current state
+          final updatedCategory = state.categories.firstWhere(
+            (cat) => cat.id == category.id,
+            orElse: () => category, // Fallback to original category if not found
+          );
+
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            ),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 600, maxHeight: 500),
+              child: Column(
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryAccent,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(AppTheme.radiusLg),
+                      ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.inventory_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${updatedCategory.name} - Items',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                '${updatedCategory.items.length} items',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white.withOpacity(0.8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          icon: const Icon(Icons.close, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            '${category.name} - Items',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                          // Add Item Button
+                          AppButton(
+                            text: 'Add Item',
+                            icon: Icons.add_rounded,
+                            type: AppButtonType.secondary,
+                            onPressed: () => _showAddItemDialog(dialogContext, updatedCategory),
                           ),
-                          Text(
-                            '${category.items.length} items',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white.withOpacity(0.8),
-                            ),
-                          ),
+                          const SizedBox(height: 20),
+
+                          // Items List
+                          if (updatedCategory.items.isEmpty)
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(40),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.inventory_2_outlined,
+                                      size: 48,
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No items in this category',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else
+                            ...updatedCategory.items.map((item) => _buildItemTile(item, updatedCategory, dialogContext)),
                         ],
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(dialogContext),
-                      icon: const Icon(Icons.close, color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Content
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Add Item Button
-                      AppButton(
-                        text: 'Add Item',
-                        icon: Icons.add_rounded,
-                        type: AppButtonType.secondary,
-                        onPressed: () => _showAddItemDialog(dialogContext, category),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Items List
-                      if (category.items.isEmpty)
-                        Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(40),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.inventory_2_outlined,
-                                  size: 48,
-                                  color: Colors.grey.shade300,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No items in this category',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey.shade500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      else
-                        ...category.items.map((item) => _buildItemTile(item, category, dialogContext)),
-                    ],
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -837,10 +847,17 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
 
   Future<void> _showAddItemDialog(BuildContext dialogContext, CategoryModel category) async {
     final itemNameController = TextEditingController();
-    final baseUnitController = TextEditingController();
     final sqftController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     bool isLoading = false;
+
+    // Base unit options and state
+    final List<String> baseUnits = ['sqft', 'ft', 'pcs', 'meter'];
+    String? selectedBaseUnit;
+
+    // Packaging unit options and state
+    final List<String> packagingUnits = ['None', 'Box', 'Roll', 'Sheet', 'Pcs'];
+    String? selectedPackagingUnit = 'None';
 
     await showDialog(
       context: dialogContext,
@@ -888,39 +905,151 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  Row(
+                  // Base Unit Dropdown
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: AppTextField(
-                          label: 'Base Unit',
-                          hint: 'e.g., sqft, meter',
-                          controller: baseUnitController,
-                          prefixIcon: Icons.straighten_outlined,
-                          validator: (value) {
-                            if (value?.isEmpty ?? true) return 'Base unit is required';
-                            return null;
-                          },
-                        ),
+                      Text(
+                        'Base Unit',
+                        style: AppTheme.labelText,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AppTextField(
-                          label: 'Sqft per Unit',
-                          hint: 'e.g., 100',
-                          controller: sqftController,
-                          prefixIcon: Icons.calculate_outlined,
-                          keyboardType: TextInputType.number,
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          border: Border.all(color: AppTheme.border),
+                        ),
+                        child: DropdownButtonFormField<String>(
+                          value: selectedBaseUnit,
+                          decoration: InputDecoration(
+                            hintText: 'Select base unit',
+                            hintStyle: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontWeight: FontWeight.normal,
+                            ),
+                            prefixIcon: Container(
+                              margin: const EdgeInsets.all(10),
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryAccent.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.straighten_outlined,
+                                color: AppTheme.primaryAccent,
+                                size: 20,
+                              ),
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
+                          ),
+                          items: baseUnits.map((unit) {
+                            return DropdownMenuItem(
+                              value: unit,
+                              child: Text(unit),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              selectedBaseUnit = value;
+                            });
+                          },
                           validator: (value) {
-                            if (value?.isEmpty ?? true) return 'Sqft per unit is required';
-                            final num = double.tryParse(value!);
-                            if (num == null || num <= 0) return 'Enter valid number';
+                            if (value == null || value.isEmpty) return 'Base unit is required';
                             return null;
                           },
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+                  // Packaging Unit Dropdown
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Packaging Unit (Optional)',
+                        style: AppTheme.labelText,
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          border: Border.all(color: AppTheme.border),
+                        ),
+                        child: DropdownButtonFormField<String>(
+                          value: selectedPackagingUnit,
+                          decoration: InputDecoration(
+                            hintText: 'Select packaging unit',
+                            hintStyle: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontWeight: FontWeight.normal,
+                            ),
+                            prefixIcon: Container(
+                              margin: const EdgeInsets.all(10),
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryAccent.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.inventory_2_outlined,
+                                color: AppTheme.primaryAccent,
+                                size: 20,
+                              ),
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
+                          ),
+                          items: packagingUnits.map((unit) {
+                            return DropdownMenuItem(
+                              value: unit,
+                              child: Text(unit),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              selectedPackagingUnit = value;
+                              // Clear sqft per unit if no packaging unit selected
+                              if (value == null) {
+                                sqftController.clear();
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Sqft per Unit - only show when packaging unit is not 'None'
+                  if (selectedPackagingUnit != null && selectedPackagingUnit != 'None') ...[
+                    AppTextField(
+                      label: selectedBaseUnit != null && selectedPackagingUnit != null
+                          ? '$selectedBaseUnit per $selectedPackagingUnit'
+                          : 'Sqft per Unit',
+                      hint: selectedBaseUnit != null && selectedPackagingUnit != null
+                          ? 'Ex: 0.33 (${selectedBaseUnit?.toLowerCase()} per ${selectedPackagingUnit?.toLowerCase()})'
+                          : 'Ex: 0.33',
+                      controller: sqftController,
+                      prefixIcon: Icons.calculate_outlined,
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) return 'Sqft per unit is required';
+                        final num = double.tryParse(value!);
+                        if (num == null || num <= 0) return 'Enter valid number';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   Row(
                     children: [
                       Expanded(
@@ -944,12 +1073,14 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                                 await context.read<CategoryCubit>().addItemToCategory(
                                   category.id,
                                   itemNameController.text.trim(),
-                                  baseUnitController.text.trim(),
+                                  selectedBaseUnit!,
+                                  selectedPackagingUnit,
                                   double.parse(sqftController.text.trim()),
                                   token: token,
                                 );
-                                Navigator.pop(itemDialogContext);
+
                                 _showSuccessSnackBar('Item added successfully!');
+                                Navigator.pop(itemDialogContext); // Close dialog after successful addition
                               } catch (e) {
                                 _showErrorSnackBar('Failed to add item: ${e.toString()}');
                               }
@@ -971,10 +1102,17 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
 
   Future<void> _showEditItemDialog(BuildContext dialogContext, ItemModel item, CategoryModel category) async {
     final itemNameController = TextEditingController(text: item.itemName);
-    final baseUnitController = TextEditingController(text: item.baseUnit);
     final sqftController = TextEditingController(text: item.sqftPerUnit.toString());
     final formKey = GlobalKey<FormState>();
     bool isLoading = false;
+
+    // Base unit options and state
+    final List<String> baseUnits = ['sqft', 'ft', 'pcs', 'meter'];
+    String? selectedBaseUnit = item.baseUnit;
+
+    // Packaging unit options and state
+    final List<String> packagingUnits = ['None', 'Box', 'Roll', 'Sheet', 'Pcs'];
+    String? selectedPackagingUnit = item.packagingUnit?.isNotEmpty == true ? item.packagingUnit : 'None';
 
     await showDialog(
       context: dialogContext,
@@ -1022,39 +1160,151 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  Row(
+                  // Base Unit Dropdown
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: AppTextField(
-                          label: 'Base Unit',
-                          hint: 'e.g., sqft, meter',
-                          controller: baseUnitController,
-                          prefixIcon: Icons.straighten_outlined,
-                          validator: (value) {
-                            if (value?.isEmpty ?? true) return 'Base unit is required';
-                            return null;
-                          },
-                        ),
+                      Text(
+                        'Base Unit',
+                        style: AppTheme.labelText,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AppTextField(
-                          label: 'Sqft per Unit',
-                          hint: 'e.g., 100',
-                          controller: sqftController,
-                          prefixIcon: Icons.calculate_outlined,
-                          keyboardType: TextInputType.number,
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          border: Border.all(color: AppTheme.border),
+                        ),
+                        child: DropdownButtonFormField<String>(
+                          value: selectedBaseUnit,
+                          decoration: InputDecoration(
+                            hintText: 'Select base unit',
+                            hintStyle: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontWeight: FontWeight.normal,
+                            ),
+                            prefixIcon: Container(
+                              margin: const EdgeInsets.all(10),
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryAccent.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.straighten_outlined,
+                                color: AppTheme.primaryAccent,
+                                size: 20,
+                              ),
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
+                          ),
+                          items: baseUnits.map((unit) {
+                            return DropdownMenuItem(
+                              value: unit,
+                              child: Text(unit),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              selectedBaseUnit = value;
+                            });
+                          },
                           validator: (value) {
-                            if (value?.isEmpty ?? true) return 'Sqft per unit is required';
-                            final num = double.tryParse(value!);
-                            if (num == null || num <= 0) return 'Enter valid number';
+                            if (value == null || value.isEmpty) return 'Base unit is required';
                             return null;
                           },
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+                  // Packaging Unit Dropdown
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Packaging Unit (Optional)',
+                        style: AppTheme.labelText,
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          border: Border.all(color: AppTheme.border),
+                        ),
+                        child: DropdownButtonFormField<String>(
+                          value: selectedPackagingUnit,
+                          decoration: InputDecoration(
+                            hintText: 'Select packaging unit',
+                            hintStyle: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontWeight: FontWeight.normal,
+                            ),
+                            prefixIcon: Container(
+                              margin: const EdgeInsets.all(10),
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryAccent.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.inventory_2_outlined,
+                                color: AppTheme.primaryAccent,
+                                size: 20,
+                              ),
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
+                          ),
+                          items: packagingUnits.map((unit) {
+                            return DropdownMenuItem(
+                              value: unit,
+                              child: Text(unit),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              selectedPackagingUnit = value;
+                              // Clear sqft per unit if no packaging unit selected
+                              if (value == null) {
+                                sqftController.clear();
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Sqft per Unit - only show when packaging unit is not 'None'
+                  if (selectedPackagingUnit != null && selectedPackagingUnit != 'None') ...[
+                    AppTextField(
+                      label: selectedBaseUnit != null && selectedPackagingUnit != null
+                          ? '$selectedBaseUnit per $selectedPackagingUnit'
+                          : 'Sqft per Unit',
+                      hint: selectedBaseUnit != null && selectedPackagingUnit != null
+                          ? 'Ex: 0.33 (${selectedBaseUnit?.toLowerCase()} per ${selectedPackagingUnit?.toLowerCase()})'
+                          : 'Ex: 0.33',
+                      controller: sqftController,
+                      prefixIcon: Icons.calculate_outlined,
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) return 'Sqft per unit is required';
+                        final num = double.tryParse(value!);
+                        if (num == null || num <= 0) return 'Enter valid number';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   Row(
                     children: [
                       Expanded(
@@ -1075,12 +1325,18 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                               setState(() => isLoading = true);
                               try {
                                 final token = _getToken();
+                                final packagingUnitToSend = selectedPackagingUnit == 'None' ? null : selectedPackagingUnit;
+                                final sqftValue = (selectedPackagingUnit == null || selectedPackagingUnit == 'None')
+                                    ? 0.0 // Default value when no packaging unit
+                                    : double.parse(sqftController.text.trim());
+
                                 await context.read<CategoryCubit>().updateItem(
                                   category.id,
                                   item.id,
                                   itemNameController.text.trim(),
-                                  baseUnitController.text.trim(),
-                                  double.parse(sqftController.text.trim()),
+                                  selectedBaseUnit!,
+                                  packagingUnitToSend,
+                                  sqftValue,
                                   token: token,
                                 );
                                 Navigator.pop(itemDialogContext);

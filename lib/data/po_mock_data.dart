@@ -1,8 +1,8 @@
-import 'package:tilework/models/purchase_order_screen/approved_quotation.dart';
-import 'package:tilework/models/purchase_order_screen/po_item.dart';
-import 'package:tilework/models/purchase_order_screen/purchase_order.dart';
-import 'package:tilework/models/purchase_order_screen/quotation_item.dart';
-import 'package:tilework/models/purchase_order_screen/supplier.dart';
+import 'package:tilework/models/purchase_order/approved_quotation.dart';
+import 'package:tilework/models/purchase_order/po_item.dart';
+import 'package:tilework/models/purchase_order/purchase_order.dart';
+import 'package:tilework/models/purchase_order/quotation_item.dart';
+import 'package:tilework/models/purchase_order/supplier.dart';
 
 
 // Pre-defined Suppliers

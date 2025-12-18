@@ -82,6 +82,7 @@ class CategoryCubit extends Cubit<CategoryState> {
     String categoryId,
     String itemName,
     String baseUnit,
+    String? packagingUnit,
     double sqftPerUnit, {
     String? token
   }) async {
@@ -90,6 +91,7 @@ class CategoryCubit extends Cubit<CategoryState> {
         categoryId,
         itemName,
         baseUnit,
+        packagingUnit,
         sqftPerUnit,
         token: token,
       );
@@ -116,6 +118,7 @@ class CategoryCubit extends Cubit<CategoryState> {
     String itemId,
     String itemName,
     String baseUnit,
+    String? packagingUnit,
     double sqftPerUnit, {
     String? token
   }) async {
@@ -125,6 +128,7 @@ class CategoryCubit extends Cubit<CategoryState> {
         itemId,
         itemName,
         baseUnit,
+        packagingUnit,
         sqftPerUnit,
         token: token,
       );

@@ -60,6 +60,7 @@ class CategoryRepository {
     String categoryId,
     String itemName,
     String baseUnit,
+    String? packagingUnit,
     double sqftPerUnit, {
     String? token
   }) async {
@@ -68,6 +69,7 @@ class CategoryRepository {
         categoryId,
         itemName,
         baseUnit,
+        packagingUnit,
         sqftPerUnit,
         token: token,
       );
@@ -85,6 +87,7 @@ class CategoryRepository {
     String itemId,
     String itemName,
     String baseUnit,
+    String? packagingUnit,
     double sqftPerUnit, {
     String? token
   }) async {
@@ -94,6 +97,7 @@ class CategoryRepository {
         itemId,
         itemName,
         baseUnit,
+        packagingUnit,
         sqftPerUnit,
         token: token,
       );

@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:tilework/models/purchase_order_screen/purchase_order.dart';
+import 'package:tilework/models/purchase_order/purchase_order.dart';
 
 class PurchaseOrderState extends Equatable {
   final List<PurchaseOrder> purchaseOrders;

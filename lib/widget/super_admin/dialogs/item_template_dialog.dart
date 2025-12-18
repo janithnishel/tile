@@ -39,11 +39,16 @@ class ItemTemplateDialog extends StatefulWidget {
 class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
   late List<ItemTemplateModel> _items;
   final _formKey = GlobalKey<FormState>();
+  int? _editingIndex; // To keep track of the item being edited
 
   // Controllers for new item
   final _itemNameController = TextEditingController();
   final _baseUnitController = TextEditingController();
   final _sqftPerUnitController = TextEditingController();
+
+  // Packaging unit options
+  final List<String> _packagingUnits = ['Box', 'Roll', 'Sheet', 'Pcs'];
+  String? _selectedPackagingUnit;
 
   @override
   void initState() {
@@ -160,24 +165,56 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                             controller: _baseUnitController,
                           ),
                           const SizedBox(height: 12),
+                          // Packaging Unit Dropdown
+                          DropdownButtonFormField<String>(
+                            value: _selectedPackagingUnit,
+                            decoration: InputDecoration(
+                              labelText: 'Packaging Unit (Optional)',
+                              hintText: 'Select packaging unit',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                            ),
+                            items: _packagingUnits.map((unit) {
+                              return DropdownMenuItem(
+                                value: unit,
+                                child: Text(unit),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedPackagingUnit = value;
+                                // Clear sqft per unit if no packaging unit selected
+                                if (value == null) {
+                                  _sqftPerUnitController.clear();
+                                }
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          // Sqft per Unit - only show when packaging unit is selected
+                          if (_selectedPackagingUnit != null) ...[
+                            AppTextField(
+                              label: 'Sqft per Unit',
+                              hint: 'Ex: 0.33 (total sqft per ${_selectedPackagingUnit?.toLowerCase()})',
+                              controller: _sqftPerUnitController,
+                              keyboardType: TextInputType.number,
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                           Row(
                             children: [
                               Expanded(
                                 flex: 2,
-                                child: AppTextField(
-                                  label: 'Sqft per Unit',
-                                  hint: 'Ex: 0.33',
-                                  controller: _sqftPerUnitController,
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                flex: 1,
                                 child: AppButton(
-                                  text: 'Add',
-                                  icon: Icons.add_rounded,
-                                  onPressed: _addItem,
+                                  text: _editingIndex != null ? 'Save' : 'Add',
+                                  icon: _editingIndex != null
+                                      ? Icons.save_rounded
+                                      : Icons.add_rounded,
+                                  onPressed: _saveItem,
                                 ),
                               ),
                             ],
@@ -186,44 +223,84 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                       );
                     } else {
                       // Horizontal layout for larger screens
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      return Column(
                         children: [
-                          Expanded(
-                            flex: 3,
-                            child: AppTextField(
-                              label: 'Item Name',
-                              hint: 'Ex: Skirting - 4 Inch',
-                              controller: _itemNameController,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: 2,
-                            child: AppTextField(
-                              label: 'Base Unit',
-                              hint: 'Ex: Linear Meter',
-                              controller: _baseUnitController,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: 2,
-                            child: AppTextField(
-                              label: 'Sqft per Unit',
-                              hint: 'Ex: 0.33',
-                              controller: _sqftPerUnitController,
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 28),
-                            child: AppButton(
-                              text: 'Add',
-                              icon: Icons.add_rounded,
-                              onPressed: _addItem,
-                            ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: AppTextField(
+                                  label: 'Item Name',
+                                  hint: 'Ex: Skirting - 4 Inch',
+                                  controller: _itemNameController,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 2,
+                                child: AppTextField(
+                                  label: 'Base Unit',
+                                  hint: 'Ex: Linear Meter',
+                                  controller: _baseUnitController,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 2,
+                                child: DropdownButtonFormField<String>(
+                                  value: _selectedPackagingUnit,
+                                  decoration: InputDecoration(
+                                    labelText: 'Packaging Unit (Optional)',
+                                    hintText: 'Select unit',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                  ),
+                                  items: _packagingUnits.map((unit) {
+                                    return DropdownMenuItem(
+                                      value: unit,
+                                      child: Text(unit),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedPackagingUnit = value;
+                                      // Clear sqft per unit if no packaging unit selected
+                                      if (value == null) {
+                                        _sqftPerUnitController.clear();
+                                      }
+                                    });
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              if (_selectedPackagingUnit != null) ...[
+                                Expanded(
+                                  flex: 2,
+                                  child: AppTextField(
+                                    label: 'Sqft per Unit',
+                                    hint: 'Ex: 0.33 (per ${_selectedPackagingUnit?.toLowerCase()})',
+                                    controller: _sqftPerUnitController,
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                              ],
+                              Padding(
+                                padding: const EdgeInsets.only(top: 28),
+                                child: AppButton(
+                                  text: _editingIndex != null ? 'Save' : 'Add',
+                                  icon: _editingIndex != null
+                                      ? Icons.save_rounded
+                                      : Icons.add_rounded,
+                                  onPressed: _saveItem,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       );
@@ -300,6 +377,15 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                                               fontWeight: FontWeight.w600,
                                               fontSize: 14,
                                             ),
+                                          ),
+                                        ),
+                                        // Edit button
+                                        IconButton(
+                                          onPressed: () => _editItem(index),
+                                          icon:  Icon(
+                                            Icons.edit_outlined,
+                                            color: AppTheme.primary,
+                                            size: 20,
                                           ),
                                         ),
                                         // Delete button
@@ -411,6 +497,17 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
 
                                     const SizedBox(width: 12),
 
+                                    // Edit button
+                                    IconButton(
+                                      onPressed: () => _editItem(index),
+                                      icon: const Icon(
+                                        Icons.edit_outlined,
+                                        color: AppTheme.primary,
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 12),
+
                                     // Delete button
                                     IconButton(
                                       onPressed: () => _deleteItem(index),
@@ -463,26 +560,60 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
     );
   }
 
-  void _addItem() {
-    if (_itemNameController.text.isEmpty ||
-        _baseUnitController.text.isEmpty ||
-        _sqftPerUnitController.text.isEmpty) {
+  void _saveItem() {
+    // Validate required fields
+    if (_itemNameController.text.isEmpty || _baseUnitController.text.isEmpty) {
+      return;
+    }
+
+    // If packaging unit is selected, sqft per unit is required
+    if (_selectedPackagingUnit != null && _sqftPerUnitController.text.isEmpty) {
+      return;
+    }
+
+    // If no packaging unit selected, sqft per unit is still required for base calculation
+    if (_selectedPackagingUnit == null && _sqftPerUnitController.text.isEmpty) {
       return;
     }
 
     setState(() {
-      _items.add(ItemTemplateModel(
-        id: DateTime.now().toString(),
+      final newItem = ItemTemplateModel(
+        id: _editingIndex != null
+            ? _items[_editingIndex!].id
+            : DateTime.now().toString(),
         itemName: _itemNameController.text.trim(),
         baseUnit: _baseUnitController.text.trim(),
+        packagingUnit: _selectedPackagingUnit,
         sqftPerUnit: double.tryParse(_sqftPerUnitController.text) ?? 0,
         categoryId: widget.category.id,
-      ));
+      );
+
+      if (_editingIndex != null) {
+        _items[_editingIndex!] = newItem;
+      } else {
+        _items.add(newItem);
+      }
     });
 
+    // Clear form and reset editing index
     _itemNameController.clear();
     _baseUnitController.clear();
     _sqftPerUnitController.clear();
+    setState(() {
+      _selectedPackagingUnit = null;
+      _editingIndex = null;
+    });
+  }
+
+  void _editItem(int index) {
+    setState(() {
+      _editingIndex = index;
+      final item = _items[index];
+      _itemNameController.text = item.itemName;
+      _baseUnitController.text = item.baseUnit;
+      _selectedPackagingUnit = item.packagingUnit;
+      _sqftPerUnitController.text = item.sqftPerUnit.toString();
+    });
   }
 
   void _deleteItem(int index) {

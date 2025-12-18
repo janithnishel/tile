@@ -18,14 +18,16 @@ class ItemTemplateModel {
   final String id;
   final String itemName;
   final String baseUnit;
-  final double sqftPerUnit;
+  final String? packagingUnit;
+  final double? sqftPerUnit;
   final String categoryId;
 
   ItemTemplateModel({
     required this.id,
     required this.itemName,
     required this.baseUnit,
-    required this.sqftPerUnit,
+    this.packagingUnit,
+    this.sqftPerUnit,
     required this.categoryId,
   });
 }

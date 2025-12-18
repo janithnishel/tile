@@ -56,7 +56,7 @@ class PurchaseOrder {
       'poId': poId,
       'quotationId': quotationId,
       'customerName': customerName,
-      'supplier': supplier.toJson(),
+      'supplier': supplier.id, // Send only the supplier ID, not the full object
       'orderDate': orderDate.toIso8601String(),
       if (expectedDelivery != null) 'expectedDelivery': expectedDelivery!.toIso8601String(),
       'status': status,

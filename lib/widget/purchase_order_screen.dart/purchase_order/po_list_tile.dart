@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:tilework/models/purchase_order_screen/purchase_order.dart';
+import 'package:tilework/models/purchase_order/purchase_order.dart';
 import 'package:tilework/utils/po_status_helpers.dart';
 import 'package:tilework/widget/purchase_order_screen.dart/status_badge.dart';
 

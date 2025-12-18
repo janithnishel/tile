@@ -43,6 +43,7 @@ class AppTheme {
   );
 
   // Primary Colors
+  static const Color primary = AppColors.primary;
   static const Color primaryDark = Color(0xFF1E3A8A);
   static const Color primaryLight = Color(0xFF1E40AF);
   static const Color primaryAccent = Color(0xFF3B82F6);
