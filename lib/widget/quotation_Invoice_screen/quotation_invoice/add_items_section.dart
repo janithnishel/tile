@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:tilework/data/mock_data.dart';
 import 'package:tilework/models/category_model.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/invoice_line_item.dart';
@@ -11,6 +12,7 @@ class AddItemsSection extends StatelessWidget {
   final bool isAddEnabled;
   final bool isPendingQuotation;
   final bool isEditable;
+  final bool isQuotationCreation; // New parameter to indicate quotation creation mode
   final VoidCallback onAddItem;
   final VoidCallback onAddService;
   final Function(int, ItemDescription) onItemChanged;
@@ -18,6 +20,7 @@ class AddItemsSection extends StatelessWidget {
   final Function(int, double) onPriceChanged;
   final Function(int) onDeleteItem;
   final Function(InvoiceLineItem)? onCustomItemTap;
+  final Function(int, bool)? onSiteVisitPaymentChanged; // Callback for site visit payment status changes
 
   const AddItemsSection({
     Key? key,
@@ -26,6 +29,7 @@ class AddItemsSection extends StatelessWidget {
     required this.isAddEnabled,
     required this.isPendingQuotation,
     required this.isEditable,
+    this.isQuotationCreation = false,
     required this.onAddItem,
     required this.onAddService,
     required this.onItemChanged,
@@ -33,6 +37,7 @@ class AddItemsSection extends StatelessWidget {
     required this.onPriceChanged,
     required this.onDeleteItem,
     this.onCustomItemTap,
+    this.onSiteVisitPaymentChanged,
   }) : super(key: key);
 
   // Get unique categories (ALL categories for items section)
@@ -42,6 +47,13 @@ class AddItemsSection extends StatelessWidget {
     // Add ALL categories from API-loaded categories
     for (final category in categories) {
       categoryNames.add(category.name);
+    }
+
+    // Also add categories from existing line items to prevent dropdown errors
+    for (final item in lineItems) {
+      if (item.item.category.isNotEmpty) {
+        categoryNames.add(item.item.category);
+      }
     }
 
     // Convert to sorted list
@@ -57,31 +69,49 @@ class AddItemsSection extends StatelessWidget {
 
   // Get products for a specific category (materials only for items section)
   List<String> _getProductsForCategory(String categoryName) {
+    debugPrint('🔍 Getting products for category: "$categoryName"');
+
     if (categoryName == 'Select Category' || categoryName.isEmpty) {
+      debugPrint('❌ Category not selected or empty');
       return ['Select Product Name'];
     }
+
+    debugPrint('📊 Available categories: ${categories.map((c) => c.name).toList()}');
 
     final category = categories.firstWhere(
       (cat) => cat.name == categoryName,
       orElse: () => CategoryModel(id: '', name: '', companyId: '', items: []),
     );
 
-    if (category.id.isEmpty) {
-      return ['Select Product Name'];
+    debugPrint('🎯 Found category: ${category.name}, ID: ${category.id}, Items: ${category.items.length}');
+
+    final Set<String> productNames = {};
+
+    if (category.id.isNotEmpty) {
+      // Category found in API, add its products
+      final products = category.items
+          .map((ItemModel item) => item.itemName)
+          .toSet();
+      productNames.addAll(products);
+    } else {
+      // Category not found in API, check existing line items for products in this category
+      debugPrint('⚠️ Category not found in API, checking existing line items');
+      for (final item in lineItems) {
+        if (item.item.category == categoryName && item.item.productName.isNotEmpty) {
+          productNames.add(item.item.productName);
+        }
+      }
     }
 
-    // For items section, show both materials and services
-    final products = category.items
-        .map((ItemModel item) => item.itemName)
-        .toSet()
-        .toList()
-      ..sort();
-
-    if (products.isEmpty) {
+    if (productNames.isEmpty) {
+      debugPrint('⚠️ No products available in this category');
       return ['No Products Available'];
     }
 
-    return ['Select Product Name', ...products];
+    final products = productNames.toList()..sort();
+    final result = ['Select Product Name', ...products];
+    debugPrint('✅ Returning products: $result');
+    return result;
   }
 
   // Get ItemDescription for a category and product combination
@@ -227,6 +257,7 @@ class AddItemsSection extends StatelessWidget {
   }
 
   Widget _buildTableHeader() {
+    // Show full header for all cases to ensure consistency
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, right: 40),
       child: Container(
@@ -250,8 +281,8 @@ class AddItemsSection extends StatelessWidget {
               ),
             ),
             SizedBox(width: 8),
-            SizedBox(
-              width: 70,
+            Expanded(
+              flex: 1,
               child: Text(
                 'Unit Type',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -303,11 +334,15 @@ class AddItemsSection extends StatelessWidget {
       isDropdownEditable: isEditable,
       isValueEditable: isPendingQuotation,
       isDeleteEnabled: isEditable,
+      isQuotationCreation: isQuotationCreation,
       onItemChanged: (newItem) => onItemChanged(index, newItem),
       onQuantityChanged: (qty) => onQuantityChanged(index, qty),
       onPriceChanged: (price) => onPriceChanged(index, price),
       onDelete: () => onDeleteItem(index),
       onCustomItemTap: () => onCustomItemTap?.call(item),
+      onSiteVisitPaymentChanged: onSiteVisitPaymentChanged != null
+          ? (isPaid) => onSiteVisitPaymentChanged!(index, isPaid)
+          : null,
     );
   }
 }
@@ -322,11 +357,13 @@ class _CustomLineItemRow extends StatefulWidget {
   final bool isDropdownEditable;
   final bool isValueEditable;
   final bool isDeleteEnabled;
+  final bool isQuotationCreation; // New parameter to indicate quotation creation mode
   final Function(ItemDescription) onItemChanged;
   final Function(double) onQuantityChanged;
   final Function(double) onPriceChanged;
   final VoidCallback onDelete;
   final VoidCallback? onCustomItemTap;
+  final Function(bool)? onSiteVisitPaymentChanged;
 
   const _CustomLineItemRow({
     Key? key,
@@ -338,11 +375,13 @@ class _CustomLineItemRow extends StatefulWidget {
     required this.isDropdownEditable,
     required this.isValueEditable,
     required this.isDeleteEnabled,
+    required this.isQuotationCreation,
     required this.onItemChanged,
     required this.onQuantityChanged,
     required this.onPriceChanged,
     required this.onDelete,
     this.onCustomItemTap,
+    this.onSiteVisitPaymentChanged,
   }) : super(key: key);
 
   @override
@@ -354,6 +393,9 @@ class _CustomLineItemRowState extends State<_CustomLineItemRow> {
   late TextEditingController _priceController;
   String? _selectedCategory;
   String? _selectedProduct;
+  bool _isSiteVisitPaid = false; // Track if site visit is paid
+  double _currentQuantity = 0.0;
+  double _currentPrice = 0.0;
 
   @override
   void initState() {
@@ -373,17 +415,84 @@ class _CustomLineItemRowState extends State<_CustomLineItemRow> {
           ? widget.item.item.sellingPrice.toStringAsFixed(2)
           : '',
     );
+
+    // Initialize local state
+    _currentQuantity = widget.item.quantity;
+    _currentPrice = widget.item.item.sellingPrice;
+
+    // Add listeners to update local state immediately
+    _quantityController.addListener(() {
+      final newQuantity = _parseMultiNumber(_quantityController.text);
+      if (_currentQuantity != newQuantity) {
+        setState(() {
+          _currentQuantity = newQuantity;
+        });
+        // Defer parent callback to avoid setState during build
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          widget.onQuantityChanged(newQuantity);
+        });
+      }
+    });
+
+    _priceController.addListener(() {
+      final newPrice = _parseMultiNumber(_priceController.text);
+      if (_currentPrice != newPrice) {
+        setState(() {
+          _currentPrice = newPrice;
+        });
+        // Defer parent callback to avoid setState during build
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          widget.onPriceChanged(newPrice);
+        });
+      }
+    });
+  }
+
+  // Parse multiple numbers from a single text input and return their SUM.
+  // Accepts separators: comma, semicolon, whitespace. Also handles comma as
+  // decimal separator when appropriate (e.g. "1,5").
+  double _parseMultiNumber(String text) {
+    if (text.trim().isEmpty) return 0.0;
+
+    final parts = text.split(RegExp(r'[,;\s]+'));
+    double sum = 0.0;
+    for (final raw in parts) {
+      final part = raw.trim();
+      if (part.isEmpty) continue;
+
+      // If the part contains a comma but no dot, treat comma as decimal separator
+      String normalized = part;
+      if (part.contains(',') && !part.contains('.')) {
+        normalized = part.replaceAll(',', '.');
+      }
+
+      final value = double.tryParse(normalized);
+      if (value != null) sum += value;
+    }
+    return sum;
   }
 
   void _initSelections() {
     _selectedCategory = widget.item.item.category.isNotEmpty ? widget.item.item.category : null;
-    _selectedProduct = null; // Reset to null initially, will be set properly when dropdown builds
+    // Initialize selected product from the saved item so existing documents
+    // show the actual product/service instead of the placeholder.
+    if (widget.item.item.productName.isNotEmpty) {
+      _selectedProduct = widget.item.item.productName;
+    } else if (widget.item.item.name.isNotEmpty) {
+      // Fallback: if productName is empty but name is present (custom item), use name
+      _selectedProduct = widget.item.item.name;
+    } else {
+      _selectedProduct = null; // Will show placeholder
+    }
+
+    // Initialize site visit payment status from saved item
+    _isSiteVisitPaid = widget.item.isSiteVisitPaid;
   }
 
   @override
   void didUpdateWidget(_CustomLineItemRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.item != widget.item) {
+    if (oldWidget.item != widget.item || oldWidget.categories != widget.categories) {
       _updateControllers();
       _initSelections();
     }
@@ -414,6 +523,7 @@ class _CustomLineItemRowState extends State<_CustomLineItemRow> {
 
   @override
   Widget build(BuildContext context) {
+    // Use consistent full layout for all cases
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -499,49 +609,174 @@ class _CustomLineItemRowState extends State<_CustomLineItemRow> {
         ? widget.getProductsForCategory(_selectedCategory!)
         : ['Select Category First'];
 
-    return DropdownButtonFormField<String>(
-      value: _selectedProduct,
-      decoration: InputDecoration(
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-        filled: !widget.isDropdownEditable,
-        fillColor: widget.isDropdownEditable ? null : Colors.grey.shade100,
-        hintText: 'Select Product',
-      ),
-      isExpanded: true,
-      items: products
-          .map(
-            (product) => DropdownMenuItem(
-              value: product,
-              child: Text(product),
-            ),
-          )
-          .toList(),
-      onChanged: (widget.isDropdownEditable && _selectedCategory != null && _selectedCategory != 'Select Category')
-          ? (value) {
-              if (value != null && value != 'Select Product Name') {
-                setState(() {
-                  _selectedProduct = value;
-                });
+    // Deduplicate products to avoid DropdownMenuItem value collisions
+    final List<String> uniqueProducts = [];
+    final seen = <String>{};
+    for (final p in products) {
+      final key = p.trim().toLowerCase();
+      if (!seen.contains(key)) {
+        seen.add(key);
+        uniqueProducts.add(p);
+      }
+    }
 
-                final itemDesc = widget.getItemDescription(_selectedCategory!, value);
-                if (itemDesc != null) {
-                  widget.onItemChanged(itemDesc);
+    // Ensure selected product is valid, otherwise reset to null
+    if (_selectedProduct != null && !uniqueProducts.contains(_selectedProduct)) {
+      setState(() {
+        _selectedProduct = null;
+      });
+    }
+
+    // Check if selected product is "Site Visiting" to show payment toggle
+    final isSiteVisiting = _selectedProduct?.toLowerCase().contains('site visit') ?? false;
+
+    if (isSiteVisiting && widget.isDropdownEditable) {
+      // For site visiting, show dropdown and buttons in same row
+      return Row(
+        children: [
+          // Dropdown takes most of the space
+          Expanded(
+            flex: 3,
+            child: DropdownButtonFormField<String>(
+              value: _selectedProduct,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                filled: !widget.isDropdownEditable,
+                fillColor: widget.isDropdownEditable ? null : Colors.grey.shade100,
+                hintText: 'Select Product',
+              ),
+              isExpanded: true,
+              items: uniqueProducts
+                  .map(
+                    (product) => DropdownMenuItem(
+                      value: product,
+                      child: Text(product),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (widget.isDropdownEditable && _selectedCategory != null && _selectedCategory != 'Select Category')
+                  ? (value) {
+                      if (value != null && value != 'Select Product Name') {
+                        setState(() {
+                          _selectedProduct = value;
+                          // Only reset payment status if changing to a different product
+                          // Keep saved payment status if selecting the same saved product
+                          if (value != widget.item.item.productName) {
+                            _isSiteVisitPaid = false;
+                          }
+                        });
+
+                        final itemDesc = widget.getItemDescription(_selectedCategory!, value);
+                        if (itemDesc != null) {
+                          widget.onItemChanged(itemDesc);
+                          setState(() {
+                            _priceController.text = itemDesc.sellingPrice > 0
+                                ? itemDesc.sellingPrice.toStringAsFixed(2)
+                                : '';
+                          });
+                        }
+                      }
+                    }
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Payment status buttons
+          Expanded(
+            flex: 2,
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _isSiteVisitPaid = false;
+                      });
+                      widget.onSiteVisitPaymentChanged?.call(false);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: !_isSiteVisitPaid ? Colors.blue.shade600 : Colors.grey.shade300,
+                      foregroundColor: !_isSiteVisitPaid ? Colors.white : Colors.grey.shade700,
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                      textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+                      minimumSize: const Size(0, 36),
+                    ),
+                    child: const Text('To be Paid'),
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _isSiteVisitPaid = true;
+                      });
+                      widget.onSiteVisitPaymentChanged?.call(true);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isSiteVisitPaid ? Colors.green.shade600 : Colors.grey.shade300,
+                      foregroundColor: _isSiteVisitPaid ? Colors.white : Colors.grey.shade700,
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                      textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+                      minimumSize: const Size(0, 36),
+                    ),
+                    child: const Text('Paid'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else {
+      // Normal dropdown for non-site-visit items
+      return DropdownButtonFormField<String>(
+        value: _selectedProduct,
+        decoration: InputDecoration(
+          border: const OutlineInputBorder(),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          filled: !widget.isDropdownEditable,
+          fillColor: widget.isDropdownEditable ? null : Colors.grey.shade100,
+          hintText: 'Select Product',
+        ),
+        isExpanded: true,
+        items: uniqueProducts
+            .map(
+              (product) => DropdownMenuItem(
+                value: product,
+                child: Text(product),
+              ),
+            )
+            .toList(),
+        onChanged: (widget.isDropdownEditable && _selectedCategory != null && _selectedCategory != 'Select Category')
+            ? (value) {
+                if (value != null && value != 'Select Product Name') {
                   setState(() {
-                    _priceController.text = itemDesc.sellingPrice > 0
-                        ? itemDesc.sellingPrice.toStringAsFixed(2)
-                        : '';
+                    _selectedProduct = value;
+                    // Reset payment status when changing products
+                    _isSiteVisitPaid = false;
                   });
+
+                  final itemDesc = widget.getItemDescription(_selectedCategory!, value);
+                  if (itemDesc != null) {
+                    widget.onItemChanged(itemDesc);
+                    setState(() {
+                      _priceController.text = itemDesc.sellingPrice > 0
+                          ? itemDesc.sellingPrice.toStringAsFixed(2)
+                          : '';
+                    });
+                  }
                 }
               }
-            }
-          : null,
-    );
+            : null,
+      );
+    }
   }
 
   Widget _buildUnitDisplay() {
-    return SizedBox(
-      width: 70,
+    return Expanded(
+      flex: 1,
       child: Container(
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 15),
@@ -558,6 +793,9 @@ class _CustomLineItemRowState extends State<_CustomLineItemRow> {
     return TextField(
       controller: _quantityController,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,1}')),
+      ],
       readOnly: !widget.isValueEditable,
       decoration: InputDecoration(
         border: const OutlineInputBorder(),
@@ -566,11 +804,6 @@ class _CustomLineItemRowState extends State<_CustomLineItemRow> {
         fillColor: widget.isValueEditable ? null : Colors.grey.shade100,
         hintText: '0',
       ),
-      onChanged: (value) {
-        if (widget.isValueEditable) {
-          widget.onQuantityChanged(double.tryParse(value) ?? 0.0);
-        }
-      },
     );
   }
 
@@ -578,6 +811,9 @@ class _CustomLineItemRowState extends State<_CustomLineItemRow> {
     return TextField(
       controller: _priceController,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+      ],
       readOnly: !widget.isValueEditable,
       decoration: InputDecoration(
         border: const OutlineInputBorder(),
@@ -586,15 +822,16 @@ class _CustomLineItemRowState extends State<_CustomLineItemRow> {
         fillColor: widget.isValueEditable ? null : Colors.grey.shade100,
         hintText: '0.00',
       ),
-      onChanged: (value) {
-        if (widget.isValueEditable) {
-          widget.onPriceChanged(double.tryParse(value) ?? 0.0);
-        }
-      },
     );
   }
 
   Widget _buildAmountDisplay() {
+    // Use local state for immediate updates
+    final isSiteVisitPaid = _selectedProduct?.toLowerCase().contains('site visit') ?? false;
+    final baseAmount = _currentQuantity * _currentPrice;
+    final displayAmount = isSiteVisitPaid && _isSiteVisitPaid ? -baseAmount : baseAmount;
+    final amountColor = (isSiteVisitPaid && _isSiteVisitPaid) ? Colors.red : Colors.black;
+
     return Container(
       alignment: Alignment.centerRight,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
@@ -603,8 +840,11 @@ class _CustomLineItemRowState extends State<_CustomLineItemRow> {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        widget.item.amount > 0 ? widget.item.amount.toStringAsFixed(2) : '-',
-        style: const TextStyle(fontWeight: FontWeight.w500),
+        baseAmount != 0 ? displayAmount.toStringAsFixed(2) : '-',
+        style: TextStyle(
+          fontWeight: FontWeight.w500,
+          color: amountColor,
+        ),
       ),
     );
   }

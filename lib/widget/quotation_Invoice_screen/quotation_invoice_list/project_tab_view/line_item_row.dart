@@ -198,15 +198,34 @@ class _LineItemRowState extends State<LineItemRow> {
         ? widget.availableItems.where((item) => item.category == selectedCategory && !item.productName.contains('No Products')).toList()
         : <ItemDescription>[];
 
-    final validProducts = categoryProducts;
+    // Deduplicate products by productName to avoid multiple DropdownMenuItems with same value
+    final Map<String, ItemDescription> deduped = {};
+    for (final p in categoryProducts) {
+      if (!deduped.containsKey(p.productName)) {
+        deduped[p.productName] = p;
+      }
+    }
+    final uniqueProducts = deduped.values.toList();
+
+    final validProducts = uniqueProducts;
 
     // Find the matching item from validProducts that has the same productName and category
     ItemDescription? selectedItem;
     if (widget.item.item.productName.isNotEmpty) {
       final matchingItems = validProducts.where(
-        (item) => item.productName == widget.item.item.productName && item.category == widget.item.item.category,
+        (item) => item.productName == widget.item.item.productName,
       );
       selectedItem = matchingItems.isNotEmpty ? matchingItems.first : null;
+      // If selectedItem is not in the validProducts (e.g., custom item), push it to the front
+      if (selectedItem == null) {
+        selectedItem = widget.item.item;
+        // Ensure the dropdown items include this selectedItem instance to satisfy
+        // DropdownButton's requirement that the value exist in the items list.
+        final exists = validProducts.any((p) => p.productName == selectedItem!.productName);
+        if (!exists) {
+          validProducts.insert(0, selectedItem!);
+        }
+      }
     }
 
     return DropdownButtonFormField<ItemDescription>(
@@ -230,7 +249,7 @@ class _LineItemRowState extends State<LineItemRow> {
             ),
           )
           .toList(),
-      onChanged: (widget.isDropdownEditable && categoryProducts.isNotEmpty)
+      onChanged: (widget.isDropdownEditable && validProducts.isNotEmpty)
           ? (value) {
               if (value != null) {
                 widget.onItemChanged(value);

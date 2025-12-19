@@ -49,8 +49,13 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
   final _itemNameController = TextEditingController();
   final _sqftPerUnitController = TextEditingController();
 
-  // Dynamic unit options from configs
-  List<String> get _serviceUnits => widget.itemConfigs?['unit_configs']?['service_units']?.cast<String>() ?? ['sqft', 'ft', 'Job', 'Visit', 'Day'];
+  // Dynamic unit options from configs - include all possible existing units
+  List<String> get _serviceUnits {
+    // For services, include 'fixed' plus any existing units to prevent dropdown errors
+    final configUnits = widget.itemConfigs?['unit_configs']?['service_units']?.cast<String>() ?? ['sqft', 'ft',];
+    // Always include 'fixed' as the first option for new services
+    return ['fixed', ...configUnits.where((unit) => unit != 'fixed')];
+  }
   List<String> get _productUnits => widget.itemConfigs?['unit_configs']?['product_units']?.cast<String>() ?? ['sqft', 'ft', 'pcs', 'kg', 'm'];
 
   // Packaging unit options (keeping static for now)
@@ -322,37 +327,6 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                               hint: 'Ex: 3.5 (meters per box)',
                               controller: _sqftPerUnitController,
                               keyboardType: TextInputType.number,
-                            ),
-                            const SizedBox(height: 12),
-                          ] else ...[
-                            // Service fields
-                            DropdownButtonFormField<ServicePricingType>(
-                              initialValue: _selectedPricingType,
-                              decoration: InputDecoration(
-                                labelText: 'Service Pricing Type',
-                                hintText: 'Select pricing type',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                filled: true,
-                                fillColor: Colors.white,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                              ),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: ServicePricingType.fixed,
-                                  child: Text('Fixed: Total amount regardless of quantity'),
-                                ),
-                                DropdownMenuItem(
-                                  value: ServicePricingType.variable,
-                                  child: Text('Variable: Price per unit of Base Unit'),
-                                ),
-                              ],
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedPricingType = value;
-                                });
-                              },
                             ),
                             const SizedBox(height: 12),
                           ],
@@ -922,11 +896,6 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
       return;
     }
 
-    // For services, pricing type is required
-    if (_isService && _selectedPricingType == null) {
-      return;
-    }
-
     // For products, if packaging unit is selected, sqft per unit is required
     if (!_isService && _selectedPackagingUnit != null && _sqftPerUnitController.text.isEmpty) {
       return;
@@ -943,7 +912,7 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
         sqftPerUnit: !_isService ? (double.tryParse(_sqftPerUnitController.text) ?? 0) : 0,
         categoryId: widget.category.id,
         isService: _isService,
-        pricingType: _isService ? _selectedPricingType : null,
+        pricingType: _isService ? ServicePricingType.fixed : null, // Always fixed for services
       );
 
       if (_editingIndex != null) {

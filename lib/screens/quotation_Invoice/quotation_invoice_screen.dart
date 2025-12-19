@@ -938,10 +938,13 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                     isAddEnabled: _isNewDocument || _workingDocument.isQuotation,
                     isPendingQuotation: _isNewDocument || _isPendingQuotation,
                     isEditable: _workingDocument.isQuotation && _workingDocument.status != DocumentStatus.approved,
+                    isQuotationCreation: _isNewDocument && _workingDocument.isQuotation, // New parameter for quotation creation mode
                     onItemChanged: (index, item) {
                       if (mounted) {
                         setState(() {
                           _workingDocument.lineItems[index].item = item;
+                          // Reset payment status when item changes
+                          _workingDocument.lineItems[index].isSiteVisitPaid = false;
                           _hasUnsavedChanges = true;
                         });
                       }
@@ -985,10 +988,17 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                       }
                     },
                     onCustomItemTap: _showCustomItemDialog,
+                    onSiteVisitPaymentChanged: (index, isPaid) {
+                      if (mounted) {
+                        setState(() {
+                          _workingDocument.lineItems[index].isSiteVisitPaid = isPaid;
+                          _hasUnsavedChanges = true;
+                        });
+                      }
+                    },
                   );
                 },
               ),
-
 
               // Action Buttons Section - Conditional based on mode
               if (_isNewDocument)

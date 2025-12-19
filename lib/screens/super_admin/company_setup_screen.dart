@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:collection';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
@@ -894,9 +895,15 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
 
     // Helper function to get base units based on item type
     List<String> getBaseUnits(bool isServiceType) {
-      return isServiceType
-          ? (itemConfigs?['unit_configs']?['service_units']?.cast<String>() ?? ['sqft', 'ft', 'Job', 'Visit', 'Day'])
-          : (itemConfigs?['unit_configs']?['product_units']?.cast<String>() ?? ['sqft', 'ft', 'pcs', 'kg', 'm']);
+      if (isServiceType) {
+        // For services, only allow these units
+        return ['fixed', 'ft', 'sqft'];
+      }
+
+      final dynamic configUnits = itemConfigs?['unit_configs']?['product_units'];
+      final List<String> defaultUnits = ['sqft', 'ft', 'pcs', 'kg', 'm'];
+      final List<String> raw = configUnits is List ? List<String>.from(configUnits) : defaultUnits;
+      return LinkedHashSet<String>.from(raw).toList();
     }
 
     String? selectedBaseUnit;
@@ -1089,76 +1096,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Service Pricing Type - only show when Service is selected
-                  if (isService) ...[
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Service Pricing Type',
-                          style: AppTheme.labelText,
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                            border: Border.all(color: AppTheme.border),
-                          ),
-                          child: DropdownButtonFormField<String>(
-                            value: selectedPricingType,
-                            decoration: InputDecoration(
-                              hintText: 'Select pricing type',
-                              hintStyle: TextStyle(
-                                color: Colors.grey.shade400,
-                                fontWeight: FontWeight.normal,
-                              ),
-                              prefixIcon: Container(
-                                margin: const EdgeInsets.all(10),
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryAccent.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.attach_money_outlined,
-                                  color: AppTheme.primaryAccent,
-                                  size: 20,
-                                ),
-                              ),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                            ),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'fixed',
-                                child: Text('Fixed: Total amount regardless of quantity'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'variable',
-                                child: Text('Variable: Price per unit of Base Unit'),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              setState(() {
-                                selectedPricingType = value;
-                              });
-                            },
-                            validator: (value) {
-                              if (isService && (value == null || value.isEmpty)) {
-                                return 'Service pricing type is required';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                  // Service pricing type removed - services are automatically fixed
 
                   // Packaging Unit Dropdown - only show when Product is selected
                   if (!isService) ...[
@@ -1322,9 +1260,11 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
 
     // Helper function to get base units based on item type (same as add dialog)
     List<String> getBaseUnits(bool isServiceType) {
-      return isServiceType
-          ? (itemConfigs?['unit_configs']?['service_units']?.cast<String>() ?? ['sqft', 'ft', 'Job', 'Visit', 'Day'])
-          : (itemConfigs?['unit_configs']?['product_units']?.cast<String>() ?? ['sqft', 'ft', 'pcs', 'kg', 'm']);
+      if (isServiceType) {
+        // Restrict service units to fixed and common area units
+        return ['fixed', 'ft', 'sqft'];
+      }
+      return itemConfigs?['unit_configs']?['product_units']?.cast<String>() ?? ['sqft', 'ft', 'pcs', 'kg', 'm'];
     }
 
     String? selectedBaseUnit = item.baseUnit;
@@ -1517,76 +1457,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Service Pricing Type - only show when Service is selected
-                  if (isService) ...[
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Service Pricing Type',
-                          style: AppTheme.labelText,
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                            border: Border.all(color: AppTheme.border),
-                          ),
-                          child: DropdownButtonFormField<String>(
-                            value: selectedPricingType,
-                            decoration: InputDecoration(
-                              hintText: 'Select pricing type',
-                              hintStyle: TextStyle(
-                                color: Colors.grey.shade400,
-                                fontWeight: FontWeight.normal,
-                              ),
-                              prefixIcon: Container(
-                                margin: const EdgeInsets.all(10),
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryAccent.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.attach_money_outlined,
-                                  color: AppTheme.primaryAccent,
-                                  size: 20,
-                                ),
-                              ),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                            ),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'fixed',
-                                child: Text('Fixed: Total amount regardless of quantity'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'variable',
-                                child: Text('Variable: Price per unit of Base Unit'),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              setState(() {
-                                selectedPricingType = value;
-                              });
-                            },
-                            validator: (value) {
-                              if (isService && (value == null || value.isEmpty)) {
-                                return 'Service pricing type is required';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                  // Service pricing type removed - services are automatically fixed
 
                   // Packaging Unit Dropdown - only show when Product is selected
                   if (!isService) ...[

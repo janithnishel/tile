@@ -145,17 +145,7 @@ class QuotationDocument {
       return sum + (item.isAlreadyPaid ? -item.amount : item.amount);
     });
 
-    total += serviceTotal;
-
-    // Subtract paid site visits from the total (legacy logic for backward compatibility)
-    double siteVisitDeductions = lineItems
-        .where((item) =>
-            item.item.type == ItemType.service &&
-            item.item.name.toLowerCase().contains('site visit') &&
-            item.item.servicePaymentStatus == ServicePaymentStatus.paid)
-        .fold(0, (sum, item) => sum + item.amount);
-
-    return total - siteVisitDeductions;
+    return total + serviceTotal;
   }
 
   double get totalPayments =>
