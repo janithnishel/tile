@@ -11,9 +11,8 @@ import 'package:tilework/models/quotation_Invoice_screen/project/invoice_line_it
 import 'package:tilework/models/quotation_Invoice_screen/project/item_description.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/payment_record.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/quotation_document.dart';
-import 'package:tilework/models/quotation_Invoice_screen/project/service_item.dart';
+
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/add_items_section.dart';
-import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/add_services_section.dart';
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/create_mode_button.dart';
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/customer_details_section.dart';
 // import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice/document_details_section.dart'; // 💡 DocumentDetailsSection වෙත වෙනස්කම් නොකරන නිසා import එක එලෙසම තබන්න
@@ -122,17 +121,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
             ),
           )
           .toList(),
-      serviceItems: original.serviceItems
-          .map(
-            (item) => ServiceItem(
-              serviceDescription: item.serviceDescription,
-              unitType: item.unitType,
-              quantity: item.quantity,
-              rate: item.rate,
-              isAlreadyPaid: item.isAlreadyPaid,
-            ),
-          )
-          .toList(),
+
       paymentHistory: original.paymentHistory
           .map(
             (p) => PaymentRecord(p.amount, p.date, description: p.description),
@@ -167,23 +156,11 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                             )
                           );
 
-    // Check if service items have changed
-    final hasServiceChanges = _workingDocument.serviceItems.length != _originalDocument.serviceItems.length ||
-                              _workingDocument.serviceItems.any((item) =>
-                                !_originalDocument.serviceItems.any((origItem) =>
-                                  origItem.serviceDescription == item.serviceDescription &&
-                                  origItem.unitType == item.unitType &&
-                                  origItem.quantity == item.quantity &&
-                                  origItem.rate == item.rate &&
-                                  origItem.isAlreadyPaid == item.isAlreadyPaid
-                                )
-                              );
-
     // Check if status has changed
     final hasStatusChanged = _workingDocument.status != _originalDocument.status;
 
     final hasAnyChanges = hasNameChanged || hasPhoneChanged || hasAddressChanged ||
-                         hasTitleChanged || hasDateChanges || hasItemChanges || hasServiceChanges || hasStatusChanged;
+                         hasTitleChanged || hasDateChanges || hasItemChanges || hasStatusChanged;
 
     // Debug logging
     if (hasAnyChanges != _hasUnsavedChanges) {
@@ -392,8 +369,8 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       'New Item',
       sellingPrice: 0.0,
       unit: 'units',
-      category: 'Custom', // Required category field
-      productName: 'Custom Item',
+      category: '', // Start with empty category to show placeholder
+      productName: '',
       type: ItemType.material,
     );
 
@@ -419,8 +396,8 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       'New Service',
       sellingPrice: 0.0,
       unit: 'units',
-      category: 'Services', // Service category
-      productName: 'Custom Service',
+      category: '',
+      productName: '',
       type: ItemType.service,
     );
 
@@ -458,101 +435,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
     );
   }
 
-  // Service Item Management Methods
-  void _addNewService() {
-    if (mounted) {
-      setState(() {
-        _workingDocument.serviceItems.add(
-          ServiceItem(
-            serviceDescription: 'Custom Service',
-            unitType: UnitType.fixed,
-            quantity: 1.0,
-            rate: 0.0,
-            isAlreadyPaid: false,
-          ),
-        );
-        _hasUnsavedChanges = true;
-      });
-    }
-  }
 
-  void _updateServiceItem(int index, ServiceItem updatedItem) {
-    if (mounted) {
-      setState(() {
-        _workingDocument.serviceItems[index] = updatedItem;
-        _hasUnsavedChanges = true;
-      });
-    }
-  }
-
-  void _updateServiceUnitType(int index, UnitType unitType) {
-    if (mounted) {
-      setState(() {
-        _workingDocument.serviceItems[index] = ServiceItem(
-          serviceDescription: _workingDocument.serviceItems[index].serviceDescription,
-          unitType: unitType,
-          quantity: unitType == UnitType.fixed ? 1.0 : _workingDocument.serviceItems[index].quantity,
-          rate: _workingDocument.serviceItems[index].rate,
-          isAlreadyPaid: _workingDocument.serviceItems[index].isAlreadyPaid,
-        );
-        _hasUnsavedChanges = true;
-      });
-    }
-  }
-
-  void _updateServiceQuantity(int index, double quantity) {
-    if (mounted) {
-      setState(() {
-        _workingDocument.serviceItems[index] = ServiceItem(
-          serviceDescription: _workingDocument.serviceItems[index].serviceDescription,
-          unitType: _workingDocument.serviceItems[index].unitType,
-          quantity: quantity,
-          rate: _workingDocument.serviceItems[index].rate,
-          isAlreadyPaid: _workingDocument.serviceItems[index].isAlreadyPaid,
-        );
-        _hasUnsavedChanges = true;
-      });
-    }
-  }
-
-  void _updateServiceRate(int index, double rate) {
-    if (mounted) {
-      setState(() {
-        _workingDocument.serviceItems[index] = ServiceItem(
-          serviceDescription: _workingDocument.serviceItems[index].serviceDescription,
-          unitType: _workingDocument.serviceItems[index].unitType,
-          quantity: _workingDocument.serviceItems[index].quantity,
-          rate: rate,
-          isAlreadyPaid: _workingDocument.serviceItems[index].isAlreadyPaid,
-        );
-        _hasUnsavedChanges = true;
-      });
-    }
-  }
-
-  void _updateServiceAlreadyPaid(int index, bool isAlreadyPaid) {
-    if (mounted) {
-      setState(() {
-        _workingDocument.serviceItems[index] = ServiceItem(
-          serviceDescription: _workingDocument.serviceItems[index].serviceDescription,
-          unitType: _workingDocument.serviceItems[index].unitType,
-          quantity: _workingDocument.serviceItems[index].quantity,
-          rate: _workingDocument.serviceItems[index].rate,
-          isAlreadyPaid: isAlreadyPaid,
-        );
-        _hasUnsavedChanges = true;
-      });
-    }
-  }
-
-  void _deleteServiceItem(int index) {
-    if (mounted) {
-      setState(() {
-        _workingDocument.serviceItems.removeAt(index);
-        _hasUnsavedChanges = true;
-      });
-    }
-  }
 
   // Create Quotation (for new documents)
   Future<void> _createQuotation() async {
@@ -1038,9 +921,15 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
 
                   if (categoryState.categories.isNotEmpty) {
                     debugPrint('🏗️ Available categories:');
+                    int totalItems = 0;
                     for (var category in categoryState.categories) {
-                      debugPrint('   - ${category.name} (${category.items.length} items)');
+                      final allItemsCount = category.items.length;
+                      final serviceItemsCount = category.items.where((item) => item.isService).length;
+                      final materialItemsCount = allItemsCount - serviceItemsCount;
+                      totalItems += allItemsCount;
+                      debugPrint('   - ${category.name} (${allItemsCount} total: ${materialItemsCount} materials, ${serviceItemsCount} services)');
                     }
+                    debugPrint('🏗️ Total categories: ${categoryState.categories.length}, Total items: $totalItems');
                   }
 
                   return AddItemsSection(
@@ -1099,26 +988,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                   );
                 },
               ),
-              const Divider(height: 32),
 
-              // Additional Services Section
-              BlocBuilder<CategoryCubit, CategoryState>(
-                builder: (context, categoryState) {
-                  return AddServicesSection(
-                    serviceItems: _workingDocument.serviceItems,
-                    categories: categoryState.categories,
-                    isAddEnabled: _isNewDocument || _workingDocument.isQuotation,
-                    onAddService: _addNewService,
-                    onServiceChanged: _updateServiceItem,
-                    onUnitTypeChanged: _updateServiceUnitType,
-                    onQuantityChanged: _updateServiceQuantity,
-                    onRateChanged: _updateServiceRate,
-                    onAlreadyPaidChanged: _updateServiceAlreadyPaid,
-                    onDeleteService: _deleteServiceItem,
-                  );
-                },
-              ),
-              const Divider(height: 32),
 
               // Action Buttons Section - Conditional based on mode
               if (_isNewDocument)

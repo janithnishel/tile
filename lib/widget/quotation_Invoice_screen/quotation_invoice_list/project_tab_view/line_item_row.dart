@@ -142,21 +142,13 @@ class _LineItemRowState extends State<LineItemRow> {
   }
 
   Widget _buildActivityItemDropdown() {
-    // Get unique categories from available items
-    final categories = widget.availableItems
-        .map((item) => item.category)
-        .where((category) => category.isNotEmpty)
-        .toSet()
-        .toList();
+    // Get unique categories from available items and add placeholder
+    final categories = <String>{}
+      ..addAll(widget.availableItems.map((item) => item.category).where((c) => c.isNotEmpty));
+    final categoryList = ['Select Category', ...categories.toList()..sort()];
 
-    // Find the matching category from available categories
-    String? selectedCategory;
-    if (widget.item.item.category.isNotEmpty) {
-      final matchingCategories = categories.where(
-        (category) => category == widget.item.item.category,
-      );
-      selectedCategory = matchingCategories.isNotEmpty ? matchingCategories.first : null;
-    }
+    // Determine selected category (fall back to placeholder)
+    String selectedCategory = widget.item.item.category.isNotEmpty ? widget.item.item.category : 'Select Category';
 
     return DropdownButtonFormField<String>(
       value: selectedCategory,
@@ -165,10 +157,10 @@ class _LineItemRowState extends State<LineItemRow> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         filled: !widget.isDropdownEditable,
         fillColor: widget.isDropdownEditable ? null : Colors.grey.shade100,
-        hintText: 'Select category...',
+        hintText: 'Select Category',
       ),
       isExpanded: true,
-      items: categories
+      items: categoryList
           .map(
             (category) => DropdownMenuItem(
               value: category,
@@ -181,7 +173,7 @@ class _LineItemRowState extends State<LineItemRow> {
           .toList(),
       onChanged: widget.isDropdownEditable
           ? (value) {
-              if (value != null) {
+              if (value != null && value != 'Select Category') {
                 // Find the first item in this category to set as default
                 final categoryItems = widget.availableItems.where((item) => item.category == value).toList();
                 if (categoryItems.isNotEmpty) {
@@ -201,12 +193,12 @@ class _LineItemRowState extends State<LineItemRow> {
 
   Widget _buildProductNameDropdown() {
     // Get products for the selected category from available items
-    final categoryProducts = widget.item.item.category.isNotEmpty
-        ? widget.availableItems.where((item) => item.category == widget.item.item.category).toList()
+    final selectedCategory = widget.item.item.category.isNotEmpty ? widget.item.item.category : '';
+    final categoryProducts = selectedCategory.isNotEmpty
+        ? widget.availableItems.where((item) => item.category == selectedCategory && !item.productName.contains('No Products')).toList()
         : <ItemDescription>[];
 
-    // Filter out placeholder items (items with "No Items Available")
-    final validProducts = categoryProducts.where((item) => item.productName != 'No Items Available').toList();
+    final validProducts = categoryProducts;
 
     // Find the matching item from validProducts that has the same productName and category
     ItemDescription? selectedItem;
@@ -224,7 +216,7 @@ class _LineItemRowState extends State<LineItemRow> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         filled: !widget.isDropdownEditable,
         fillColor: widget.isDropdownEditable ? null : Colors.grey.shade100,
-        hintText: validProducts.isEmpty ? 'No products available' : 'Select product...',
+        hintText: 'Select Product Name',
       ),
       isExpanded: true,
       items: validProducts
@@ -238,7 +230,7 @@ class _LineItemRowState extends State<LineItemRow> {
             ),
           )
           .toList(),
-      onChanged: (widget.isDropdownEditable && validProducts.isNotEmpty)
+      onChanged: (widget.isDropdownEditable && categoryProducts.isNotEmpty)
           ? (value) {
               if (value != null) {
                 widget.onItemChanged(value);

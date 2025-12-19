@@ -35,90 +35,91 @@ class AddItemsSection extends StatelessWidget {
     this.onCustomItemTap,
   }) : super(key: key);
 
-  // Convert categories and their items to ItemDescription list
-  List<ItemDescription> get _availableItems {
-    final List<ItemDescription> items = [];
-    final Set<String> seenNames = {}; // Track unique item names
+  // Get unique categories (ALL categories for items section)
+  List<String> get _availableCategories {
+    final Set<String> categoryNames = {};
 
-    // First, add all items from existing line items to ensure compatibility
-    for (final lineItem in lineItems) {
-      final existingItem = lineItem.item;
-      if (!seenNames.contains(existingItem.name)) {
-        items.add(existingItem);
-        seenNames.add(existingItem.name);
-      }
-    }
-
-    // Then add items from API-loaded categories
+    // Add ALL categories from API-loaded categories
     for (final category in categories) {
-      // Add all items from this category (filter out services for items section)
-      for (final item in category.items) {
-        // Skip services - they should only appear in services section
-        if (item.isService) continue;
-
-        // Ensure unique item names to avoid dropdown conflicts
-        final uniqueName = seenNames.contains(item.itemName)
-            ? '${item.itemName} (${category.name})' // Add category suffix for duplicates
-            : item.itemName;
-
-        if (!seenNames.contains(uniqueName)) {
-          items.add(
-            ItemDescription(
-              uniqueName, // name - ensure uniqueness
-              sellingPrice: 0.0, // Default price, can be customized later
-              unit: item.baseUnit,
-              category: category.name,
-              categoryId: category.id,
-              productName: item.itemName,
-              type: ItemType.material, // Products are material items
-            ),
-          );
-
-          seenNames.add(uniqueName);
-        }
-      }
-
-      // If category has no items, add a placeholder item so the category appears in dropdown
-      if (category.items.isEmpty &&
-          !seenNames.contains('${category.name} - No Items')) {
-        items.add(
-          ItemDescription(
-            '${category.name} - No Items',
-            sellingPrice: 0.0,
-            unit: 'units',
-            category: category.name,
-            categoryId: category.id,
-            productName: 'No Items Available',
-          ),
-        );
-        seenNames.add('${category.name} - No Items');
-      }
+      categoryNames.add(category.name);
     }
 
-    // Add items from mock data if no categories are loaded from API
-    if (categories.isEmpty) {
-      for (final mockItem in masterItemList) {
-        if (!seenNames.contains(mockItem.name)) {
-          items.add(mockItem);
-          seenNames.add(mockItem.name);
-        }
-      }
+    // Convert to sorted list
+    final sortedCategories = categoryNames.toList()..sort();
+
+    // Add default option for new quotations
+    if (sortedCategories.isEmpty) {
+      return ['Select Category'];
     }
 
-    // Add a custom item option if still no items are available
-    if (items.isEmpty) {
-      items.add(
-        ItemDescription(
-          'Custom Item',
-          sellingPrice: 0.0,
-          unit: 'units',
-          category: 'Custom',
-          productName: 'Custom Item',
-        ),
-      );
+    return ['Select Category', ...sortedCategories];
+  }
+
+  // Get products for a specific category (materials only for items section)
+  List<String> _getProductsForCategory(String categoryName) {
+    if (categoryName == 'Select Category' || categoryName.isEmpty) {
+      return ['Select Product Name'];
     }
 
-    return items;
+    final category = categories.firstWhere(
+      (cat) => cat.name == categoryName,
+      orElse: () => CategoryModel(id: '', name: '', companyId: '', items: []),
+    );
+
+    if (category.id.isEmpty) {
+      return ['Select Product Name'];
+    }
+
+    // For items section, show both materials and services
+    final products = category.items
+        .map((ItemModel item) => item.itemName)
+        .toSet()
+        .toList()
+      ..sort();
+
+    if (products.isEmpty) {
+      return ['No Products Available'];
+    }
+
+    return ['Select Product Name', ...products];
+  }
+
+  // Get ItemDescription for a category and product combination
+  ItemDescription? _getItemDescription(String categoryName, String productName) {
+    if (categoryName == 'Select Category' || productName == 'Select Product Name' || productName == 'No Products Available') {
+      return null;
+    }
+
+    final category = categories.firstWhere(
+      (cat) => cat.name == categoryName,
+      orElse: () => CategoryModel(id: '', name: '', companyId: '', items: []),
+    );
+
+    if (category.id.isEmpty) return null;
+
+    final item = category.items.firstWhere(
+      (ItemModel item) => item.itemName == productName,
+      orElse: () => ItemModel(
+        id: '',
+        itemName: '',
+        baseUnit: '',
+        sqftPerUnit: 0.0,
+        categoryId: '',
+        isService: false,
+      ),
+    );
+
+    if (item.id.isEmpty) return null;
+
+    return ItemDescription(
+      productName,
+      sellingPrice: 0.0,
+      unit: item.baseUnit,
+      category: category.name,
+      categoryId: category.id,
+      productName: item.itemName,
+      type: item.isService ? ItemType.service : ItemType.material,
+    );
   }
 
   @override
@@ -186,29 +187,8 @@ class AddItemsSection extends StatelessWidget {
             final index = entry.key;
             final item = entry.value;
 
-            return LineItemRow(
-              index: index,
-              item: item,
-              availableItems: _availableItems,
-              isDropdownEditable:
-                  isPendingQuotation ||
-                  (!item.isOriginalQuotationItem && isEditable),
-              isValueEditable:
-                  isPendingQuotation ||
-                  (!item.isOriginalQuotationItem && isEditable),
-              isDeleteEnabled:
-                  isPendingQuotation ||
-                  (!item.isOriginalQuotationItem && isEditable),
-              onItemChanged: (newItem) => onItemChanged(index, newItem),
-              onQuantityChanged: (qty) => onQuantityChanged(index, qty),
-              onPriceChanged: (price) => onPriceChanged(index, price),
-              onDelete: () => onDeleteItem(index),
-              onCustomItemTap: () => onCustomItemTap?.call(item),
-            );
+            return _buildLineItemRow(index, item);
           }),
-
-          // Items Total
-          _buildItemsTotal(),
         ],
       ],
     );
@@ -265,7 +245,7 @@ class AddItemsSection extends StatelessWidget {
             Expanded(
               flex: 2,
               child: Text(
-                'Product Name',
+                'Product Name/Service Name',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -273,7 +253,7 @@ class AddItemsSection extends StatelessWidget {
             SizedBox(
               width: 70,
               child: Text(
-                'Unit',
+                'Unit Type',
                 style: TextStyle(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
@@ -309,42 +289,336 @@ class AddItemsSection extends StatelessWidget {
     );
   }
 
-  Widget _buildItemsTotal() {
-    // Calculate total for all line items
-    final total = lineItems.fold<double>(
-      0.0,
-      (sum, item) => sum + item.amount,
-    );
 
-    return Container(
-      margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.shade200),
-      ),
+
+  // Build a custom LineItemRow with separate Category and Product dropdowns
+  Widget _buildLineItemRow(int index, InvoiceLineItem item) {
+    return _CustomLineItemRow(
+      key: ValueKey(item),
+      index: index,
+      item: item,
+      categories: _availableCategories,
+      getProductsForCategory: _getProductsForCategory,
+      getItemDescription: _getItemDescription,
+      isDropdownEditable: isEditable,
+      isValueEditable: isPendingQuotation,
+      isDeleteEnabled: isEditable,
+      onItemChanged: (newItem) => onItemChanged(index, newItem),
+      onQuantityChanged: (qty) => onQuantityChanged(index, qty),
+      onPriceChanged: (price) => onPriceChanged(index, price),
+      onDelete: () => onDeleteItem(index),
+      onCustomItemTap: () => onCustomItemTap?.call(item),
+    );
+  }
+}
+
+// Custom Line Item Row with separate Category and Product dropdowns
+class _CustomLineItemRow extends StatefulWidget {
+  final int index;
+  final InvoiceLineItem item;
+  final List<String> categories;
+  final List<String> Function(String) getProductsForCategory;
+  final ItemDescription? Function(String, String) getItemDescription;
+  final bool isDropdownEditable;
+  final bool isValueEditable;
+  final bool isDeleteEnabled;
+  final Function(ItemDescription) onItemChanged;
+  final Function(double) onQuantityChanged;
+  final Function(double) onPriceChanged;
+  final VoidCallback onDelete;
+  final VoidCallback? onCustomItemTap;
+
+  const _CustomLineItemRow({
+    Key? key,
+    required this.index,
+    required this.item,
+    required this.categories,
+    required this.getProductsForCategory,
+    required this.getItemDescription,
+    required this.isDropdownEditable,
+    required this.isValueEditable,
+    required this.isDeleteEnabled,
+    required this.onItemChanged,
+    required this.onQuantityChanged,
+    required this.onPriceChanged,
+    required this.onDelete,
+    this.onCustomItemTap,
+  }) : super(key: key);
+
+  @override
+  State<_CustomLineItemRow> createState() => _CustomLineItemRowState();
+}
+
+class _CustomLineItemRowState extends State<_CustomLineItemRow> {
+  late TextEditingController _quantityController;
+  late TextEditingController _priceController;
+  String? _selectedCategory;
+  String? _selectedProduct;
+
+  @override
+  void initState() {
+    super.initState();
+    _initControllers();
+    _initSelections();
+  }
+
+  void _initControllers() {
+    _quantityController = TextEditingController(
+      text: widget.item.quantity > 0
+          ? widget.item.quantity.toStringAsFixed(1)
+          : '',
+    );
+    _priceController = TextEditingController(
+      text: widget.item.item.sellingPrice > 0
+          ? widget.item.item.sellingPrice.toStringAsFixed(2)
+          : '',
+    );
+  }
+
+  void _initSelections() {
+    _selectedCategory = widget.item.item.category.isNotEmpty ? widget.item.item.category : null;
+    _selectedProduct = null; // Reset to null initially, will be set properly when dropdown builds
+  }
+
+  @override
+  void didUpdateWidget(_CustomLineItemRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item != widget.item) {
+      _updateControllers();
+      _initSelections();
+    }
+  }
+
+  void _updateControllers() {
+    final newQty = widget.item.quantity > 0
+        ? widget.item.quantity.toStringAsFixed(1)
+        : '';
+    final newPrice = widget.item.item.sellingPrice > 0
+        ? widget.item.item.sellingPrice.toStringAsFixed(2)
+        : '';
+
+    if (_quantityController.text != newQty) {
+      _quantityController.text = newQty;
+    }
+    if (_priceController.text != newPrice) {
+      _priceController.text = newPrice;
+    }
+  }
+
+  @override
+  void dispose() {
+    _quantityController.dispose();
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Text(
-            'Items Total',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue,
-            ),
+          // Category Dropdown
+          Expanded(
+            flex: 2,
+            child: _buildCategoryDropdown(),
           ),
-          Text(
-            'Rs ${total.toStringAsFixed(2)}',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue,
-            ),
+          const SizedBox(width: 8),
+
+          // Product Name Dropdown
+          Expanded(
+            flex: 2,
+            child: _buildProductDropdown(),
           ),
+          const SizedBox(width: 8),
+
+          // Unit Display
+          _buildUnitDisplay(),
+          const SizedBox(width: 8),
+
+          // Quantity
+          Expanded(
+            flex: 1,
+            child: _buildQuantityField(),
+          ),
+          const SizedBox(width: 8),
+
+          // Price
+          Expanded(
+            flex: 1,
+            child: _buildPriceField(),
+          ),
+          const SizedBox(width: 8),
+
+          // Amount
+          Expanded(
+            flex: 1,
+            child: _buildAmountDisplay(),
+          ),
+
+          // Delete Button
+          _buildDeleteButton(),
         ],
       ),
     );
+  }
+
+  Widget _buildCategoryDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedCategory,
+      decoration: InputDecoration(
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        filled: !widget.isDropdownEditable,
+        fillColor: widget.isDropdownEditable ? null : Colors.grey.shade100,
+        hintText: 'Select Category',
+      ),
+      isExpanded: true,
+      items: widget.categories
+          .map(
+            (category) => DropdownMenuItem(
+              value: category,
+              child: Text(category),
+            ),
+          )
+          .toList(),
+      onChanged: widget.isDropdownEditable
+          ? (value) {
+              setState(() {
+                _selectedCategory = value;
+                _selectedProduct = null; // Reset product when category changes
+              });
+            }
+          : null,
+    );
+  }
+
+  Widget _buildProductDropdown() {
+    final products = _selectedCategory != null
+        ? widget.getProductsForCategory(_selectedCategory!)
+        : ['Select Category First'];
+
+    return DropdownButtonFormField<String>(
+      value: _selectedProduct,
+      decoration: InputDecoration(
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        filled: !widget.isDropdownEditable,
+        fillColor: widget.isDropdownEditable ? null : Colors.grey.shade100,
+        hintText: 'Select Product',
+      ),
+      isExpanded: true,
+      items: products
+          .map(
+            (product) => DropdownMenuItem(
+              value: product,
+              child: Text(product),
+            ),
+          )
+          .toList(),
+      onChanged: (widget.isDropdownEditable && _selectedCategory != null && _selectedCategory != 'Select Category')
+          ? (value) {
+              if (value != null && value != 'Select Product Name') {
+                setState(() {
+                  _selectedProduct = value;
+                });
+
+                final itemDesc = widget.getItemDescription(_selectedCategory!, value);
+                if (itemDesc != null) {
+                  widget.onItemChanged(itemDesc);
+                  setState(() {
+                    _priceController.text = itemDesc.sellingPrice > 0
+                        ? itemDesc.sellingPrice.toStringAsFixed(2)
+                        : '';
+                  });
+                }
+              }
+            }
+          : null,
+    );
+  }
+
+  Widget _buildUnitDisplay() {
+    return SizedBox(
+      width: 70,
+      child: Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 15),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(widget.item.item.unit.isNotEmpty ? widget.item.item.unit : '-'),
+      ),
+    );
+  }
+
+  Widget _buildQuantityField() {
+    return TextField(
+      controller: _quantityController,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      readOnly: !widget.isValueEditable,
+      decoration: InputDecoration(
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        filled: !widget.isValueEditable,
+        fillColor: widget.isValueEditable ? null : Colors.grey.shade100,
+        hintText: '0',
+      ),
+      onChanged: (value) {
+        if (widget.isValueEditable) {
+          widget.onQuantityChanged(double.tryParse(value) ?? 0.0);
+        }
+      },
+    );
+  }
+
+  Widget _buildPriceField() {
+    return TextField(
+      controller: _priceController,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      readOnly: !widget.isValueEditable,
+      decoration: InputDecoration(
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        filled: !widget.isValueEditable,
+        fillColor: widget.isValueEditable ? null : Colors.grey.shade100,
+        hintText: '0.00',
+      ),
+      onChanged: (value) {
+        if (widget.isValueEditable) {
+          widget.onPriceChanged(double.tryParse(value) ?? 0.0);
+        }
+      },
+    );
+  }
+
+  Widget _buildAmountDisplay() {
+    return Container(
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        widget.item.amount > 0 ? widget.item.amount.toStringAsFixed(2) : '-',
+        style: const TextStyle(fontWeight: FontWeight.w500),
+      ),
+    );
+  }
+
+  Widget _buildDeleteButton() {
+    if (widget.isDeleteEnabled) {
+      return SizedBox(
+        width: 40,
+        child: IconButton(
+          icon: const Icon(Icons.delete_outline, color: Colors.red),
+          onPressed: widget.onDelete,
+        ),
+      );
+    }
+    return const SizedBox(width: 40);
   }
 }

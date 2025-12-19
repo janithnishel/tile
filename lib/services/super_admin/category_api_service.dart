@@ -5,7 +5,7 @@ class CategoryApiService {
   static const String baseUrl = 'http://localhost:5000/api'; // Update this to your backend URL
 
   // Category endpoints
-  static const String categoriesEndpoint = '/super-admin/categories';
+  static const String categoriesEndpoint = '/categories';
 
   final http.Client _client;
 
