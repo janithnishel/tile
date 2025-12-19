@@ -27,10 +27,12 @@ class DashboardCubit extends Cubit<DashboardState> {
 
       emit(state.copyWith(
         isLoading: false,
-        totalCompanies: stats['totalCompanies'] ?? 0,
-        activeCompanies: stats['activeCompanies'] ?? 0,
-        inactiveCompanies: stats['inactiveCompanies'] ?? 0,
-        totalCategories: stats['totalCategories'] ?? 0,
+        totalCompanies: (stats['totalCompanies'] as int?) ?? 0,
+        activeCompanies: (stats['activeCompanies'] as int?) ?? 0,
+        inactiveCompanies: (stats['inactiveCompanies'] as int?) ?? 0,
+        totalCategories: (stats['totalCategories'] as int?) ?? 0,
+        totalItems: (stats['totalItems'] as int?) ?? 0,
+        totalServices: (stats['totalServices'] as int?) ?? 0,
         recentActivity: recentActivity,
         recentCompanies: recentCompanies,
       ));

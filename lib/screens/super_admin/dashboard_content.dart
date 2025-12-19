@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/super_admin/dashboard/dashboard_cubit.dart';
@@ -23,6 +24,8 @@ class DashboardContent extends StatefulWidget {
 }
 
 class _DashboardContentState extends State<DashboardContent> {
+  late Timer _autoRefreshTimer;
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +34,26 @@ class _DashboardContentState extends State<DashboardContent> {
     if (token != null) {
       context.read<DashboardCubit>().loadDashboardData(token: token);
     }
+
+    // Start auto refresh timer (refresh every 30 seconds)
+    _startAutoRefresh();
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer.cancel();
+    super.dispose();
+  }
+
+  void _startAutoRefresh() {
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted) {
+        final token = _getToken();
+        if (token != null) {
+          context.read<DashboardCubit>().refreshData(token: token);
+        }
+      }
+    });
   }
 
   String? _getToken() {
@@ -215,7 +238,7 @@ class _DashboardContentState extends State<DashboardContent> {
                         const SizedBox(width: 32),
                         _buildWelcomeStat(
                           state.totalCategories.toString(),
-                          'Categories',
+                          'Total Categories',
                           Icons.category_rounded,
                         ),
                       ],
@@ -329,15 +352,17 @@ class _DashboardContentState extends State<DashboardContent> {
                 ),
               ),
               SizedBox(
-                width: (maxWidth - 16) / 2,
-                child: StatCard(
-                  title: 'Total Categories',
-                  value: state.totalCategories.toString(),
-                  icon: Icons.category_rounded,
-                  color: const Color(0xFF8B5CF6),
-                  trend: '+5',
-                  isPositiveTrend: true,
-                  subtitle: 'Across all companies',
+                width: maxWidth, // Full width for dual card
+                child: DualStatCard(
+                  leftTitle: 'Total Items',
+                  leftValue: state.totalItems.toString(),
+                  leftIcon: Icons.inventory_2_rounded,
+                  leftColor: const Color(0xFF8B5CF6),
+                  rightTitle: 'Total Services',
+                  rightValue: state.totalServices.toString(),
+                  rightIcon: Icons.build_rounded,
+                  rightColor: const Color(0xFFF59E0B),
+                  subtitle: 'Across all categories',
                   onTap: () {},
                 ),
               ),
@@ -384,14 +409,17 @@ class _DashboardContentState extends State<DashboardContent> {
                 ),
                 const SizedBox(width: 20),
                 Expanded(
-                  child: StatCard(
-                    title: 'Total Categories',
-                    value: state.totalCategories.toString(),
-                    icon: Icons.category_rounded,
-                    color: const Color(0xFF8B5CF6),
-                    trend: '+5',
-                    isPositiveTrend: true,
-                    subtitle: 'Across all companies',
+                  flex: 2, // Give more space for dual card
+                  child: DualStatCard(
+                    leftTitle: 'Total Items',
+                    leftValue: state.totalItems.toString(),
+                    leftIcon: Icons.inventory_2_rounded,
+                    leftColor: const Color(0xFF8B5CF6),
+                    rightTitle: 'Total Services',
+                    rightValue: state.totalServices.toString(),
+                    rightIcon: Icons.build_rounded,
+                    rightColor: const Color(0xFFF59E0B),
+                    subtitle: 'Across all categories',
                     onTap: () {},
                   ),
                 ),

@@ -7,6 +7,8 @@ class DashboardState {
   final int activeCompanies;
   final int inactiveCompanies;
   final int totalCategories;
+  final int totalItems;
+  final int totalServices;
 
   // Recent data
   final List<Map<String, dynamic>> recentActivity;
@@ -19,6 +21,8 @@ class DashboardState {
     this.activeCompanies = 0,
     this.inactiveCompanies = 0,
     this.totalCategories = 0,
+    this.totalItems = 0,
+    this.totalServices = 0,
     this.recentActivity = const [],
     this.recentCompanies = const [],
   });
@@ -30,6 +34,8 @@ class DashboardState {
     int? activeCompanies,
     int? inactiveCompanies,
     int? totalCategories,
+    int? totalItems,
+    int? totalServices,
     List<Map<String, dynamic>>? recentActivity,
     List<Map<String, dynamic>>? recentCompanies,
   }) {
@@ -40,6 +46,8 @@ class DashboardState {
       activeCompanies: activeCompanies ?? this.activeCompanies,
       inactiveCompanies: inactiveCompanies ?? this.inactiveCompanies,
       totalCategories: totalCategories ?? this.totalCategories,
+      totalItems: totalItems ?? this.totalItems,
+      totalServices: totalServices ?? this.totalServices,
       recentActivity: recentActivity ?? this.recentActivity,
       recentCompanies: recentCompanies ?? this.recentCompanies,
     );
