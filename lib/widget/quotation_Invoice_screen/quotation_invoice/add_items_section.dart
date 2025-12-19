@@ -51,8 +51,11 @@ class AddItemsSection extends StatelessWidget {
 
     // Then add items from API-loaded categories
     for (final category in categories) {
-      // Add all items from this category
+      // Add all items from this category (filter out services for items section)
       for (final item in category.items) {
+        // Skip services - they should only appear in services section
+        if (item.isService) continue;
+
         // Ensure unique item names to avoid dropdown conflicts
         final uniqueName = seenNames.contains(item.itemName)
             ? '${item.itemName} (${category.name})' // Add category suffix for duplicates
@@ -67,6 +70,7 @@ class AddItemsSection extends StatelessWidget {
               category: category.name,
               categoryId: category.id,
               productName: item.itemName,
+              type: ItemType.material, // Products are material items
             ),
           );
 

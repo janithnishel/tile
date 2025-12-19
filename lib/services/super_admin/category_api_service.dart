@@ -100,6 +100,13 @@ class CategoryApiService {
     return await delete('$categoriesEndpoint/$id', token: token);
   }
 
+  // =================== ITEM CONFIGURATIONS ===================
+
+  // Get item configurations (units and pricing logic)
+  Future<Map<String, dynamic>> getItemConfigs({String? token}) async {
+    return await get('/super-admin/item-configs', token: token);
+  }
+
   // =================== ITEM API METHODS ===================
 
   // Add item to category
@@ -108,17 +115,24 @@ class CategoryApiService {
     String itemName,
     String baseUnit,
     String? packagingUnit,
-    double sqftPerUnit, {
+    double sqftPerUnit,
+    bool isService,
+    String? pricingType, {
     String? token
   }) async {
     final data = {
       'itemName': itemName,
       'baseUnit': baseUnit,
       'sqftPerUnit': sqftPerUnit,
+      'isService': isService,
     };
 
     if (packagingUnit != null) {
       data['packagingUnit'] = packagingUnit;
+    }
+
+    if (pricingType != null) {
+      data['pricingType'] = pricingType;
     }
 
     return await post('$categoriesEndpoint/$categoryId/items', data, token: token);
@@ -131,17 +145,24 @@ class CategoryApiService {
     String itemName,
     String baseUnit,
     String? packagingUnit,
-    double sqftPerUnit, {
+    double sqftPerUnit,
+    bool isService,
+    String? pricingType, {
     String? token
   }) async {
     final data = {
       'itemName': itemName,
       'baseUnit': baseUnit,
       'sqftPerUnit': sqftPerUnit,
+      'isService': isService,
     };
 
     if (packagingUnit != null) {
       data['packagingUnit'] = packagingUnit;
+    }
+
+    if (pricingType != null) {
+      data['pricingType'] = pricingType;
     }
 
     return await put('$categoriesEndpoint/$categoryId/items/$itemId', data, token: token);

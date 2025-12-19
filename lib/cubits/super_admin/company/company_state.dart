@@ -1,4 +1,4 @@
-import 'package:tilework/models/super_admin/company_model.dart';
+import 'package:tilework/models/company_model.dart';
 
 class CompanyState {
   final List<CompanyModel> companies;

@@ -6,6 +6,18 @@ class CategoryRepository {
 
   CategoryRepository() : _categoryApiService = CategoryApiService();
 
+  // =================== CONFIGURATIONS ===================
+
+  // GET: Fetch item configurations
+  Future<Map<String, dynamic>> fetchItemConfigs({String? token}) async {
+    try {
+      final response = await _categoryApiService.getItemConfigs(token: token);
+      return response['data'];
+    } catch (e) {
+      throw Exception('Failed to fetch item configurations: $e');
+    }
+  }
+
   // =================== CATEGORY METHODS ===================
 
   // GET: Fetch all categories
@@ -61,7 +73,9 @@ class CategoryRepository {
     String itemName,
     String baseUnit,
     String? packagingUnit,
-    double sqftPerUnit, {
+    double sqftPerUnit,
+    bool isService,
+    String? pricingType, {
     String? token
   }) async {
     try {
@@ -71,6 +85,8 @@ class CategoryRepository {
         baseUnit,
         packagingUnit,
         sqftPerUnit,
+        isService,
+        pricingType,
         token: token,
       );
       final data = response['data'];
@@ -88,7 +104,9 @@ class CategoryRepository {
     String itemName,
     String baseUnit,
     String? packagingUnit,
-    double sqftPerUnit, {
+    double sqftPerUnit,
+    bool isService,
+    String? pricingType, {
     String? token
   }) async {
     try {
@@ -99,6 +117,8 @@ class CategoryRepository {
         baseUnit,
         packagingUnit,
         sqftPerUnit,
+        isService,
+        pricingType,
         token: token,
       );
       final data = response['data'];

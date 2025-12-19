@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:tilework/models/super_admin/company_model.dart';
 import 'package:tilework/models/category_model.dart';
+import 'package:tilework/models/company_model.dart';
 import 'package:tilework/theme/theme.dart';
 import 'package:tilework/widget/super_admin/app_button.dart';
 import 'package:tilework/widget/super_admin/app_text_field.dart';
@@ -615,7 +615,6 @@ class _CompanyRegisterDialogState extends State<CompanyRegisterDialog> {
             ownerEmail: _ownerEmailController.text.trim(),
             ownerPhone: _ownerPhoneController.text.trim(),
             isActive: _isActive,
-            createdAt: widget.company!.createdAt,
           );
           Navigator.pop(context, updatedCompany.toJson());
         } else {

@@ -1,7 +1,7 @@
 // lib/widgets/dialogs/item_template_dialog.dart
 
 import 'package:flutter/material.dart';
-import 'package:tilework/models/super_admin/category_model.dart';
+import 'package:tilework/models/category_model.dart';
 import 'package:tilework/theme/theme.dart';
 import 'package:tilework/widget/super_admin/app_button.dart';
 import 'package:tilework/widget/super_admin/app_card.dart';
@@ -10,24 +10,28 @@ import 'package:tilework/widget/super_admin/app_text_field.dart';
 class ItemTemplateDialog extends StatefulWidget {
   final CategoryModel category;
   final List<ItemTemplateModel> items;
+  final Map<String, dynamic>? itemConfigs;
 
   const ItemTemplateDialog({
     Key? key,
     required this.category,
     required this.items,
+    this.itemConfigs,
   }) : super(key: key);
 
   static Future<List<ItemTemplateModel>?> show(
     BuildContext context,
     CategoryModel category,
-    List<ItemTemplateModel> items,
-  ) {
+    List<ItemTemplateModel> items, {
+    Map<String, dynamic>? itemConfigs,
+  }) {
     return showDialog<List<ItemTemplateModel>>(
       context: context,
       barrierDismissible: false,
       builder: (context) => ItemTemplateDialog(
         category: category,
         items: items,
+        itemConfigs: itemConfigs,
       ),
     );
   }
@@ -43,12 +47,37 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
 
   // Controllers for new item
   final _itemNameController = TextEditingController();
-  final _baseUnitController = TextEditingController();
   final _sqftPerUnitController = TextEditingController();
 
-  // Packaging unit options
+  // Dynamic unit options from configs
+  List<String> get _serviceUnits => widget.itemConfigs?['unit_configs']?['service_units']?.cast<String>() ?? ['sqft', 'ft', 'Job', 'Visit', 'Day'];
+  List<String> get _productUnits => widget.itemConfigs?['unit_configs']?['product_units']?.cast<String>() ?? ['sqft', 'ft', 'pcs', 'kg', 'm'];
+
+  // Packaging unit options (keeping static for now)
   final List<String> _packagingUnits = ['Box', 'Roll', 'Sheet', 'Pcs'];
   String? _selectedPackagingUnit;
+
+  // Base unit options - dynamic based on item type
+  List<String> get _baseUnits => _isService ? _serviceUnits : _productUnits;
+  String? _selectedBaseUnit;
+
+  // Item type toggle
+  bool _isService = false;
+  ServicePricingType? _selectedPricingType;
+
+  // Get default pricing type based on base unit selection
+  ServicePricingType? _getDefaultPricingType(String? baseUnit) {
+    if (!_isService || baseUnit == null) return null;
+
+    // Service pricing logic
+    if (['sqft', 'ft'].contains(baseUnit)) {
+      return ServicePricingType.variable; // Area-based services default to variable pricing
+    } else if (['Job', 'Visit'].contains(baseUnit)) {
+      return ServicePricingType.fixed; // One-time services default to fixed pricing
+    }
+
+    return ServicePricingType.variable; // Default fallback
+  }
 
   @override
   void initState() {
@@ -59,7 +88,6 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
   @override
   void dispose() {
     _itemNameController.dispose();
-    _baseUnitController.dispose();
     _sqftPerUnitController.dispose();
     super.dispose();
   }
@@ -159,18 +187,77 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                             controller: _itemNameController,
                           ),
                           const SizedBox(height: 12),
-                          AppTextField(
-                            label: 'Base Unit',
-                            hint: 'Ex: Linear Meter',
-                            controller: _baseUnitController,
+
+                          // Item Type Toggle
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Item Type',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                RadioGroup<bool>(
+                                  groupValue: _isService,
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setState(() {
+                                        _isService = value;
+                                        if (!value) _selectedPricingType = null;
+                                        // Clear packaging fields when switching to service
+                                        if (value) {
+                                          _selectedPackagingUnit = null;
+                                          _sqftPerUnitController.clear();
+                                        }
+                                      });
+                                    }
+                                  },
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: ListTile(
+                                          title: const Text('Product'),
+                                          leading: Radio<bool>(
+                                            value: false,
+                                          ),
+                                          contentPadding: EdgeInsets.zero,
+                                          dense: true,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: ListTile(
+                                          title: const Text('Service'),
+                                          leading: Radio<bool>(
+                                            value: true,
+                                          ),
+                                          contentPadding: EdgeInsets.zero,
+                                          dense: true,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 12),
-                          // Packaging Unit Dropdown
+
                           DropdownButtonFormField<String>(
-                            value: _selectedPackagingUnit,
+                            initialValue: _selectedBaseUnit,
                             decoration: InputDecoration(
-                              labelText: 'Packaging Unit (Optional)',
-                              hintText: 'Select packaging unit',
+                              labelText: 'Base Unit',
+                              hintText: 'Select base unit',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -178,7 +265,7 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                               fillColor: Colors.white,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                             ),
-                            items: _packagingUnits.map((unit) {
+                            items: _baseUnits.map((unit) {
                               return DropdownMenuItem(
                                 value: unit,
                                 child: Text(unit),
@@ -186,22 +273,86 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                             }).toList(),
                             onChanged: (value) {
                               setState(() {
-                                _selectedPackagingUnit = value;
-                                // Clear sqft per unit if no packaging unit selected
-                                if (value == null) {
-                                  _sqftPerUnitController.clear();
+                                _selectedBaseUnit = value;
+                                // Auto-set pricing type for services based on base unit
+                                if (_isService) {
+                                  _selectedPricingType = _getDefaultPricingType(value);
                                 }
                               });
                             },
                           ),
                           const SizedBox(height: 12),
-                          // Sqft per Unit - only show when packaging unit is selected
-                          if (_selectedPackagingUnit != null) ...[
+
+                          // Conditional fields based on item type
+                          if (!_isService) ...[
+                            // Product fields
+                            DropdownButtonFormField<String>(
+                              initialValue: _selectedPackagingUnit,
+                              decoration: InputDecoration(
+                                labelText: 'Packaging Unit',
+                                hintText: 'Select packaging unit',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                              ),
+                              items: _packagingUnits.map((unit) {
+                                return DropdownMenuItem(
+                                  value: unit,
+                                  child: Text(unit),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedPackagingUnit = value;
+                                  // Clear sqft per unit if no packaging unit selected
+                                  if (value == null) {
+                                    _sqftPerUnitController.clear();
+                                  }
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Base Unit per Box - required when packaging unit is selected
                             AppTextField(
-                              label: 'Sqft per Unit',
-                              hint: 'Ex: 0.33 (total sqft per ${_selectedPackagingUnit?.toLowerCase()})',
+                              label: 'Base Unit per Box',
+                              hint: 'Ex: 3.5 (meters per box)',
                               controller: _sqftPerUnitController,
                               keyboardType: TextInputType.number,
+                            ),
+                            const SizedBox(height: 12),
+                          ] else ...[
+                            // Service fields
+                            DropdownButtonFormField<ServicePricingType>(
+                              initialValue: _selectedPricingType,
+                              decoration: InputDecoration(
+                                labelText: 'Service Pricing Type',
+                                hintText: 'Select pricing type',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: ServicePricingType.fixed,
+                                  child: Text('Fixed: Total amount regardless of quantity'),
+                                ),
+                                DropdownMenuItem(
+                                  value: ServicePricingType.variable,
+                                  child: Text('Variable: Price per unit of Base Unit'),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedPricingType = value;
+                                });
+                              },
                             ),
                             const SizedBox(height: 12),
                           ],
@@ -225,11 +376,12 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                       // Horizontal layout for larger screens
                       return Column(
                         children: [
+                          // First row: Item Name and Item Type
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                flex: 3,
+                                flex: 4,
                                 child: AppTextField(
                                   label: 'Item Name',
                                   hint: 'Ex: Skirting - 4 Inch',
@@ -237,22 +389,89 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                                 ),
                               ),
                               const SizedBox(width: 12),
+                              // Item Type Toggle
                               Expanded(
-                                flex: 2,
-                                child: AppTextField(
-                                  label: 'Base Unit',
-                                  hint: 'Ex: Linear Meter',
-                                  controller: _baseUnitController,
+                                flex: 3,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.grey.shade300),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Padding(
+                                        padding: EdgeInsets.only(left: 12, top: 8),
+                                        child: Text(
+                                          'Item Type',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                      RadioGroup<bool>(
+                                        groupValue: _isService,
+                                        onChanged: (value) {
+                                          if (value != null) {
+                                            setState(() {
+                                              _isService = value;
+                                              if (!value) _selectedPricingType = null;
+                                              // Clear packaging fields when switching to service
+                                              if (value) {
+                                                _selectedPackagingUnit = null;
+                                                _sqftPerUnitController.clear();
+                                              }
+                                            });
+                                          }
+                                        },
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: ListTile(
+                                                title: const Text('Product', style: TextStyle(fontSize: 12)),
+                                                leading: Radio<bool>(
+                                                  value: false,
+                                                ),
+                                                contentPadding: EdgeInsets.zero,
+                                                dense: true,
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: ListTile(
+                                                title: const Text('Service', style: TextStyle(fontSize: 12)),
+                                                leading: Radio<bool>(
+                                                  value: true,
+                                                ),
+                                                contentPadding: EdgeInsets.zero,
+                                                dense: true,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Second row: Base Unit and conditional fields
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Expanded(
                                 flex: 2,
                                 child: DropdownButtonFormField<String>(
-                                  value: _selectedPackagingUnit,
+                                  initialValue: _selectedBaseUnit,
                                   decoration: InputDecoration(
-                                    labelText: 'Packaging Unit (Optional)',
-                                    hintText: 'Select unit',
+                                    labelText: 'Base Unit',
+                                    hintText: 'Select base unit',
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(10),
                                     ),
@@ -260,7 +479,7 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                                     fillColor: Colors.white,
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                                   ),
-                                  items: _packagingUnits.map((unit) {
+                                  items: _baseUnits.map((unit) {
                                     return DropdownMenuItem(
                                       value: unit,
                                       child: Text(unit),
@@ -268,28 +487,97 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                                   }).toList(),
                                   onChanged: (value) {
                                     setState(() {
-                                      _selectedPackagingUnit = value;
-                                      // Clear sqft per unit if no packaging unit selected
-                                      if (value == null) {
-                                        _sqftPerUnitController.clear();
+                                      _selectedBaseUnit = value;
+                                      // Auto-set pricing type for services based on base unit
+                                      if (_isService) {
+                                        _selectedPricingType = _getDefaultPricingType(value);
                                       }
                                     });
                                   },
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              if (_selectedPackagingUnit != null) ...[
+
+                              // Conditional fields based on item type
+                              if (!_isService) ...[
+                                // Product fields
+                                Expanded(
+                                  flex: 2,
+                                  child: DropdownButtonFormField<String>(
+                                    initialValue: _selectedPackagingUnit,
+                                    decoration: InputDecoration(
+                                      labelText: 'Packaging Unit',
+                                      hintText: 'Select unit',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                    ),
+                                    items: _packagingUnits.map((unit) {
+                                      return DropdownMenuItem(
+                                        value: unit,
+                                        child: Text(unit),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _selectedPackagingUnit = value;
+                                        // Clear sqft per unit if no packaging unit selected
+                                        if (value == null) {
+                                          _sqftPerUnitController.clear();
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
                                 Expanded(
                                   flex: 2,
                                   child: AppTextField(
-                                    label: 'Sqft per Unit',
-                                    hint: 'Ex: 0.33 (per ${_selectedPackagingUnit?.toLowerCase()})',
+                                    label: 'Base Unit per Box',
+                                    hint: 'Ex: 3.5 (meters per box)',
                                     controller: _sqftPerUnitController,
                                     keyboardType: TextInputType.number,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                              ] else ...[
+                                // Service fields
+                                Expanded(
+                                  flex: 4,
+                                  child: DropdownButtonFormField<ServicePricingType>(
+                                    initialValue: _selectedPricingType,
+                                    decoration: InputDecoration(
+                                      labelText: 'Service Pricing Type',
+                                      hintText: 'Select pricing type',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem(
+                                        value: ServicePricingType.fixed,
+                                        child: Text('Fixed: Total amount regardless of quantity'),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: ServicePricingType.variable,
+                                        child: Text('Variable: Price per unit of Base Unit'),
+                                      ),
+                                    ],
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _selectedPricingType = value;
+                                      });
+                                    },
+                                  ),
+                                ),
                               ],
+
+                              const SizedBox(width: 12),
                               Padding(
                                 padding: const EdgeInsets.only(top: 28),
                                 child: AppButton(
@@ -371,12 +659,32 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                                         const SizedBox(width: 8),
                                         // Name
                                         Expanded(
-                                          child: Text(
-                                            item.itemName,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14,
-                                            ),
+                                          child: Row(
+                                            children: [
+                                              Text(
+                                                item.itemName,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                                decoration: BoxDecoration(
+                                                  color: item.isService ? Colors.blue.shade100 : Colors.green.shade100,
+                                                  borderRadius: BorderRadius.circular(3),
+                                                ),
+                                                child: Text(
+                                                  item.isService ? 'SERVICE' : 'PRODUCT',
+                                                  style: TextStyle(
+                                                    color: item.isService ? Colors.blue.shade800 : Colors.green.shade800,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 8,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                         // Edit button
@@ -460,40 +768,88 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            item.itemName,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 15,
-                                            ),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                item.itemName,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: item.isService ? Colors.blue.shade100 : Colors.green.shade100,
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  item.isService ? 'SERVICE' : 'PRODUCT',
+                                                  style: TextStyle(
+                                                    color: item.isService ? Colors.blue.shade800 : Colors.green.shade800,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 10,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                           Text(
                                             'Base Unit: ${item.baseUnit}',
                                             style: AppTheme.bodyMedium,
                                           ),
+                                          if (item.isService && item.pricingType != null)
+                                            Text(
+                                              'Pricing: ${item.pricingType == ServicePricingType.fixed ? 'Fixed' : 'Variable'}',
+                                              style: AppTheme.bodyMedium.copyWith(
+                                                color: Colors.grey.shade600,
+                                                fontSize: 12,
+                                              ),
+                                            ),
                                         ],
                                       ),
                                     ),
 
-                                    // Sqft per unit
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.primaryAccent.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        '${item.sqftPerUnit} sqft/unit',
-                                        style: TextStyle(
-                                          color: AppTheme.primaryAccent,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
+                                    // Sqft per unit or service info
+                                    if (!item.isService)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primaryAccent.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          '${item.sqftPerUnit} sqft/unit',
+                                          style: TextStyle(
+                                            color: AppTheme.primaryAccent,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.shade100,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          item.pricingType == ServicePricingType.fixed ? 'FIXED PRICE' : 'PER UNIT',
+                                          style: TextStyle(
+                                            color: Colors.blue.shade800,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 11,
+                                          ),
                                         ),
                                       ),
-                                    ),
 
                                     const SizedBox(width: 12),
 
@@ -562,17 +918,17 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
 
   void _saveItem() {
     // Validate required fields
-    if (_itemNameController.text.isEmpty || _baseUnitController.text.isEmpty) {
+    if (_itemNameController.text.isEmpty || _selectedBaseUnit == null) {
       return;
     }
 
-    // If packaging unit is selected, sqft per unit is required
-    if (_selectedPackagingUnit != null && _sqftPerUnitController.text.isEmpty) {
+    // For services, pricing type is required
+    if (_isService && _selectedPricingType == null) {
       return;
     }
 
-    // If no packaging unit selected, sqft per unit is still required for base calculation
-    if (_selectedPackagingUnit == null && _sqftPerUnitController.text.isEmpty) {
+    // For products, if packaging unit is selected, sqft per unit is required
+    if (!_isService && _selectedPackagingUnit != null && _sqftPerUnitController.text.isEmpty) {
       return;
     }
 
@@ -582,10 +938,12 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
             ? _items[_editingIndex!].id
             : DateTime.now().toString(),
         itemName: _itemNameController.text.trim(),
-        baseUnit: _baseUnitController.text.trim(),
-        packagingUnit: _selectedPackagingUnit,
-        sqftPerUnit: double.tryParse(_sqftPerUnitController.text) ?? 0,
+        baseUnit: _selectedBaseUnit!,
+        packagingUnit: !_isService ? _selectedPackagingUnit : null,
+        sqftPerUnit: !_isService ? (double.tryParse(_sqftPerUnitController.text) ?? 0) : 0,
         categoryId: widget.category.id,
+        isService: _isService,
+        pricingType: _isService ? _selectedPricingType : null,
       );
 
       if (_editingIndex != null) {
@@ -597,10 +955,12 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
 
     // Clear form and reset editing index
     _itemNameController.clear();
-    _baseUnitController.clear();
     _sqftPerUnitController.clear();
     setState(() {
+      _selectedBaseUnit = null;
       _selectedPackagingUnit = null;
+      _isService = false;
+      _selectedPricingType = null;
       _editingIndex = null;
     });
   }
@@ -610,9 +970,11 @@ class _ItemTemplateDialogState extends State<ItemTemplateDialog> {
       _editingIndex = index;
       final item = _items[index];
       _itemNameController.text = item.itemName;
-      _baseUnitController.text = item.baseUnit;
+      _selectedBaseUnit = item.baseUnit;
       _selectedPackagingUnit = item.packagingUnit;
       _sqftPerUnitController.text = item.sqftPerUnit.toString();
+      _isService = item.isService;
+      _selectedPricingType = item.pricingType;
     });
   }
 

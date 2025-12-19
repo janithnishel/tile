@@ -4,8 +4,9 @@ import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
 import 'package:tilework/cubits/super_admin/category/category_cubit.dart';
 import 'package:tilework/cubits/super_admin/category/category_state.dart';
+import 'package:tilework/cubits/super_admin/dashboard/dashboard_cubit.dart';
 import 'package:tilework/models/category_model.dart';
-import 'package:tilework/models/super_admin/company_model.dart';
+import 'package:tilework/models/company_model.dart';
 import 'package:tilework/theme/theme.dart';
 import 'package:tilework/widget/super_admin/app_button.dart';
 import 'package:tilework/widget/super_admin/app_card.dart';
@@ -31,10 +32,11 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
   @override
   void initState() {
     super.initState();
-    // Load categories when screen opens
+    // Load categories and item configurations when screen opens
     final token = _getToken();
     if (token != null) {
       context.read<CategoryCubit>().loadCategories(token: token, companyId: widget.company.id);
+      context.read<CategoryCubit>().loadItemConfigs(token: token);
     }
   }
 
@@ -44,6 +46,20 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
       return authState.token;
     }
     return null;
+  }
+
+  // Get default pricing type based on base unit selection
+  String? _getDefaultPricingType(String? baseUnit, bool isService) {
+    if (!isService || baseUnit == null) return null;
+
+    // Service pricing logic
+    if (['sqft', 'ft'].contains(baseUnit)) {
+      return 'variable'; // Area-based services default to variable pricing
+    } else if (['Job', 'Visit'].contains(baseUnit)) {
+      return 'fixed'; // One-time services default to fixed pricing
+    }
+
+    return 'variable'; // Default fallback
   }
 
   @override
@@ -503,6 +519,12 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                                   companyId: widget.company.id,
                                 );
                                 Navigator.pop(dialogContext);
+
+                                // Refresh dashboard data for real-time updates
+                                if (token != null) {
+                                  context.read<DashboardCubit>().refreshData(token: token);
+                                }
+
                                 _showSuccessSnackBar('Category added successfully!');
                               } catch (e) {
                                 _showErrorSnackBar('Failed to add category: ${e.toString()}');
@@ -603,6 +625,12 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                                   token: token,
                                 );
                                 Navigator.pop(dialogContext);
+
+                                // Refresh dashboard data for real-time updates
+                                if (token != null) {
+                                  context.read<DashboardCubit>().refreshData(token: token);
+                                }
+
                                 _showSuccessSnackBar('Category updated successfully!');
                               } catch (e) {
                                 _showErrorSnackBar('Failed to update category: ${e.toString()}');
@@ -641,6 +669,12 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
       try {
         final token = _getToken();
         await context.read<CategoryCubit>().deleteCategory(category.id, token: token);
+
+        // Refresh dashboard data for real-time updates
+        if (token != null) {
+          context.read<DashboardCubit>().refreshData(token: token);
+        }
+
         _showSuccessSnackBar('Category "${category.name}" deleted successfully!');
       } catch (e) {
         _showErrorSnackBar('Failed to delete category: ${e.toString()}');
@@ -851,8 +885,20 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
     final formKey = GlobalKey<FormState>();
     bool isLoading = false;
 
-    // Base unit options and state
-    final List<String> baseUnits = ['sqft', 'ft', 'pcs', 'meter'];
+    // Item type toggle
+    bool isService = false;
+    String? selectedPricingType;
+
+    // Get item configs from state
+    final itemConfigs = BlocProvider.of<CategoryCubit>(context).state.itemConfigs;
+
+    // Helper function to get base units based on item type
+    List<String> getBaseUnits(bool isServiceType) {
+      return isServiceType
+          ? (itemConfigs?['unit_configs']?['service_units']?.cast<String>() ?? ['sqft', 'ft', 'Job', 'Visit', 'Day'])
+          : (itemConfigs?['unit_configs']?['product_units']?.cast<String>() ?? ['sqft', 'ft', 'pcs', 'kg', 'm']);
+    }
+
     String? selectedBaseUnit;
 
     // Packaging unit options and state
@@ -905,6 +951,77 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
+
+                  // Item Type Toggle
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Item Type',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: RadioListTile<bool>(
+                                title: const Text('Product'),
+                                value: false,
+                                groupValue: isService,
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      isService = value;
+                                      selectedPricingType = null;
+                                      // Clear service-related fields when switching to product
+                                      if (!value) {
+                                        selectedPackagingUnit = 'None';
+                                      }
+                                    });
+                                  }
+                                },
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                            ),
+                            Expanded(
+                              child: RadioListTile<bool>(
+                                title: const Text('Service'),
+                                value: true,
+                                groupValue: isService,
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      isService = value;
+                                      selectedPricingType = null;
+                                      // Clear product-related fields when switching to service
+                                      if (value) {
+                                        selectedPackagingUnit = 'None';
+                                      }
+                                    });
+                                  }
+                                },
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   // Base Unit Dropdown
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -947,7 +1064,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                               vertical: 16,
                             ),
                           ),
-                          items: baseUnits.map((unit) {
+                          items: getBaseUnits(isService).map((unit) {
                             return DropdownMenuItem(
                               value: unit,
                               child: Text(unit),
@@ -956,6 +1073,10 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                           onChanged: (value) {
                             setState(() {
                               selectedBaseUnit = value;
+                              // Auto-set pricing type for services based on base unit
+                              if (isService) {
+                                selectedPricingType = _getDefaultPricingType(value, isService);
+                              }
                             });
                           },
                           validator: (value) {
@@ -967,88 +1088,162 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // Packaging Unit Dropdown
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Packaging Unit (Optional)',
-                        style: AppTheme.labelText,
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                          border: Border.all(color: AppTheme.border),
+
+                  // Service Pricing Type - only show when Service is selected
+                  if (isService) ...[
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Service Pricing Type',
+                          style: AppTheme.labelText,
                         ),
-                        child: DropdownButtonFormField<String>(
-                          value: selectedPackagingUnit,
-                          decoration: InputDecoration(
-                            hintText: 'Select packaging unit',
-                            hintStyle: TextStyle(
-                              color: Colors.grey.shade400,
-                              fontWeight: FontWeight.normal,
-                            ),
-                            prefixIcon: Container(
-                              margin: const EdgeInsets.all(10),
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryAccent.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                Icons.inventory_2_outlined,
-                                color: AppTheme.primaryAccent,
-                                size: 20,
-                              ),
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
+                        const SizedBox(height: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                            border: Border.all(color: AppTheme.border),
                           ),
-                          items: packagingUnits.map((unit) {
-                            return DropdownMenuItem(
-                              value: unit,
-                              child: Text(unit),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedPackagingUnit = value;
-                              // Clear sqft per unit if no packaging unit selected
-                              if (value == null) {
-                                sqftController.clear();
+                          child: DropdownButtonFormField<String>(
+                            value: selectedPricingType,
+                            decoration: InputDecoration(
+                              hintText: 'Select pricing type',
+                              hintStyle: TextStyle(
+                                color: Colors.grey.shade400,
+                                fontWeight: FontWeight.normal,
+                              ),
+                              prefixIcon: Container(
+                                margin: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryAccent.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.attach_money_outlined,
+                                  color: AppTheme.primaryAccent,
+                                  size: 20,
+                                ),
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'fixed',
+                                child: Text('Fixed: Total amount regardless of quantity'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'variable',
+                                child: Text('Variable: Price per unit of Base Unit'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                selectedPricingType = value;
+                              });
+                            },
+                            validator: (value) {
+                              if (isService && (value == null || value.isEmpty)) {
+                                return 'Service pricing type is required';
                               }
-                            });
-                          },
+                              return null;
+                            },
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Sqft per Unit - only show when packaging unit is not 'None'
-                  if (selectedPackagingUnit != null && selectedPackagingUnit != 'None') ...[
-                    AppTextField(
-                      label: selectedBaseUnit != null && selectedPackagingUnit != null
-                          ? '$selectedBaseUnit per $selectedPackagingUnit'
-                          : 'Sqft per Unit',
-                      hint: selectedBaseUnit != null && selectedPackagingUnit != null
-                          ? 'Ex: 0.33 (${selectedBaseUnit?.toLowerCase()} per ${selectedPackagingUnit?.toLowerCase()})'
-                          : 'Ex: 0.33',
-                      controller: sqftController,
-                      prefixIcon: Icons.calculate_outlined,
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value?.isEmpty ?? true) return 'Sqft per unit is required';
-                        final num = double.tryParse(value!);
-                        if (num == null || num <= 0) return 'Enter valid number';
-                        return null;
-                      },
+                      ],
                     ),
                     const SizedBox(height: 16),
+                  ],
+
+                  // Packaging Unit Dropdown - only show when Product is selected
+                  if (!isService) ...[
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Packaging Unit (Optional)',
+                          style: AppTheme.labelText,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                            border: Border.all(color: AppTheme.border),
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            value: selectedPackagingUnit,
+                            decoration: InputDecoration(
+                              hintText: 'Select packaging unit',
+                              hintStyle: TextStyle(
+                                color: Colors.grey.shade400,
+                                fontWeight: FontWeight.normal,
+                              ),
+                              prefixIcon: Container(
+                                margin: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryAccent.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.inventory_2_outlined,
+                                  color: AppTheme.primaryAccent,
+                                  size: 20,
+                                ),
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                            ),
+                            items: packagingUnits.map((unit) {
+                              return DropdownMenuItem(
+                                value: unit,
+                                child: Text(unit),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                selectedPackagingUnit = value;
+                                // Clear sqft per unit if no packaging unit selected
+                                if (value == null) {
+                                  sqftController.clear();
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Sqft per Unit - only show when packaging unit is not 'None'
+                    if (selectedPackagingUnit != null && selectedPackagingUnit != 'None') ...[
+                      AppTextField(
+                        label: selectedBaseUnit != null && selectedPackagingUnit != null
+                            ? '$selectedBaseUnit per $selectedPackagingUnit'
+                            : 'Sqft per Unit',
+                        hint: selectedBaseUnit != null && selectedPackagingUnit != null
+                            ? 'Ex: 0.33 (${selectedBaseUnit?.toLowerCase()} per ${selectedPackagingUnit?.toLowerCase()})'
+                            : 'Ex: 0.33',
+                        controller: sqftController,
+                        prefixIcon: Icons.calculate_outlined,
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value?.isEmpty ?? true) return 'Sqft per unit is required';
+                          final num = double.tryParse(value!);
+                          if (num == null || num <= 0) return 'Enter valid number';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                   ],
                   Row(
                     children: [
@@ -1070,14 +1265,26 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                               setState(() => isLoading = true);
                               try {
                                 final token = _getToken();
+                                final packagingUnitToSend = selectedPackagingUnit == 'None' ? null : selectedPackagingUnit;
+                                final sqftValue = (selectedPackagingUnit == null || selectedPackagingUnit == 'None')
+                                    ? 0.0 // Default value when no packaging unit
+                                    : double.parse(sqftController.text.trim());
+
                                 await context.read<CategoryCubit>().addItemToCategory(
                                   category.id,
                                   itemNameController.text.trim(),
                                   selectedBaseUnit!,
-                                  selectedPackagingUnit,
-                                  double.parse(sqftController.text.trim()),
+                                  packagingUnitToSend,
+                                  sqftValue,
+                                  isService,
+                                  selectedPricingType,
                                   token: token,
                                 );
+
+                                // Refresh dashboard data for real-time updates
+                                if (token != null) {
+                                  context.read<DashboardCubit>().refreshData(token: token);
+                                }
 
                                 _showSuccessSnackBar('Item added successfully!');
                                 Navigator.pop(itemDialogContext); // Close dialog after successful addition
@@ -1106,8 +1313,20 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
     final formKey = GlobalKey<FormState>();
     bool isLoading = false;
 
-    // Base unit options and state
-    final List<String> baseUnits = ['sqft', 'ft', 'pcs', 'meter'];
+    // Item type toggle
+    bool isService = item.isService;
+    String? selectedPricingType = item.pricingType?.name;
+
+    // Get item configs from state
+    final itemConfigs = BlocProvider.of<CategoryCubit>(context).state.itemConfigs;
+
+    // Helper function to get base units based on item type (same as add dialog)
+    List<String> getBaseUnits(bool isServiceType) {
+      return isServiceType
+          ? (itemConfigs?['unit_configs']?['service_units']?.cast<String>() ?? ['sqft', 'ft', 'Job', 'Visit', 'Day'])
+          : (itemConfigs?['unit_configs']?['product_units']?.cast<String>() ?? ['sqft', 'ft', 'pcs', 'kg', 'm']);
+    }
+
     String? selectedBaseUnit = item.baseUnit;
 
     // Packaging unit options and state
@@ -1160,6 +1379,77 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
+
+                  // Item Type Toggle
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Item Type',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: RadioListTile<bool>(
+                                title: const Text('Product'),
+                                value: false,
+                                groupValue: isService,
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      isService = value;
+                                      selectedPricingType = null;
+                                      // Clear service-related fields when switching to product
+                                      if (!value) {
+                                        selectedPackagingUnit = 'None';
+                                      }
+                                    });
+                                  }
+                                },
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                            ),
+                            Expanded(
+                              child: RadioListTile<bool>(
+                                title: const Text('Service'),
+                                value: true,
+                                groupValue: isService,
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      isService = value;
+                                      selectedPricingType = null;
+                                      // Clear product-related fields when switching to service
+                                      if (value) {
+                                        selectedPackagingUnit = 'None';
+                                      }
+                                    });
+                                  }
+                                },
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   // Base Unit Dropdown
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1202,7 +1492,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                               vertical: 16,
                             ),
                           ),
-                          items: baseUnits.map((unit) {
+                          items: getBaseUnits(isService).map((unit) {
                             return DropdownMenuItem(
                               value: unit,
                               child: Text(unit),
@@ -1211,6 +1501,10 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                           onChanged: (value) {
                             setState(() {
                               selectedBaseUnit = value;
+                              // Auto-set pricing type for services based on base unit
+                              if (isService) {
+                                selectedPricingType = _getDefaultPricingType(value, isService);
+                              }
                             });
                           },
                           validator: (value) {
@@ -1222,7 +1516,80 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // Packaging Unit Dropdown
+
+                  // Service Pricing Type - only show when Service is selected
+                  if (isService) ...[
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Service Pricing Type',
+                          style: AppTheme.labelText,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                            border: Border.all(color: AppTheme.border),
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            value: selectedPricingType,
+                            decoration: InputDecoration(
+                              hintText: 'Select pricing type',
+                              hintStyle: TextStyle(
+                                color: Colors.grey.shade400,
+                                fontWeight: FontWeight.normal,
+                              ),
+                              prefixIcon: Container(
+                                margin: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryAccent.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.attach_money_outlined,
+                                  color: AppTheme.primaryAccent,
+                                  size: 20,
+                                ),
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'fixed',
+                                child: Text('Fixed: Total amount regardless of quantity'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'variable',
+                                child: Text('Variable: Price per unit of Base Unit'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                selectedPricingType = value;
+                              });
+                            },
+                            validator: (value) {
+                              if (isService && (value == null || value.isEmpty)) {
+                                return 'Service pricing type is required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Packaging Unit Dropdown - only show when Product is selected
+                  if (!isService) ...[
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1305,6 +1672,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
+                  ],
                   Row(
                     children: [
                       Expanded(
@@ -1337,9 +1705,17 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                                   selectedBaseUnit!,
                                   packagingUnitToSend,
                                   sqftValue,
+                                  isService,
+                                  selectedPricingType,
                                   token: token,
                                 );
                                 Navigator.pop(itemDialogContext);
+
+                                // Refresh dashboard data for real-time updates
+                                if (token != null) {
+                                  context.read<DashboardCubit>().refreshData(token: token);
+                                }
+
                                 _showSuccessSnackBar('Item updated successfully!');
                               } catch (e) {
                                 _showErrorSnackBar('Failed to update item: ${e.toString()}');
@@ -1352,7 +1728,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                     ],
                   ),
                 ],
-              ),
+              )
             ),
           ),
         ),
@@ -1375,6 +1751,12 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
       try {
         final token = _getToken();
         await context.read<CategoryCubit>().deleteItem(category.id, item.id, token: token);
+
+        // Refresh dashboard data for real-time updates
+        if (token != null) {
+          context.read<DashboardCubit>().refreshData(token: token);
+        }
+
         _showSuccessSnackBar('Item "${item.itemName}" deleted successfully!');
       } catch (e) {
         _showErrorSnackBar('Failed to delete item: ${e.toString()}');

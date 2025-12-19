@@ -1,6 +1,6 @@
 enum ItemType { material, service }
 
-enum ServicePaymentStatus { paid, unpaid }
+enum ServicePaymentStatus { paid, unpaid, fixed, variable }
 
 class ItemDescription {
   final String name;

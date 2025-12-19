@@ -4,7 +4,7 @@ import '../screens/super_admin/super_admin_dashboard.dart';
 import '../screens/super_admin/dashboard_content.dart';
 import '../screens/super_admin/company_management_screen.dart';
 import '../screens/super_admin/company_setup_screen.dart';
-import '../models/super_admin/company_model.dart';
+import '../models/company_model.dart';
 
 /// Admin route names
 class AdminRoutes {

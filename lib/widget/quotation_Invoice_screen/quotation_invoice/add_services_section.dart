@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:tilework/models/category_model.dart';
+import 'package:tilework/models/quotation_Invoice_screen/project/item_description.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/service_item.dart';
 
 class AddServicesSection extends StatelessWidget {
   final List<ServiceItem> serviceItems;
+  final List<CategoryModel>? categories;
   final bool isAddEnabled;
   final VoidCallback onAddService;
   final Function(int, ServiceItem) onServiceChanged;
@@ -15,6 +18,7 @@ class AddServicesSection extends StatelessWidget {
   const AddServicesSection({
     Key? key,
     required this.serviceItems,
+    required this.categories,
     required this.isAddEnabled,
     required this.onAddService,
     required this.onServiceChanged,
@@ -35,6 +39,53 @@ class AddServicesSection extends StatelessWidget {
     'Installation',
     'Custom Service',
   ];
+
+  // Get available services from categories
+  List<ItemDescription> get _availableServices {
+    final List<ItemDescription> services = [];
+
+    // Add services from API-loaded categories (filter for services only)
+    for (final category in categories ?? []) {
+      for (final item in category.items) {
+        if (item.isService) {
+          final uniqueName = services.any((s) => s.name == item.itemName)
+              ? '${item.itemName} (${category.name})'
+              : item.itemName;
+
+          services.add(
+            ItemDescription(
+              uniqueName,
+              sellingPrice: 0.0,
+              unit: item.baseUnit,
+              category: category.name,
+              categoryId: category.id,
+              productName: item.itemName,
+              type: ItemType.service,
+              servicePaymentStatus: item.pricingType == ServicePricingType.fixed
+                  ? ServicePaymentStatus.fixed
+                  : ServicePaymentStatus.variable,
+            ),
+          );
+        }
+      }
+    }
+
+    // Add a custom service option if no services are available
+    if (services.isEmpty) {
+      services.add(
+        ItemDescription(
+          'Custom Service',
+          sellingPrice: 0.0,
+          unit: 'units',
+          category: 'Services',
+          productName: 'Custom Service',
+          type: ItemType.service,
+        ),
+      );
+    }
+
+    return services;
+  }
 
   @override
   Widget build(BuildContext context) {

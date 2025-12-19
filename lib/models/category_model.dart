@@ -64,6 +64,11 @@ class CategoryModel {
   }
 }
 
+enum ServicePricingType {
+  fixed,
+  variable,
+}
+
 class ItemModel {
   final String id;
   final String itemName;
@@ -71,6 +76,8 @@ class ItemModel {
   final String? packagingUnit;
   final double sqftPerUnit;
   final String categoryId;
+  final bool isService;
+  final ServicePricingType? pricingType;
 
   ItemModel({
     required this.id,
@@ -79,9 +86,23 @@ class ItemModel {
     this.packagingUnit,
     required this.sqftPerUnit,
     required this.categoryId,
+    this.isService = false,
+    this.pricingType,
   });
 
   factory ItemModel.fromJson(Map<String, dynamic> json) {
+    ServicePricingType? pricingType;
+    if (json['pricingType'] != null) {
+      switch (json['pricingType']) {
+        case 'fixed':
+          pricingType = ServicePricingType.fixed;
+          break;
+        case 'variable':
+          pricingType = ServicePricingType.variable;
+          break;
+      }
+    }
+
     return ItemModel(
       id: json['_id'] ?? json['id'] ?? '',
       itemName: json['itemName'] ?? '',
@@ -89,6 +110,8 @@ class ItemModel {
       packagingUnit: json['packagingUnit'],
       sqftPerUnit: (json['sqftPerUnit'] ?? 0).toDouble(),
       categoryId: json['categoryId'] ?? '',
+      isService: json['isService'] ?? false,
+      pricingType: pricingType,
     );
   }
 
@@ -99,10 +122,15 @@ class ItemModel {
       'baseUnit': baseUnit,
       'sqftPerUnit': sqftPerUnit,
       'categoryId': categoryId,
+      'isService': isService,
     };
 
     if (packagingUnit != null) {
       data['packagingUnit'] = packagingUnit;
+    }
+
+    if (pricingType != null) {
+      data['pricingType'] = pricingType == ServicePricingType.fixed ? 'fixed' : 'variable';
     }
 
     return data;
@@ -115,6 +143,8 @@ class ItemModel {
     String? packagingUnit,
     double? sqftPerUnit,
     String? categoryId,
+    bool? isService,
+    ServicePricingType? pricingType,
   }) {
     return ItemModel(
       id: id ?? this.id,
@@ -123,6 +153,8 @@ class ItemModel {
       packagingUnit: packagingUnit ?? this.packagingUnit,
       sqftPerUnit: sqftPerUnit ?? this.sqftPerUnit,
       categoryId: categoryId ?? this.categoryId,
+      isService: isService ?? this.isService,
+      pricingType: pricingType ?? this.pricingType,
     );
   }
 }
@@ -185,5 +217,105 @@ class UpdateItemRequest {
       'baseUnit': baseUnit,
       'sqftPerUnit': sqftPerUnit,
     };
+  }
+}
+
+// ═══════════════════════════════════════
+// 🏷️ ITEM TEMPLATE MODEL (for Admin Template Management)
+// ═══════════════════════════════════════
+
+class ItemTemplateModel {
+  final String id;
+  final String itemName;
+  final String baseUnit;
+  final String? packagingUnit;
+  final double? sqftPerUnit;
+  final String categoryId;
+  final bool isService;
+  final ServicePricingType? pricingType;
+
+  ItemTemplateModel({
+    required this.id,
+    required this.itemName,
+    required this.baseUnit,
+    this.packagingUnit,
+    this.sqftPerUnit,
+    required this.categoryId,
+    this.isService = false,
+    this.pricingType,
+  });
+
+  // Factory constructor for JSON deserialization
+  factory ItemTemplateModel.fromJson(Map<String, dynamic> json) {
+    ServicePricingType? pricingType;
+    if (json['pricingType'] != null) {
+      switch (json['pricingType']) {
+        case 'fixed':
+          pricingType = ServicePricingType.fixed;
+          break;
+        case 'variable':
+          pricingType = ServicePricingType.variable;
+          break;
+      }
+    }
+
+    return ItemTemplateModel(
+      id: json['_id'] ?? json['id'] ?? '',
+      itemName: json['itemName'] ?? '',
+      baseUnit: json['baseUnit'] ?? '',
+      packagingUnit: json['packagingUnit'],
+      sqftPerUnit: json['sqftPerUnit'] != null ? (json['sqftPerUnit'] as num).toDouble() : null,
+      categoryId: json['categoryId'] ?? '',
+      isService: json['isService'] ?? false,
+      pricingType: pricingType,
+    );
+  }
+
+  // Convert to JSON for API calls
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = {
+      '_id': id,
+      'itemName': itemName,
+      'baseUnit': baseUnit,
+      'categoryId': categoryId,
+      'isService': isService,
+    };
+
+    if (packagingUnit != null) {
+      data['packagingUnit'] = packagingUnit;
+    }
+
+    if (sqftPerUnit != null) {
+      data['sqftPerUnit'] = sqftPerUnit;
+    }
+
+    if (pricingType != null) {
+      data['pricingType'] = pricingType == ServicePricingType.fixed ? 'fixed' : 'variable';
+    }
+
+    return data;
+  }
+
+  // Copy with method for immutability
+  ItemTemplateModel copyWith({
+    String? id,
+    String? itemName,
+    String? baseUnit,
+    String? packagingUnit,
+    double? sqftPerUnit,
+    String? categoryId,
+    bool? isService,
+    ServicePricingType? pricingType,
+  }) {
+    return ItemTemplateModel(
+      id: id ?? this.id,
+      itemName: itemName ?? this.itemName,
+      baseUnit: baseUnit ?? this.baseUnit,
+      packagingUnit: packagingUnit ?? this.packagingUnit,
+      sqftPerUnit: sqftPerUnit ?? this.sqftPerUnit,
+      categoryId: categoryId ?? this.categoryId,
+      isService: isService ?? this.isService,
+      pricingType: pricingType ?? this.pricingType,
+    );
   }
 }

@@ -1,4 +1,5 @@
-import '../../models/super_admin/company_model.dart';
+import 'package:tilework/models/company_model.dart';
+
 import '../../services/super_admin/company_api_service.dart';
 
 class CompanyRepository {

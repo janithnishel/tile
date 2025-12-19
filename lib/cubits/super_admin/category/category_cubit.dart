@@ -17,6 +17,23 @@ class CategoryCubit extends Cubit<CategoryState> {
     return null;
   }
 
+  // =================== CONFIGURATIONS ===================
+
+  // 0. Load Item Configurations
+  Future<void> loadItemConfigs({String? token}) async {
+    emit(state.copyWith(isLoading: true, errorMessage: null));
+    try {
+      final configs = await _categoryRepository.fetchItemConfigs(token: token);
+      emit(state.copyWith(itemConfigs: configs, isLoading: false));
+    } catch (e) {
+      debugPrint('💥 CategoryCubit: Failed to load item configs: $e');
+      emit(state.copyWith(
+        isLoading: false,
+        errorMessage: 'Failed to load item configurations.',
+      ));
+    }
+  }
+
   // =================== CATEGORY OPERATIONS ===================
 
   // 1. Load Categories
@@ -83,7 +100,9 @@ class CategoryCubit extends Cubit<CategoryState> {
     String itemName,
     String baseUnit,
     String? packagingUnit,
-    double sqftPerUnit, {
+    double sqftPerUnit,
+    bool isService,
+    String? pricingType, {
     String? token
   }) async {
     try {
@@ -93,6 +112,8 @@ class CategoryCubit extends Cubit<CategoryState> {
         baseUnit,
         packagingUnit,
         sqftPerUnit,
+        isService,
+        pricingType,
         token: token,
       );
 
@@ -119,7 +140,9 @@ class CategoryCubit extends Cubit<CategoryState> {
     String itemName,
     String baseUnit,
     String? packagingUnit,
-    double sqftPerUnit, {
+    double sqftPerUnit,
+    bool isService,
+    String? pricingType, {
     String? token
   }) async {
     try {
@@ -130,6 +153,8 @@ class CategoryCubit extends Cubit<CategoryState> {
         baseUnit,
         packagingUnit,
         sqftPerUnit,
+        isService,
+        pricingType,
         token: token,
       );
 

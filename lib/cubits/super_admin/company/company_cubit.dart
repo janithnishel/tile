@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
 import 'package:tilework/cubits/super_admin/company/company_state.dart';
-import 'package:tilework/models/super_admin/company_model.dart';
+import 'package:tilework/models/company_model.dart';
 import 'package:tilework/repositories/super_admin/company_repository.dart';
 
 class CompanyCubit extends Cubit<CompanyState> {
@@ -60,7 +60,7 @@ class CompanyCubit extends Cubit<CompanyState> {
 
       // 2. Local State Update
       final updatedList =
-          state.companies.where((c) => c.id != companyId).toList();
+          state.companies.where((c) => c is CompanyModel && c.id != companyId).toList();
 
       emit(state.copyWith(companies: updatedList, isLoading: false));
     } catch (e) {

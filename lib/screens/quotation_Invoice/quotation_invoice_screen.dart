@@ -1102,16 +1102,21 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
               const Divider(height: 32),
 
               // Additional Services Section
-              AddServicesSection(
-                serviceItems: _workingDocument.serviceItems,
-                isAddEnabled: _isNewDocument || _workingDocument.isQuotation,
-                onAddService: _addNewService,
-                onServiceChanged: _updateServiceItem,
-                onUnitTypeChanged: _updateServiceUnitType,
-                onQuantityChanged: _updateServiceQuantity,
-                onRateChanged: _updateServiceRate,
-                onAlreadyPaidChanged: _updateServiceAlreadyPaid,
-                onDeleteService: _deleteServiceItem,
+              BlocBuilder<CategoryCubit, CategoryState>(
+                builder: (context, categoryState) {
+                  return AddServicesSection(
+                    serviceItems: _workingDocument.serviceItems,
+                    categories: categoryState.categories,
+                    isAddEnabled: _isNewDocument || _workingDocument.isQuotation,
+                    onAddService: _addNewService,
+                    onServiceChanged: _updateServiceItem,
+                    onUnitTypeChanged: _updateServiceUnitType,
+                    onQuantityChanged: _updateServiceQuantity,
+                    onRateChanged: _updateServiceRate,
+                    onAlreadyPaidChanged: _updateServiceAlreadyPaid,
+                    onDeleteService: _deleteServiceItem,
+                  );
+                },
               ),
               const Divider(height: 32),
 
