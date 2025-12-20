@@ -181,7 +181,7 @@ List<PurchaseOrder> mockPurchaseOrders = [
     status: 'Delivered',
     items: [
       POItem(
-        name: 'LVT Flooring 2mm',
+        itemName: 'LVT Flooring 2mm',
         quantity: 400,
         unit: 'sqft',
         unitPrice: 320,
@@ -198,7 +198,7 @@ List<PurchaseOrder> mockPurchaseOrders = [
     status: 'Ordered',
     items: [
       POItem(
-        name: 'Kitchen Tiles',
+        itemName: 'Kitchen Tiles',
         quantity: 220,
         unit: 'sqft',
         unitPrice: 1100,
@@ -213,8 +213,8 @@ List<PurchaseOrder> mockPurchaseOrders = [
     orderDate: DateTime(2025, 7, 2),
     status: 'Paid',
     items: [
-      POItem(name: 'Cement', quantity: 35, unit: 'bags', unitPrice: 2100),
-      POItem(name: 'Sand', quantity: 2, unit: 'cubes', unitPrice: 14500),
+      POItem(itemName: 'Cement', quantity: 35, unit: 'bags', unitPrice: 2100),
+      POItem(itemName: 'Sand', quantity: 2, unit: 'cubes', unitPrice: 14500),
     ],
   ),
 ];

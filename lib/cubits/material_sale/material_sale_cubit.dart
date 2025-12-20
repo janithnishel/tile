@@ -38,12 +38,33 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
   }
 
   // 1. Load Material Sales
-  Future<void> loadMaterialSales({Map<String, String>? queryParams}) async {
+  Future<void> loadMaterialSales({
+    int page = 1,
+    int limit = 10,
+    String? status,
+    String? search,
+    String? startDate,
+    String? endDate,
+  }) async {
     emit(state.copyWith(isLoading: true, errorMessage: null));
     try {
       debugPrint('🚀 MaterialSaleCubit: Loading material sales...');
-      final materialSales = await _materialSaleRepository.fetchMaterialSales(queryParams: queryParams, token: _currentToken);
+      final response = await _materialSaleRepository.fetchMaterialSales(
+        token: _currentToken,
+        page: page,
+        limit: limit,
+        status: status,
+        search: search,
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+      // Extract data from paginated response
+      final data = response['data'] ?? [];
+      final List<dynamic> materialSales = data is List ? data : [];
+
       debugPrint('📦 MaterialSaleCubit: Loaded ${materialSales.length} material sales');
+      // For now, store raw data - UI can convert to models as needed
       emit(state.copyWith(materialSales: materialSales, isLoading: false));
     } catch (e) {
       debugPrint('💥 MaterialSaleCubit: Failed to load material sales: $e');
@@ -71,7 +92,8 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
       }
 
       debugPrint('✅ MaterialSaleCubit: Validation passed, creating material sale...');
-      final createdSale = await _materialSaleRepository.createMaterialSale(materialSale, token: _currentToken);
+      final response = await _materialSaleRepository.createMaterialSale(materialSale.toJson(), token: _currentToken);
+      final createdSale = MaterialSaleDocument.fromJson(response);
       debugPrint('✨ MaterialSaleCubit: Material sale created: ${createdSale.invoiceNumber}');
 
       // Add to local state
@@ -88,7 +110,8 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
   // 3. Update Material Sale
   Future<void> updateMaterialSale(MaterialSaleDocument materialSale) async {
     try {
-      final updatedSale = await _materialSaleRepository.updateMaterialSale(materialSale, token: _currentToken);
+      final response = await _materialSaleRepository.updateMaterialSale(materialSale.id!, materialSale.toJson(), token: _currentToken);
+      final updatedSale = MaterialSaleDocument.fromJson(response);
 
       // Update local state
       final updatedList = state.materialSales.map((sale) {
@@ -121,7 +144,8 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
   // 5. Add Payment
   Future<void> addPayment(String id, Map<String, dynamic> paymentData) async {
     try {
-      final updatedSale = await _materialSaleRepository.addPayment(id, paymentData, token: _currentToken);
+      final response = await _materialSaleRepository.addPayment(id, paymentData, token: _currentToken);
+      final updatedSale = MaterialSaleDocument.fromJson(response);
 
       // Update local state
       final updatedList = state.materialSales.map((sale) {
@@ -139,7 +163,8 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
   // 6. Update Status
   Future<void> updateStatus(String id, String status) async {
     try {
-      final updatedSale = await _materialSaleRepository.updateStatus(id, status, token: _currentToken);
+      final response = await _materialSaleRepository.updateStatus(id, status, token: _currentToken);
+      final updatedSale = MaterialSaleDocument.fromJson(response);
 
       // Update local state
       final updatedList = state.materialSales.map((sale) {

@@ -1,248 +1,3 @@
-// import 'package:flutter/material.dart';
-// import 'package:tilework/data/po_mock_data.dart';
-// import 'package:tilework/models/purchase_order_screen/purchase_order.dart';
-// import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/create_po_dialog.dart';
-// import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/order_summary_dialog.dart';
-// import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/po_header_section.dart';
-// import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/po_stats_row.dart';
-// import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/supplier_expansion_tile.dart';
-// import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/supplier_management_dialog.dart';
-
-// class PurchaseOrderScreen extends StatefulWidget {
-//   const PurchaseOrderScreen({Key? key}) : super(key: key);
-
-//   @override
-//   State<PurchaseOrderScreen> createState() => _PurchaseOrderScreenState();
-// }
-
-// class _PurchaseOrderScreenState extends State<PurchaseOrderScreen> {
-//   String? _selectedQuotationId;
-//   String _searchQuery = '';
-//   String _statusFilter = 'All';
-
-//   // Get filtered POs
-//   List<PurchaseOrder> get _filteredOrders {
-//     List<PurchaseOrder> list = mockPurchaseOrders;
-
-//     // Filter by Quotation ID
-//     if (_selectedQuotationId != null) {
-//       list = list
-//           .where((po) => po.quotationId == _selectedQuotationId)
-//           .toList();
-//     }
-
-//     // Filter by Status
-//     if (_statusFilter != 'All') {
-//       list = list.where((po) => po.status == _statusFilter).toList();
-//     }
-
-//     // Search
-//     if (_searchQuery.isNotEmpty) {
-//       final query = _searchQuery.toLowerCase();
-//       list = list.where((po) {
-//         return po.poId.toLowerCase().contains(query) ||
-//             po.supplier.name.toLowerCase().contains(query) ||
-//             po.customerName.toLowerCase().contains(query) ||
-//             po.items.any((item) => item.name.toLowerCase().contains(query));
-//       }).toList();
-//     }
-
-//     return list;
-//   }
-
-//   // Group by Supplier
-//   Map<String, List<PurchaseOrder>> get _groupedOrders {
-//     final filtered = _filteredOrders;
-//     final Map<String, List<PurchaseOrder>> grouped = {};
-
-//     for (var po in filtered) {
-//       final supplierName = po.supplier.name;
-//       grouped.putIfAbsent(supplierName, () => []).add(po);
-//     }
-
-//     return grouped;
-//   }
-
-//   void _showOrderSummaryDialog(PurchaseOrder order) {
-//     showDialog(
-//       context: context,
-//       builder: (context) => OrderSummaryDialog(
-//         order: order,
-//         onClose: () => Navigator.pop(context),
-//         onPrint: () {
-//           Navigator.pop(context);
-//           _showSnackBar('Printing ${order.poId}...');
-//         },
-//         onEdit: () {
-//           Navigator.pop(context);
-//           _showSnackBar('Edit ${order.poId}');
-//         },
-//         onStatusUpdate: () {
-//           setState(() {
-//             order.status = order.nextStatus;
-//           });
-//           Navigator.pop(context);
-//           _showSnackBar('${order.poId} status updated to ${order.status}');
-//         },
-//       ),
-//     );
-//   }
-
-//   void _showCreatePODialog() {
-//     showDialog(
-//       context: context,
-//       builder: (context) => CreatePODialog(
-//         quotations: mockApprovedQuotations,
-//         suppliers: mockSuppliers,
-//         onCreate: (quotationId, supplier, items) {
-//           _showSnackBar('Purchase Order created successfully!');
-//         },
-//       ),
-//     );
-//   }
-
-//   void _showSupplierManagementDialog() {
-//     showDialog(
-//       context: context,
-//       builder: (context) => SupplierManagementDialog(
-//         suppliers: mockSuppliers,
-//         onAddNew: () {
-//           _showSnackBar('Add new supplier');
-//         },
-//         onEdit: (supplier) {
-//           _showSnackBar('Edit ${supplier.name}');
-//         },
-//         onDelete: (supplier) {
-//           _showSnackBar('Delete ${supplier.name}');
-//         },
-//       ),
-//     );
-//   }
-
-//   void _showSnackBar(String message) {
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       SnackBar(
-//         content: Text(message),
-//         backgroundColor: Colors.green,
-//       ),
-//     );
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: const Color(0xFFF5F7FA),
-//       body: Column(
-//         children: [
-//           // Header Section
-//           POHeaderSection(
-//             selectedQuotationId: _selectedQuotationId,
-//             searchQuery: _searchQuery,
-//             statusFilter: _statusFilter,
-//             quotations: mockApprovedQuotations,
-//             onQuotationChanged: (value) {
-//               setState(() => _selectedQuotationId = value);
-//             },
-//             onSearchChanged: (value) {
-//               setState(() => _searchQuery = value);
-//             },
-//             onStatusFilterChanged: (value) {
-//               setState(() => _statusFilter = value);
-//             },
-//             onClearSearch: () {
-//               setState(() => _searchQuery = '');
-//             },
-//             onManageSuppliers: _showSupplierManagementDialog,
-//           ),
-
-//           // Stats Row
-//           POStatsRow(orders: _filteredOrders),
-
-//           // Main Content
-//           Expanded(child: _buildMainContent()),
-//         ],
-//       ),
-//       floatingActionButton: FloatingActionButton.extended(
-//         onPressed: _showCreatePODialog,
-//         icon: const Icon(Icons.add_shopping_cart, color: Colors.white),
-//         label: const Text('New PO', style: TextStyle(color: Colors.white)),
-//         backgroundColor: Colors.indigo,
-//       ),
-//     );
-//   }
-
-//   Widget _buildMainContent() {
-//     final groupedOrders = _groupedOrders;
-
-//     if (groupedOrders.isEmpty) {
-//       return _buildEmptyState();
-//     }
-
-//     return ListView.builder(
-//       padding: const EdgeInsets.symmetric(horizontal: 16),
-//       itemCount: groupedOrders.keys.length,
-//       itemBuilder: (context, index) {
-//         final supplierName = groupedOrders.keys.elementAt(index);
-//         final supplierOrders = groupedOrders[supplierName]!;
-//         final supplier = supplierOrders.first.supplier;
-
-//         return SupplierExpansionTile(
-//           supplier: supplier,
-//           orders: supplierOrders,
-//           onOrderTap: _showOrderSummaryDialog,
-//         );
-//       },
-//     );
-//   }
-
-//   Widget _buildEmptyState() {
-//     return Center(
-//       child: Column(
-//         mainAxisAlignment: MainAxisAlignment.center,
-//         children: [
-//           Icon(
-//             Icons.shopping_cart_outlined,
-//             size: 80,
-//             color: Colors.grey.shade300,
-//           ),
-//           const SizedBox(height: 16),
-//           Text(
-//             'No Purchase Orders Found',
-//             style: TextStyle(
-//               fontSize: 18,
-//               fontWeight: FontWeight.w500,
-//               color: Colors.grey.shade600,
-//             ),
-//           ),
-//           const SizedBox(height: 8),
-//           Text(
-//             'Create a new PO from an approved quotation',
-//             style: TextStyle(
-//               fontSize: 14,
-//               color: Colors.grey.shade500,
-//             ),
-//           ),
-//           const SizedBox(height: 24),
-//           ElevatedButton.icon(
-//             onPressed: _showCreatePODialog,
-//             icon: const Icon(Icons.add),
-//             label: const Text('Create Purchase Order'),
-//             style: ElevatedButton.styleFrom(
-//               backgroundColor: Colors.indigo,
-//               padding: const EdgeInsets.symmetric(
-//                 horizontal: 24,
-//                 vertical: 12,
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
@@ -252,12 +7,13 @@ import 'package:tilework/cubits/quotation/quotation_cubit.dart';
 import 'package:tilework/cubits/quotation/quotation_state.dart';
 import 'package:tilework/cubits/supplier/supplier_cubit.dart';
 import 'package:tilework/cubits/supplier/supplier_state.dart';
-import 'package:tilework/data/po_mock_data.dart';
+
 import 'package:tilework/models/purchase_order/approved_quotation.dart';
 import 'package:tilework/models/purchase_order/po_item.dart';
 import 'package:tilework/models/purchase_order/purchase_order.dart';
 import 'package:tilework/models/purchase_order/quotation_item.dart';
 import 'package:tilework/models/purchase_order/supplier.dart';
+import 'package:tilework/models/quotation_Invoice_screen/project/item_description.dart';
 import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/add_supplier_screen.dart';
 import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/create_po_screen.dart';
 import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/order_summary_dialog.dart';
@@ -275,6 +31,11 @@ class PurchaseOrderScreen extends StatefulWidget {
 
 class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
     with SingleTickerProviderStateMixin {
+  // ============================================
+  // SCAFFOLD KEY FOR SNACKBAR
+  // ============================================
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   // ============================================
   // TAB CONTROLLER
   // ============================================
@@ -400,8 +161,8 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
   // ============================================
 
   List<PurchaseOrder> get _filteredOrders {
-    // Use API-loaded purchase orders if available, otherwise fall back to mock data
-    List<PurchaseOrder> list = _purchaseOrders.isNotEmpty ? _purchaseOrders : mockPurchaseOrders;
+    // Use API-loaded purchase orders
+    List<PurchaseOrder> list = _purchaseOrders;
 
     // Filter by Quotation ID
     if (_selectedQuotationId != null) {
@@ -445,32 +206,46 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
   // DIALOG METHODS
   // ============================================
 
-  void _showOrderSummaryDialog(PurchaseOrder order) {
-    showDialog(
+  void _showOrderSummaryDialog(PurchaseOrder order) async {
+    final result = await showDialog<String>(
       context: context,
       builder: (context) => OrderSummaryDialog(
         order: order,
         onClose: () => Navigator.pop(context),
-        onPrint: () {
-          Navigator.pop(context);
-          _showSnackBar('Printing ${order.poId}...');
-        },
-        onEdit: () {
-          Navigator.pop(context);
-          _showSnackBar('Edit ${order.poId}');
-        },
-        onStatusUpdate: () {
+        onOrderUpdated: (PurchaseOrder updatedOrder) {
           setState(() {
-            order.status = order.nextStatus;
+            // Update the order in the local list
+            final index = _purchaseOrders.indexWhere((po) => po.id == updatedOrder.id);
+            if (index != -1) {
+              _purchaseOrders[index] = updatedOrder;
+            }
           });
-          Navigator.pop(context);
-          _showSnackBar('${order.poId} status updated to ${order.status}');
         },
+        onStatusChanged: (String newStatus) async {
+          await _updatePurchaseOrderStatus(order, newStatus);
+        },
+        onCancel: (order.isOrdered || order.isDelivered)
+            ? () async {
+                final confirm = await _showCancelConfirmation(order);
+                if (confirm == true) {
+                  await _updatePurchaseOrderStatus(order, 'Cancelled');
+                }
+              }
+            : null,
       ),
     );
+
+    // Handle the result if needed
+    if (result == 'deleted' || result == 'cancelled') {
+      // Refresh the list
+      _loadApprovedQuotations();
+    }
   }
 
   void _showCreatePODialog() async {
+    // Capture the screen context for snackbar
+    final screenContext = context;
+
     // Load approved quotations and suppliers for the dropdowns
     try {
       final quotationCubit = context.read<QuotationCubit>();
@@ -485,89 +260,118 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
       // Continue with empty lists if loading fails
     }
 
-    showDialog(
-      context: context,
-      builder: (context) => BlocBuilder<QuotationCubit, QuotationState>(
-        builder: (context, quotationState) {
-          return BlocBuilder<SupplierCubit, SupplierState>(
-            builder: (context, supplierState) {
-              // Convert QuotationDocument to ApprovedQuotation
-              final approvedQuotations = quotationState.quotations.map((doc) {
-                return ApprovedQuotation(
-                  quotationId: doc.documentNumber,
-                  customerName: doc.customerName,
-                  projectTitle: doc.projectTitle,
-                  approvedDate: doc.invoiceDate, // Using invoiceDate as approvedDate
-                  totalAmount: doc.subtotal,
-                  items: doc.lineItems.map((item) {
-                    return QuotationItem(
-                      id: item.displayName,
-                      name: item.displayName,
-                      category: item.item.category,
-                      quantity: item.quantity.toInt(),
-                      unit: item.item.unit,
-                      estimatedPrice: item.item.sellingPrice,
-                      isOrdered: false, // Assuming none are ordered yet
-                    );
-                  }).toList(),
-                );
-              }).toList();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BlocBuilder<QuotationCubit, QuotationState>(
+          builder: (context, quotationState) {
+            return BlocBuilder<SupplierCubit, SupplierState>(
+              builder: (context, supplierState) {
+                // Convert QuotationDocument to ApprovedQuotation
+                final approvedQuotations = quotationState.quotations.map((doc) {
+                  return ApprovedQuotation(
+                    quotationId: doc.documentNumber,
+                    customerName: doc.customerName,
+                    projectTitle: doc.projectTitle,
+                    approvedDate:
+                        doc.invoiceDate, // Using invoiceDate as approvedDate
+                    totalAmount: doc.subtotal,
+                    items: doc.lineItems.map((item) {
+                      return QuotationItem(
+                        id: item.displayName,
+                        name: item.displayName,
+                        category: item.item.category,
+                        quantity: item.quantity.toInt(),
+                        unit: item.item.unit,
+                        estimatedPrice: item.item.sellingPrice,
+                        isOrdered: false, // Assuming none are ordered yet
+                      );
+                    }).toList(),
+                  );
+                }).toList();
 
-              return CreatePODialog(
-                quotations: approvedQuotations,
-                suppliers: supplierState.suppliers, // Now using real suppliers from API
-                onCreate: (quotationId, supplier, items) async {
-                  try {
-                    final purchaseOrderCubit = context.read<PurchaseOrderCubit>();
+                return CreatePODialog(
+                  quotations: approvedQuotations,
+                  suppliers: supplierState
+                      .suppliers, // Now using real suppliers from API
+                  onCreate: (quotationId, supplier, items) async {
+                    try {
+                      final purchaseOrderCubit = context
+                          .read<PurchaseOrderCubit>();
 
-                    // Convert SelectedPOItem to POItem
-                    final poItems = items.map((item) => POItem(
-                      name: item.name,
-                      quantity: item.quantity.toDouble(),
-                      unit: item.unit,
-                      unitPrice: item.price,
-                    )).toList();
+                      // Convert SelectedPOItem to POItem
+                      final poItems = items
+                          .map(
+                            (item) => POItem(
+                              itemName: item.name,
+                              quantity: item.quantity.toDouble(),
+                              unit: item.unit,
+                              unitPrice: item.price,
+                            ),
+                          )
+                          .toList();
 
-                    // Get quotation details for customer name
-                    final selectedQuotation = approvedQuotations.firstWhere(
-                      (q) => q.quotationId == quotationId,
-                    );
+                      // Get quotation details for customer name
+                      final selectedQuotation = approvedQuotations.firstWhere(
+                        (q) => q.quotationId == quotationId,
+                      );
 
-                    // Create PurchaseOrder object
-                    final purchaseOrder = PurchaseOrder(
-                      poId: '', // Will be generated by backend
-                      quotationId: quotationId,
-                      customerName: selectedQuotation.customerName,
-                      supplier: supplier,
-                      orderDate: DateTime.now(),
-                      expectedDelivery: DateTime.now().add(const Duration(days: 14)), // Default 14 days
-                      status: 'Draft',
-                      items: poItems,
-                      notes: 'Created from quotation $quotationId',
-                    );
+                      // Create PurchaseOrder object
+                      final purchaseOrder = PurchaseOrder(
+                        poId: '', // Will be generated by backend
+                        quotationId: quotationId,
+                        customerName: selectedQuotation.customerName,
+                        supplier: supplier,
+                        orderDate: DateTime.now(),
+                        expectedDelivery: DateTime.now().add(
+                          const Duration(days: 14),
+                        ), // Default 14 days
+                        status: 'Draft',
+                        items: poItems,
+                        notes: 'Created from quotation $quotationId',
+                      );
 
-                    // Create the PO via cubit
-                    await purchaseOrderCubit.createPurchaseOrder(purchaseOrder);
+                      // Create the PO via cubit
+                      await purchaseOrderCubit.createPurchaseOrder(
+                        purchaseOrder,
+                      );
 
-                    // Reload purchase orders to show the new PO
-                    await purchaseOrderCubit.loadPurchaseOrders();
+                      // Reload purchase orders to show the new PO
+                      await purchaseOrderCubit.loadPurchaseOrders();
 
-                    if (mounted) {
-                      final updatedState = purchaseOrderCubit.state;
-                      setState(() {
-                        _purchaseOrders = updatedState.purchaseOrders;
-                      });
+                      if (mounted) {
+                        final updatedState = purchaseOrderCubit.state;
+                        setState(() {
+                          _purchaseOrders = updatedState.purchaseOrders;
+                        });
+                      }
+
+                      // Use screen context for snackbar
+                      ScaffoldMessenger.of(screenContext).showSnackBar(
+                        const SnackBar(
+                          content: Text('Purchase Order created successfully!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      if (context.mounted) Navigator.pop(context); // Close the page
+                    } catch (e) {
+                      // Use screen context for snackbar
+                      ScaffoldMessenger.of(screenContext).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Failed to create Purchase Order: ${e.toString()}',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      if (context.mounted) Navigator.pop(context); // Close the page on error too
                     }
-
-                    _showSnackBar('Purchase Order created successfully!');
-                  } catch (e) {
-                    _showSnackBar('Failed to create Purchase Order: ${e.toString()}');
-                  }
-                },
-              );
-            },
-          );
-        },
+                  },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -580,9 +384,7 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
   void _showSupplierManagementDialog() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const SupplierManagementScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const SupplierManagementScreen()),
     ).then((_) {
       // Refresh the screen when returning from supplier management
       // to reflect any changes made to suppliers
@@ -593,9 +395,7 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
   void _showAddSupplierDialog() {
     showDialog(
       context: context,
-      builder: (context) => AddSupplierScreen(
-        onAdd: _addSupplier,
-      ),
+      builder: (context) => AddSupplierScreen(onAdd: _addSupplier),
     );
   }
 
@@ -605,21 +405,105 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
       final supplierCubit = context.read<SupplierCubit>();
       final createdSupplier = await supplierCubit.createSupplier(supplier);
 
-      // Add to mock data for immediate UI update
-      mockSuppliers.add(createdSupplier);
-
       _showSnackBar('Supplier "${createdSupplier.name}" added successfully!');
     } catch (e) {
       _showSnackBar('Failed to add supplier: ${e.toString()}');
     }
   }
 
+  Future<void> _printPurchaseOrder(PurchaseOrder order) async {
+    // TODO: Implement printing with watermark for cancelled orders
+    // If order.isCancelled, add "CANCELLED" watermark across the document
+    // This prevents the printed PO from being reused
+    _showSnackBar('Printing ${order.poId}...');
+  }
+
+  Future<void> _updatePurchaseOrderStatus(
+    PurchaseOrder order,
+    String newStatus,
+  ) async {
+    try {
+      final purchaseOrderCubit = context.read<PurchaseOrderCubit>();
+      await purchaseOrderCubit.updatePurchaseOrderStatus(order.id!, {
+        'status': newStatus,
+      });
+
+      // Update local state
+      setState(() {
+        order.status = newStatus;
+      });
+
+      _showSnackBar('${order.poId} status updated to $newStatus');
+    } catch (e) {
+      _showSnackBar('Failed to update status: ${e.toString()}');
+    }
+  }
+
+  Future<bool?> _showDeleteConfirmation(PurchaseOrder order) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Purchase Order'),
+        content: Text(
+          'Are you sure you want to delete ${order.poId}? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deletePurchaseOrder(PurchaseOrder order) async {
+    try {
+      final purchaseOrderCubit = context.read<PurchaseOrderCubit>();
+      await purchaseOrderCubit.deletePurchaseOrder(order.id!);
+
+      // Remove from local state
+      setState(() {
+        _purchaseOrders.removeWhere((po) => po.id == order.id);
+      });
+
+      _showSnackBar('${order.poId} deleted successfully');
+    } catch (e) {
+      _showSnackBar('Failed to delete PO: ${e.toString()}');
+    }
+  }
+
+  Future<bool?> _showCancelConfirmation(PurchaseOrder order) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Purchase Order'),
+        content: Text(
+          'Are you sure you want to cancel ${order.poId}? This will mark it as cancelled but keep the record for audit purposes.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Cancel PO'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 
@@ -630,6 +514,7 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: _buildAppBar(),
       body: TabBarView(
@@ -810,10 +695,7 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
           const SizedBox(height: 8),
           Text(
             'Create a new PO from an approved quotation',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade500,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
@@ -823,10 +705,7 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.indigo,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
           ),
         ],
@@ -849,11 +728,7 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.store_outlined,
-            size: 80,
-            color: Colors.grey.shade300,
-          ),
+          Icon(Icons.store_outlined, size: 80, color: Colors.grey.shade300),
           const SizedBox(height: 16),
           Text(
             'Material Sale Purchase Orders',
@@ -866,10 +741,7 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
           const SizedBox(height: 8),
           Text(
             'Create a new PO for material sales',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade500,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
@@ -879,10 +751,7 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange.shade600,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
           ),
         ],

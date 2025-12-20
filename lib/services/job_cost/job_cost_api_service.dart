@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-class MaterialSaleApiService {
+class JobCostApiService {
   final String baseUrl;
 
-  MaterialSaleApiService({this.baseUrl = 'http://localhost:5000/api'});
+  JobCostApiService({this.baseUrl = 'http://localhost:5000/api'});
 
   // Helper method to get auth token from local storage or wherever it's stored
   Future<String?> _getToken() async {
@@ -26,24 +26,22 @@ class MaterialSaleApiService {
     };
   }
 
-  // GET: Get all material sales
-  Future<Map<String, dynamic>> getMaterialSales({
+  // GET: Get all job costs
+  Future<Map<String, dynamic>> getJobCosts({
     String? token,
     int page = 1,
     int limit = 10,
-    String? status,
     String? search,
     String? startDate,
     String? endDate,
   }) async {
     final headers = await _getHeaders(token: token);
-    final uri = Uri.parse('$baseUrl/material-sales');
+    final uri = Uri.parse('$baseUrl/job-costs');
     final queryParams = <String, String>{};
 
     queryParams['page'] = page.toString();
     queryParams['limit'] = limit.toString();
 
-    if (status != null) queryParams['status'] = status;
     if (search != null) queryParams['search'] = search;
     if (startDate != null) queryParams['startDate'] = startDate;
     if (endDate != null) queryParams['endDate'] = endDate;
@@ -55,34 +53,34 @@ class MaterialSaleApiService {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
-      throw Exception('Failed to load material sales: ${response.statusCode}');
+      throw Exception('Failed to load job costs: ${response.statusCode}');
     }
   }
 
-  // GET: Get single material sale
-  Future<Map<String, dynamic>> getMaterialSale({
+  // GET: Get single job cost
+  Future<Map<String, dynamic>> getJobCost({
     required String id,
     String? token,
   }) async {
     final headers = await _getHeaders(token: token);
-    final response = await http.get(Uri.parse('$baseUrl/material-sales/$id'), headers: headers);
+    final response = await http.get(Uri.parse('$baseUrl/job-costs/$id'), headers: headers);
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       return data['data'] ?? data;
     } else {
-      throw Exception('Failed to load material sale: ${response.statusCode}');
+      throw Exception('Failed to load job cost: ${response.statusCode}');
     }
   }
 
-  // POST: Create material sale
-  Future<Map<String, dynamic>> createMaterialSale({
+  // POST: Create job cost
+  Future<Map<String, dynamic>> createJobCost({
     required Map<String, dynamic> data,
     String? token,
   }) async {
     final headers = await _getHeaders(token: token);
     final response = await http.post(
-      Uri.parse('$baseUrl/material-sales'),
+      Uri.parse('$baseUrl/job-costs'),
       headers: headers,
       body: json.encode(data),
     );
@@ -91,19 +89,19 @@ class MaterialSaleApiService {
       final responseData = json.decode(response.body);
       return responseData['data'] ?? responseData;
     } else {
-      throw Exception('Failed to create material sale: ${response.statusCode}');
+      throw Exception('Failed to create job cost: ${response.statusCode}');
     }
   }
 
-  // PUT: Update material sale
-  Future<Map<String, dynamic>> updateMaterialSale({
+  // PUT: Update job cost
+  Future<Map<String, dynamic>> updateJobCost({
     required String id,
     required Map<String, dynamic> data,
     String? token,
   }) async {
     final headers = await _getHeaders(token: token);
     final response = await http.put(
-      Uri.parse('$baseUrl/material-sales/$id'),
+      Uri.parse('$baseUrl/job-costs/$id'),
       headers: headers,
       body: json.encode(data),
     );
@@ -112,62 +110,20 @@ class MaterialSaleApiService {
       final responseData = json.decode(response.body);
       return responseData['data'] ?? responseData;
     } else {
-      throw Exception('Failed to update material sale: ${response.statusCode}');
+      throw Exception('Failed to update job cost: ${response.statusCode}');
     }
   }
 
-  // POST: Add payment
-  Future<Map<String, dynamic>> addPayment({
-    required String id,
-    required Map<String, dynamic> paymentData,
-    String? token,
-  }) async {
-    final headers = await _getHeaders(token: token);
-    final response = await http.post(
-      Uri.parse('$baseUrl/material-sales/$id/payments'),
-      headers: headers,
-      body: json.encode(paymentData),
-    );
-
-    if (response.statusCode == 200) {
-      final responseData = json.decode(response.body);
-      return responseData['data'] ?? responseData;
-    } else {
-      throw Exception('Failed to add payment: ${response.statusCode}');
-    }
-  }
-
-  // PATCH: Update status
-  Future<Map<String, dynamic>> updateStatus({
-    required String id,
-    required String status,
-    String? token,
-  }) async {
-    final headers = await _getHeaders(token: token);
-    final response = await http.patch(
-      Uri.parse('$baseUrl/material-sales/$id/status'),
-      headers: headers,
-      body: json.encode({'status': status}),
-    );
-
-    if (response.statusCode == 200) {
-      final responseData = json.decode(response.body);
-      return responseData['data'] ?? responseData;
-    } else {
-      throw Exception('Failed to update status: ${response.statusCode}');
-    }
-  }
-
-  // DELETE: Delete material sale
-  Future<void> deleteMaterialSale({
+  // DELETE: Delete job cost
+  Future<void> deleteJobCost({
     required String id,
     String? token,
   }) async {
     final headers = await _getHeaders(token: token);
-    final response = await http.delete(Uri.parse('$baseUrl/material-sales/$id'), headers: headers);
+    final response = await http.delete(Uri.parse('$baseUrl/job-costs/$id'), headers: headers);
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to delete material sale: ${response.statusCode}');
+      throw Exception('Failed to delete job cost: ${response.statusCode}');
     }
   }
 }

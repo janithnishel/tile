@@ -1,10 +1,8 @@
-import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_document.dart';
-
 class MaterialSaleState {
-  final List<MaterialSaleDocument> materialSales;
+  final List<dynamic> materialSales;
   final bool isLoading;
   final String? errorMessage;
-  final MaterialSaleDocument? selectedMaterialSale;
+  final dynamic selectedMaterialSale;
 
   const MaterialSaleState({
     this.materialSales = const [],
@@ -14,10 +12,10 @@ class MaterialSaleState {
   });
 
   MaterialSaleState copyWith({
-    List<MaterialSaleDocument>? materialSales,
+    List<dynamic>? materialSales,
     bool? isLoading,
     String? errorMessage,
-    MaterialSaleDocument? selectedMaterialSale,
+    dynamic selectedMaterialSale,
   }) {
     return MaterialSaleState(
       materialSales: materialSales ?? this.materialSales,

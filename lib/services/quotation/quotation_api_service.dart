@@ -2,158 +2,193 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class QuotationApiService {
-  static const String baseUrl = 'http://localhost:5000/api'; // Update this to your backend URL
+  final String baseUrl;
 
-  // Quotation endpoints
-  static const String quotationsEndpoint = '/quotations';
+  QuotationApiService({this.baseUrl = 'http://localhost:5000/api'});
 
-  final http.Client _client;
+  // Helper method to get auth token from local storage or wherever it's stored
+  Future<String?> _getToken() async {
+    // TODO: Implement token retrieval from secure storage
+    // For now, return null - the actual token should be passed from the cubit
+    return null;
+  }
 
-  QuotationApiService({http.Client? client}) : _client = client ?? http.Client();
-
-  // Generic GET request
-  Future<Map<String, dynamic>> get(String endpoint, {String? token}) async {
-    try {
-      final headers = _getHeaders(token);
-      final response = await _client.get(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-      );
-
-      return _handleResponse(response);
-    } catch (e) {
-      throw Exception('Network error: $e');
+  // Helper method to get common headers
+  Future<Map<String, String>> _getHeaders({String? token}) async {
+    final currentToken = token ?? await _getToken();
+    if (currentToken == null) {
+      throw Exception('No authentication token available');
     }
-  }
 
-  // Generic POST request
-  Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data, {String? token}) async {
-    try {
-      final headers = _getHeaders(token);
-      final response = await _client.post(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-        body: json.encode(data),
-      );
-
-      return _handleResponse(response);
-    } catch (e) {
-      throw Exception('Network error: $e');
-    }
-  }
-
-  // Generic PUT request
-  Future<Map<String, dynamic>> put(String endpoint, Map<String, dynamic> data, {String? token}) async {
-    try {
-      final headers = _getHeaders(token);
-      final response = await _client.put(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-        body: json.encode(data),
-      );
-
-      return _handleResponse(response);
-    } catch (e) {
-      throw Exception('Network error: $e');
-    }
-  }
-
-  // Generic PATCH request
-  Future<Map<String, dynamic>> patch(String endpoint, Map<String, dynamic> data, {String? token}) async {
-    try {
-      final headers = _getHeaders(token);
-      final response = await _client.patch(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-        body: json.encode(data),
-      );
-
-      return _handleResponse(response);
-    } catch (e) {
-      throw Exception('Network error: $e');
-    }
-  }
-
-  // Generic DELETE request
-  Future<Map<String, dynamic>> delete(String endpoint, {String? token}) async {
-    try {
-      final headers = _getHeaders(token);
-      final response = await _client.delete(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-      );
-
-      return _handleResponse(response);
-    } catch (e) {
-      throw Exception('Network error: $e');
-    }
-  }
-
-  // Get all quotations
-  Future<Map<String, dynamic>> getAllQuotations({String? token, Map<String, String>? queryParams}) async {
-    String endpoint = quotationsEndpoint;
-    if (queryParams != null && queryParams.isNotEmpty) {
-      final queryString = queryParams.entries.map((e) => '${e.key}=${e.value}').join('&');
-      endpoint = '$endpoint?$queryString';
-    }
-    return await get(endpoint, token: token);
-  }
-
-  // Create a new quotation
-  Future<Map<String, dynamic>> createQuotation(Map<String, dynamic> data, {String? token}) async {
-    return await post(quotationsEndpoint, data, token: token);
-  }
-
-  // Update a quotation
-  Future<Map<String, dynamic>> updateQuotation(String id, Map<String, dynamic> data, {String? token}) async {
-    return await put('$quotationsEndpoint/$id', data, token: token);
-  }
-
-  // Delete a quotation
-  Future<Map<String, dynamic>> deleteQuotation(String id, {String? token}) async {
-    return await delete('$quotationsEndpoint/$id', token: token);
-  }
-
-  // Add payment to quotation
-  Future<Map<String, dynamic>> addPayment(String id, Map<String, dynamic> paymentData, {String? token}) async {
-    return await post('$quotationsEndpoint/$id/payments', paymentData, token: token);
-  }
-
-  // Convert quotation to invoice
-  Future<Map<String, dynamic>> convertToInvoice(String id, {String? token}) async {
-    print('🔄 API Service: Converting quotation $id to invoice');
-    print('🔑 API Service: Token provided: ${token != null ? "Yes (${token.substring(0, 20)}...)" : "No"}');
-    return await patch('$quotationsEndpoint/$id/convert-to-invoice', {}, token: token);
-  }
-
-  // Update quotation status
-  Future<Map<String, dynamic>> updateQuotationStatus(String id, Map<String, dynamic> statusData, {String? token}) async {
-    return await patch('$quotationsEndpoint/$id/status', statusData, token: token);
-  }
-
-  // Helper methods
-  Map<String, String> _getHeaders(String? token) {
-    final headers = <String, String>{
+    return {
       'Content-Type': 'application/json',
+      'Authorization': 'Bearer $currentToken',
     };
-
-    if (token != null) {
-      headers['Authorization'] = 'Bearer $token';
-    }
-
-    return headers;
   }
 
-  Map<String, dynamic> _handleResponse(http.Response response) {
-    if (response.statusCode >= 200 && response.statusCode < 300) {
+  // GET: Get all quotations/invoices
+  Future<Map<String, dynamic>> getQuotations({
+    String? token,
+    int page = 1,
+    int limit = 10,
+    String? type,
+    String? status,
+    String? search,
+    String? startDate,
+    String? endDate,
+  }) async {
+    final headers = await _getHeaders(token: token);
+    final uri = Uri.parse('$baseUrl/quotations');
+    final queryParams = <String, String>{};
+
+    queryParams['page'] = page.toString();
+    queryParams['limit'] = limit.toString();
+
+    if (type != null) queryParams['type'] = type;
+    if (status != null) queryParams['status'] = status;
+    if (search != null) queryParams['search'] = search;
+    if (startDate != null) queryParams['startDate'] = startDate;
+    if (endDate != null) queryParams['endDate'] = endDate;
+
+    final finalUri = uri.replace(queryParameters: queryParams);
+
+    final response = await http.get(finalUri, headers: headers);
+
+    if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
-      final errorData = json.decode(response.body);
-      throw Exception(errorData['message'] ?? 'API Error: ${response.statusCode}');
+      throw Exception('Failed to load quotations: ${response.statusCode}');
     }
   }
 
-  void dispose() {
-    _client.close();
+  // GET: Get single quotation/invoice
+  Future<Map<String, dynamic>> getQuotation({
+    required String id,
+    String? token,
+  }) async {
+    final headers = await _getHeaders(token: token);
+    final response = await http.get(Uri.parse('$baseUrl/quotations/$id'), headers: headers);
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['data'] ?? data;
+    } else {
+      throw Exception('Failed to load quotation: ${response.statusCode}');
+    }
+  }
+
+  // POST: Create quotation
+  Future<Map<String, dynamic>> createQuotation({
+    required Map<String, dynamic> data,
+    String? token,
+  }) async {
+    final headers = await _getHeaders(token: token);
+    final response = await http.post(
+      Uri.parse('$baseUrl/quotations'),
+      headers: headers,
+      body: json.encode(data),
+    );
+
+    if (response.statusCode == 201) {
+      final responseData = json.decode(response.body);
+      return responseData['data'] ?? responseData;
+    } else {
+      throw Exception('Failed to create quotation: ${response.statusCode}');
+    }
+  }
+
+  // PUT: Update quotation
+  Future<Map<String, dynamic>> updateQuotation({
+    required String id,
+    required Map<String, dynamic> data,
+    String? token,
+  }) async {
+    final headers = await _getHeaders(token: token);
+    final response = await http.put(
+      Uri.parse('$baseUrl/quotations/$id'),
+      headers: headers,
+      body: json.encode(data),
+    );
+
+    if (response.statusCode == 200) {
+      final responseData = json.decode(response.body);
+      return responseData['data'] ?? responseData;
+    } else {
+      throw Exception('Failed to update quotation: ${response.statusCode}');
+    }
+  }
+
+  // PATCH: Convert quotation to invoice
+  Future<Map<String, dynamic>> convertToInvoice({
+    required String id,
+    String? token,
+  }) async {
+    final headers = await _getHeaders(token: token);
+    final response = await http.patch(
+      Uri.parse('$baseUrl/quotations/$id/convert-to-invoice'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final responseData = json.decode(response.body);
+      return responseData['data'] ?? responseData;
+    } else {
+      throw Exception('Failed to convert to invoice: ${response.statusCode}');
+    }
+  }
+
+  // PATCH: Update status
+  Future<Map<String, dynamic>> updateStatus({
+    required String id,
+    required String status,
+    String? token,
+  }) async {
+    final headers = await _getHeaders(token: token);
+    final response = await http.patch(
+      Uri.parse('$baseUrl/quotations/$id/status'),
+      headers: headers,
+      body: json.encode({'status': status}),
+    );
+
+    if (response.statusCode == 200) {
+      final responseData = json.decode(response.body);
+      return responseData['data'] ?? responseData;
+    } else {
+      throw Exception('Failed to update status: ${response.statusCode}');
+    }
+  }
+
+  // POST: Add payment
+  Future<Map<String, dynamic>> addPayment({
+    required String id,
+    required Map<String, dynamic> paymentData,
+    String? token,
+  }) async {
+    final headers = await _getHeaders(token: token);
+    final response = await http.post(
+      Uri.parse('$baseUrl/quotations/$id/payments'),
+      headers: headers,
+      body: json.encode(paymentData),
+    );
+
+    if (response.statusCode == 200) {
+      final responseData = json.decode(response.body);
+      return responseData['data'] ?? responseData;
+    } else {
+      throw Exception('Failed to add payment: ${response.statusCode}');
+    }
+  }
+
+  // DELETE: Delete quotation
+  Future<void> deleteQuotation({
+    required String id,
+    String? token,
+  }) async {
+    final headers = await _getHeaders(token: token);
+    final response = await http.delete(Uri.parse('$baseUrl/quotations/$id'), headers: headers);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete quotation: ${response.statusCode}');
+    }
   }
 }

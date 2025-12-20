@@ -3,6 +3,7 @@ import 'po_item_cost.dart';
 import 'other_expense.dart';
 
 class JobCostDocument {
+  final String? id;
   final String invoiceId;
   final String customerName;
   final String customerPhone;
@@ -13,6 +14,7 @@ class JobCostDocument {
   final List<OtherExpense> otherExpenses;
 
   JobCostDocument({
+    this.id,
     required this.invoiceId,
     required this.customerName,
     required this.customerPhone,
@@ -53,5 +55,40 @@ class JobCostDocument {
   // Helper Methods
   void addExpense(OtherExpense expense) {
     otherExpenses.add(expense);
+  }
+
+  // JSON serialization
+  factory JobCostDocument.fromJson(Map<String, dynamic> json) {
+    return JobCostDocument(
+      id: json['_id'] as String?,
+      invoiceId: json['invoiceId'] as String,
+      customerName: json['customerName'] as String,
+      customerPhone: json['customerPhone'] as String? ?? '',
+      projectTitle: json['projectTitle'] as String,
+      invoiceDate: DateTime.parse(json['invoiceDate'] as String),
+      invoiceItems: (json['invoiceItems'] as List<dynamic>?)
+          ?.map((item) => InvoiceItem.fromJson(item as Map<String, dynamic>))
+          .toList() ?? [],
+      purchaseOrderItems: (json['purchaseOrderItems'] as List<dynamic>?)
+          ?.map((item) => POItemCost.fromJson(item as Map<String, dynamic>))
+          .toList() ?? [],
+      otherExpenses: (json['otherExpenses'] as List<dynamic>?)
+          ?.map((item) => OtherExpense.fromJson(item as Map<String, dynamic>))
+          .toList() ?? [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) '_id': id,
+      'invoiceId': invoiceId,
+      'customerName': customerName,
+      'customerPhone': customerPhone,
+      'projectTitle': projectTitle,
+      'invoiceDate': invoiceDate.toIso8601String(),
+      'invoiceItems': invoiceItems.map((item) => item.toJson()).toList(),
+      'purchaseOrderItems': purchaseOrderItems.map((item) => item.toJson()).toList(),
+      'otherExpenses': otherExpenses.map((item) => item.toJson()).toList(),
+    };
   }
 }

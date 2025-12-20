@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:tilework/data/job_cost_mock_data.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:tilework/cubits/job_cost/job_cost_cubit.dart';
+import 'package:tilework/cubits/job_cost/job_cost_state.dart';
 import 'package:tilework/theme/colors.dart';
 import 'package:tilework/models/job_cost_screen/job_cost_document.dart';
 import 'package:tilework/widget/job_cost_screen.dart/job_cost/cost_summary_row.dart';
@@ -21,13 +23,14 @@ class JobCostScreen extends StatefulWidget {
 class _JobCostScreenState extends State<JobCostScreen>
     with SingleTickerProviderStateMixin {
   String _searchQuery = '';
-  JobCostDocument? _selectedJob;
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    // Load job costs when screen initializes
+    context.read<JobCostCubit>().loadJobCosts();
   }
 
   @override
@@ -36,62 +39,52 @@ class _JobCostScreenState extends State<JobCostScreen>
     super.dispose();
   }
 
-  List<JobCostDocument> get _filteredJobs {
-    if (_searchQuery.isEmpty) return MockData.jobCosts;
-
-    final query = _searchQuery.toLowerCase();
-    return MockData.jobCosts.where((job) {
-      return job.invoiceId.toLowerCase().contains(query) ||
-          job.customerName.toLowerCase().contains(query) ||
-          job.customerPhone.toLowerCase().contains(query) ||
-          job.projectTitle.toLowerCase().contains(query);
-    }).toList();
-  }
-
   void _refreshUI() {
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.jobCostBackground,
-      child: Column(
-        children: [
-          // Header
-          JobCostHeader(
-            selectedJob: _selectedJob,
-            jobs: MockData.jobCosts,
-            onJobSelected: (JobCostDocument? job) {
-              setState(() {
-                _selectedJob = job;
-              });
-            },
-            onSearchChanged: (query) {
-              setState(() {
-                _searchQuery = query;
-              });
-            },
-            onBackPressed: () {
-              setState(() {
-                _selectedJob = null;
-              });
-            },
-          ),
+    return BlocBuilder<JobCostCubit, JobCostState>(
+      builder: (context, state) {
+        return Container(
+          color: AppColors.jobCostBackground,
+          child: Column(
+            children: [
+              // Header
+              JobCostHeader(
+                selectedJob: state.selectedJobCost,
+                jobs: state.jobCosts,
+                onJobSelected: (JobCostDocument? job) {
+                  context.read<JobCostCubit>().selectJobCost(job);
+                },
+                onSearchChanged: (query) {
+                  setState(() {
+                    _searchQuery = query;
+                  });
+                },
+                onBackPressed: () {
+                  context.read<JobCostCubit>().selectJobCost(null);
+                },
+              ),
 
-          // Main Content
-          Expanded(
-            child: _selectedJob == null
-                ? _buildJobSelectionView()
-                : _buildJobCostDetailView(),
+              // Main Content
+              Expanded(
+                child: state.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : state.selectedJobCost == null
+                        ? _buildJobSelectionView(state)
+                        : _buildJobCostDetailView(state.selectedJobCost!),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildJobSelectionView() {
-    final jobs = _filteredJobs;
+  Widget _buildJobSelectionView(JobCostState state) {
+    final jobs = _filteredJobs(state.jobCosts);
 
     if (jobs.isEmpty) {
       return Center(
@@ -115,7 +108,7 @@ class _JobCostScreenState extends State<JobCostScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Summary Cards
-          const OverallSummaryCards(),
+          OverallSummaryCards(jobCosts: state.jobCosts),
           const SizedBox(height: 24),
 
           // Job List
@@ -128,9 +121,7 @@ class _JobCostScreenState extends State<JobCostScreen>
             (job) => JobListCard(
               job: job,
               onTap: () {
-                setState(() {
-                  _selectedJob = job;
-                });
+                context.read<JobCostCubit>().selectJobCost(job);
               },
             ),
           ),
@@ -139,9 +130,7 @@ class _JobCostScreenState extends State<JobCostScreen>
     );
   }
 
-  Widget _buildJobCostDetailView() {
-    final job = _selectedJob!;
-
+  Widget _buildJobCostDetailView(JobCostDocument job) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -201,5 +190,17 @@ class _JobCostScreenState extends State<JobCostScreen>
         ],
       ),
     );
+  }
+
+  List<JobCostDocument> _filteredJobs(List<JobCostDocument> jobs) {
+    if (_searchQuery.isEmpty) return jobs;
+
+    final query = _searchQuery.toLowerCase();
+    return jobs.where((job) {
+      return job.invoiceId.toLowerCase().contains(query) ||
+          job.customerName.toLowerCase().contains(query) ||
+          job.customerPhone.toLowerCase().contains(query) ||
+          job.projectTitle.toLowerCase().contains(query);
+    }).toList();
   }
 }

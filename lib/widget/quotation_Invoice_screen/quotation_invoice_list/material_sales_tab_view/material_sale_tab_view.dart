@@ -47,7 +47,7 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
         }
       },
       builder: (context, state) {
-        final filteredDocs = _getFilteredDocuments(state.materialSales);
+        final filteredDocs = _getFilteredDocuments(state.materialSales.cast<MaterialSaleDocument>());
         final groupedDocs = _groupByCustomer(filteredDocs);
         final customerNames = groupedDocs.keys.toList()..sort();
 

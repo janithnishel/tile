@@ -78,6 +78,7 @@ class PurchaseOrder {
   bool get isOrdered => status == 'Ordered';
   bool get isDelivered => status == 'Delivered';
   bool get isPaid => status == 'Paid';
+  bool get isCancelled => status == 'Cancelled';
 
   // Get next status
   String get nextStatus {
@@ -88,6 +89,8 @@ class PurchaseOrder {
         return 'Delivered';
       case 'Delivered':
         return 'Paid';
+      case 'Cancelled':
+        return 'Cancelled'; // No transition from cancelled
       default:
         return status;
     }
@@ -102,6 +105,8 @@ class PurchaseOrder {
         return 'Mark Delivered';
       case 'Delivered':
         return 'Mark Paid';
+      case 'Cancelled':
+        return 'Cancelled';
       default:
         return 'Completed';
     }
@@ -115,5 +120,34 @@ class PurchaseOrder {
   int? get daysUntilDelivery {
     if (expectedDelivery == null) return null;
     return expectedDelivery!.difference(DateTime.now()).inDays;
+  }
+
+  // Copy with method for creating modified instances
+  PurchaseOrder copyWith({
+    String? id,
+    String? poId,
+    String? quotationId,
+    String? customerName,
+    Supplier? supplier,
+    DateTime? orderDate,
+    DateTime? expectedDelivery,
+    String? status,
+    List<POItem>? items,
+    String? invoiceImagePath,
+    String? notes,
+  }) {
+    return PurchaseOrder(
+      id: id ?? this.id,
+      poId: poId ?? this.poId,
+      quotationId: quotationId ?? this.quotationId,
+      customerName: customerName ?? this.customerName,
+      supplier: supplier ?? this.supplier,
+      orderDate: orderDate ?? this.orderDate,
+      expectedDelivery: expectedDelivery,
+      status: status ?? this.status,
+      items: items ?? this.items,
+      invoiceImagePath: invoiceImagePath,
+      notes: notes,
+    );
   }
 }

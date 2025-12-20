@@ -7,9 +7,9 @@ enum DashboardPeriod {
   today('Today', 1),
   last7Days('Last 7 Days', 7),
   last30Days('Last 30 Days', 30),
-  thisMonth('This Month', 0),
-  lastQuarter('Last Quarter', 90),
-  ytd('Year to Date', 365),
+  last3Months('Last 3 Months', 90),
+  last6Months('Last 6 Months', 180),
+  lastYear('Last Year', 365),
   custom('Custom', -1);
 
   final String label;
@@ -20,7 +20,7 @@ enum DashboardPeriod {
   DateTimeRange get dateRange {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     switch (this) {
       case DashboardPeriod.today:
         return DateTimeRange(start: today, end: today);
@@ -34,19 +34,19 @@ enum DashboardPeriod {
           start: today.subtract(const Duration(days: 29)),
           end: today,
         );
-      case DashboardPeriod.thisMonth:
+      case DashboardPeriod.last3Months:
         return DateTimeRange(
-          start: DateTime(now.year, now.month, 1),
+          start: DateTime(now.year, now.month - 2, 1),
           end: today,
         );
-      case DashboardPeriod.lastQuarter:
+      case DashboardPeriod.last6Months:
         return DateTimeRange(
-          start: today.subtract(const Duration(days: 89)),
+          start: DateTime(now.year, now.month - 5, 1),
           end: today,
         );
-      case DashboardPeriod.ytd:
+      case DashboardPeriod.lastYear:
         return DateTimeRange(
-          start: DateTime(now.year, 1, 1),
+          start: DateTime(now.year - 1, now.month, now.day),
           end: today,
         );
       case DashboardPeriod.custom:

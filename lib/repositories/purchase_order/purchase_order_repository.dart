@@ -38,7 +38,7 @@ class PurchaseOrderRepository {
         return [];
       }
 
-      final purchaseOrders = data.map((json) {
+      final purchaseOrders = data.where((json) => json != null && json['supplier'] != null).map((json) {
         try {
           return PurchaseOrder.fromJson(json as Map<String, dynamic>);
         } catch (e) {

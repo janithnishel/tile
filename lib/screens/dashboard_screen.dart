@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
+import 'package:tilework/cubits/dashboard/dashboard_cubit.dart';
+import 'package:tilework/cubits/dashboard/dashboard_state.dart';
 import 'package:tilework/cubits/material_sale/material_sale_cubit.dart';
 
 import 'package:tilework/models/dashboard/dashboard_models.dart';
@@ -49,12 +51,10 @@ class _DashboardScreenState extends State<DashboardScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+    // Load API data for dashboard
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DashboardCubit>().loadAllDashboardData();
+    });
   }
 
   bool get mounted => _tabController != null && super.mounted;
@@ -83,58 +83,69 @@ class _DashboardScreenState extends State<DashboardScreen>
                   // ═══════════════════════════════════════
                   // 📊 BEAUTIFUL STAT CARDS
                   // ═══════════════════════════════════════
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          title: 'Total Sales',
-                          value: 'Rs. 2.5M',
-                          icon: Icons.account_balance_wallet_rounded,
-                          color: const Color(0xFF3B82F6),
-                          trend: '+12%',
-                          isPositiveTrend: true,
-                          subtitle: 'This month',
-                          onTap: () {},
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _StatCard(
-                          title: 'Total Orders',
-                          value: '156',
-                          icon: Icons.shopping_cart_rounded,
-                          color: const Color(0xFF10B981),
-                          trend: '+8%',
-                          isPositiveTrend: true,
-                          subtitle: 'This month',
-                          onTap: () {},
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _StatCard(
-                          title: 'Active Projects',
-                          value: '24',
-                          icon: Icons.work_rounded,
-                          color: const Color(0xFF8B5CF6),
-                          trend: '+3',
-                          isPositiveTrend: true,
-                          subtitle: 'In progress',
-                          onTap: () {},
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _StatCard(
-                          title: 'Pending Payments',
-                          value: 'Rs. 450K',
-                          icon: Icons.pending_actions_rounded,
-                          color: const Color(0xFFF59E0B),
-                          subtitle: 'From 18 invoices',
-                          onTap: () {},
-                        ),
-                      ),
-                    ],
+                  BlocBuilder<DashboardCubit, DashboardState>(
+                    builder: (context, state) {
+                      final stats = state.dashboardStats;
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: _StatCard(
+                              title: 'Total Revenue',
+                              value: stats?['totalRevenue'] != null
+                                  ? 'Rs. ${stats!['totalRevenue']}'
+                                  : 'Rs. 2.5M',
+                              icon: Icons.account_balance_wallet_rounded,
+                              color: const Color(0xFF3B82F6),
+                              trend: '+12%',
+                              isPositiveTrend: true,
+                              subtitle: 'This period',
+                              onTap: () {},
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _StatCard(
+                              title: 'Total Profit',
+                              value: stats?['totalProfit'] != null
+                                  ? 'Rs. ${stats!['totalProfit']}'
+                                  : 'Rs. 1.2M',
+                              icon: Icons.trending_up_rounded,
+                              color: const Color(0xFF10B981),
+                              trend: '+8%',
+                              isPositiveTrend: true,
+                              subtitle: 'This period',
+                              onTap: () {},
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _StatCard(
+                              title: 'Active Projects',
+                              value: stats?['activeProjects']?.toString() ?? '24',
+                              icon: Icons.work_rounded,
+                              color: const Color(0xFF8B5CF6),
+                              trend: '+3',
+                              isPositiveTrend: true,
+                              subtitle: 'In progress',
+                              onTap: () {},
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _StatCard(
+                              title: 'Outstanding Payments',
+                              value: stats?['totalOutstanding'] != null
+                                  ? 'Rs. ${stats!['totalOutstanding']}'
+                                  : 'Rs. 450K',
+                              icon: Icons.pending_actions_rounded,
+                              color: const Color(0xFFF59E0B),
+                              subtitle: 'Pending collection',
+                              onTap: () {},
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 24),
@@ -606,7 +617,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           _customDateRange = null;
         }
       });
-      _refreshDashboard();
+      _loadDataForPeriod();
     }
   }
 
@@ -615,8 +626,14 @@ class _DashboardScreenState extends State<DashboardScreen>
       setState(() {
         _customDateRange = dateRange;
       });
-      _refreshDashboard();
+      _loadDataForPeriod();
     }
+  }
+
+  void _loadDataForPeriod() {
+    // Convert DashboardPeriod enum to string for API
+    final periodString = _selectedPeriod.toString().split('.').last;
+    context.read<DashboardCubit>().loadAllDashboardData(period: periodString);
   }
 
   void _navigateToReports() {
@@ -625,6 +642,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   void _refreshDashboard() {
     setState(() {});
+    context.read<DashboardCubit>().refreshDashboard();
     _showSnackBar('Dashboard refreshed', const Color(0xFF10B981));
   }
 

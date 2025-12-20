@@ -34,4 +34,25 @@ class InvoiceItem {
       costPrice: costPrice ?? this.costPrice,
     );
   }
+
+  // JSON serialization
+  factory InvoiceItem.fromJson(Map<String, dynamic> json) {
+    return InvoiceItem(
+      name: json['name'] as String,
+      quantity: (json['quantity'] as num).toDouble(),
+      unit: json['unit'] as String,
+      sellingPrice: (json['sellingPrice'] as num).toDouble(),
+      costPrice: json['costPrice'] != null ? (json['costPrice'] as num).toDouble() : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'quantity': quantity,
+      'unit': unit,
+      'sellingPrice': sellingPrice,
+      if (costPrice != null) 'costPrice': costPrice,
+    };
+  }
 }

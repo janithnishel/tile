@@ -22,4 +22,31 @@ class POItemCost {
   double get totalCost => quantity * unitPrice;
 
   String get quantityDisplay => '${quantity.toStringAsFixed(0)} $unit';
+
+  // JSON serialization
+  factory POItemCost.fromJson(Map<String, dynamic> json) {
+    return POItemCost(
+      poId: json['poId'] as String,
+      supplierName: json['supplierName'] as String? ?? '',
+      itemName: json['itemName'] as String,
+      quantity: (json['quantity'] as num).toDouble(),
+      unit: json['unit'] as String? ?? '',
+      unitPrice: (json['unitPrice'] as num).toDouble(),
+      orderDate: DateTime.parse(json['orderDate'] as String),
+      status: json['status'] as String? ?? 'Unknown',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'poId': poId,
+      'supplierName': supplierName,
+      'itemName': itemName,
+      'quantity': quantity,
+      'unit': unit,
+      'unitPrice': unitPrice,
+      'orderDate': orderDate.toIso8601String(),
+      'status': status,
+    };
+  }
 }

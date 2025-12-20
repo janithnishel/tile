@@ -7,53 +7,58 @@ class MaterialSaleRepository {
   MaterialSaleRepository(this._apiService);
 
   // GET: Fetch all material sales
-  Future<List<MaterialSaleDocument>> fetchMaterialSales({Map<String, String>? queryParams, String? token}) async {
+  Future<Map<String, dynamic>> fetchMaterialSales({
+    String? token,
+    int page = 1,
+    int limit = 10,
+    String? status,
+    String? search,
+    String? startDate,
+    String? endDate,
+  }) async {
     try {
-      // Backend returns: {success: true, data: [...], pagination: {...}}
-      final response = await _apiService.getAllMaterialSales(token: token, queryParams: queryParams);
+      final response = await _apiService.getMaterialSales(
+        token: token,
+        page: page,
+        limit: limit,
+        status: status,
+        search: search,
+        startDate: startDate,
+        endDate: endDate,
+      );
 
-      // Handle paginated response
-      if (response['data'] != null && response['data'] is List) {
-        final List data = response['data'] as List;
-        return data.map((json) => MaterialSaleDocument.fromJson(json as Map<String, dynamic>)).toList();
-      } else if (response is List) {
-        return (response as List).map((json) => MaterialSaleDocument.fromJson(json as Map<String, dynamic>)).toList();
-      } else {
-        return [];
-      }
+      // Backend returns: {success: true, data: [...], pagination: {...}}
+      return response;
     } catch (e) {
       throw Exception('Failed to fetch material sales: $e');
     }
   }
 
   // GET: Fetch single material sale
-  Future<MaterialSaleDocument> fetchMaterialSale(String id, {String? token}) async {
+  Future<Map<String, dynamic>> fetchMaterialSale(String id, {String? token}) async {
     try {
-      final response = await _apiService.getMaterialSale(id, token: token);
-      final data = response['data'];
-      return MaterialSaleDocument.fromJson(data as Map<String, dynamic>);
+      final response = await _apiService.getMaterialSale(id: id, token: token);
+      return response;
     } catch (e) {
       throw Exception('Failed to fetch material sale: $e');
     }
   }
 
   // POST: Create a new material sale
-  Future<MaterialSaleDocument> createMaterialSale(MaterialSaleDocument materialSale, {String? token}) async {
+  Future<Map<String, dynamic>> createMaterialSale(Map<String, dynamic> data, {String? token}) async {
     try {
-      final response = await _apiService.createMaterialSale(materialSale.toJson(), token: token);
-      final data = response['data'];
-      return MaterialSaleDocument.fromJson(data as Map<String, dynamic>);
+      final response = await _apiService.createMaterialSale(data: data, token: token);
+      return response;
     } catch (e) {
       throw Exception('Failed to create material sale: $e');
     }
   }
 
   // PUT: Update a material sale
-  Future<MaterialSaleDocument> updateMaterialSale(MaterialSaleDocument materialSale, {String? token}) async {
+  Future<Map<String, dynamic>> updateMaterialSale(String id, Map<String, dynamic> data, {String? token}) async {
     try {
-      final response = await _apiService.updateMaterialSale(materialSale.id ?? '', materialSale.toJson(), token: token);
-      final data = response['data'];
-      return MaterialSaleDocument.fromJson(data as Map<String, dynamic>);
+      final response = await _apiService.updateMaterialSale(id: id, data: data, token: token);
+      return response;
     } catch (e) {
       throw Exception('Failed to update material sale: $e');
     }
@@ -62,29 +67,27 @@ class MaterialSaleRepository {
   // DELETE: Delete a material sale
   Future<void> deleteMaterialSale(String id, {String? token}) async {
     try {
-      await _apiService.deleteMaterialSale(id, token: token);
+      await _apiService.deleteMaterialSale(id: id, token: token);
     } catch (e) {
       throw Exception('Failed to delete material sale: $e');
     }
   }
 
   // POST: Add payment to material sale
-  Future<MaterialSaleDocument> addPayment(String id, Map<String, dynamic> paymentData, {String? token}) async {
+  Future<Map<String, dynamic>> addPayment(String id, Map<String, dynamic> paymentData, {String? token}) async {
     try {
-      final response = await _apiService.addPayment(id, paymentData, token: token);
-      final data = response['data'];
-      return MaterialSaleDocument.fromJson(data as Map<String, dynamic>);
+      final response = await _apiService.addPayment(id: id, paymentData: paymentData, token: token);
+      return response;
     } catch (e) {
       throw Exception('Failed to add payment: $e');
     }
   }
 
   // PATCH: Update status
-  Future<MaterialSaleDocument> updateStatus(String id, String status, {String? token}) async {
+  Future<Map<String, dynamic>> updateStatus(String id, String status, {String? token}) async {
     try {
-      final response = await _apiService.updateStatus(id, {'status': status}, token: token);
-      final data = response['data'];
-      return MaterialSaleDocument.fromJson(data as Map<String, dynamic>);
+      final response = await _apiService.updateStatus(id: id, status: status, token: token);
+      return response;
     } catch (e) {
       throw Exception('Failed to update status: $e');
     }

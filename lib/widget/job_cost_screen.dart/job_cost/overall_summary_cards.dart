@@ -1,22 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:tilework/data/job_cost_mock_data.dart';
+import 'package:tilework/models/job_cost_screen/job_cost_document.dart';
 import 'package:tilework/utils/job_cost_formatters.dart';
 import 'package:tilework/widget/job_cost_screen.dart/summary_card.dart';
 
 class OverallSummaryCards extends StatelessWidget {
-  const OverallSummaryCards({Key? key}) : super(key: key);
+  final List<JobCostDocument> jobCosts;
+
+  const OverallSummaryCards({Key? key, required this.jobCosts}) : super(key: key);
+
+  double get totalRevenue =>
+      jobCosts.fold<double>(0, (sum, job) => sum + job.totalRevenue);
+
+  double get totalCost =>
+      jobCosts.fold<double>(0, (sum, job) => sum + job.totalCost);
+
+  double get totalProfit => totalRevenue - totalCost;
+
+  double get averageMargin => jobCosts.isNotEmpty
+      ? jobCosts.fold<double>(0, (sum, job) => sum + job.profitMargin) /
+            jobCosts.length
+      : 0;
 
   @override
   Widget build(BuildContext context) {
-    final totalProfit = MockData.totalProfit;
-
     return Row(
       children: [
         Expanded(
           child: SummaryCard(
             icon: Icons.account_balance_wallet,
             title: 'Total Revenue',
-            value: AppFormatters.formatCurrency(MockData.totalRevenue),
+            value: AppFormatters.formatCurrency(totalRevenue),
             color: Colors.blue,
           ),
         ),
@@ -25,7 +38,7 @@ class OverallSummaryCards extends StatelessWidget {
           child: SummaryCard(
             icon: Icons.shopping_cart,
             title: 'Total Cost',
-            value: AppFormatters.formatCurrency(MockData.totalCost),
+            value: AppFormatters.formatCurrency(totalCost),
             color: Colors.orange,
           ),
         ),
@@ -43,7 +56,7 @@ class OverallSummaryCards extends StatelessWidget {
           child: SummaryCard(
             icon: Icons.pie_chart,
             title: 'Avg Margin',
-            value: AppFormatters.formatPercentage(MockData.averageMargin),
+            value: AppFormatters.formatPercentage(averageMargin),
             color: Colors.purple,
           ),
         ),

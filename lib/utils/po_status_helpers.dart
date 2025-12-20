@@ -12,6 +12,8 @@ class POStatusHelpers {
         return Colors.blue;
       case 'Paid':
         return Colors.green;
+      case 'Cancelled':
+        return Colors.red;
       default:
         return Colors.grey;
     }
@@ -54,5 +56,6 @@ class POStatusHelpers {
     'Ordered',
     'Delivered',
     'Paid',
+    'Cancelled',
   ];
 }
