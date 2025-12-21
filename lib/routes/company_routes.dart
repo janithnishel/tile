@@ -8,6 +8,7 @@ import '../screens/job_cost_section.dart';
 import '../screens/quotation_Invoice/quotation_list_screen.dart';
 import '../screens/auth/login _screen.dart';
 import '../screens/purchase_order_screen.dart';
+import '../screens/reports_screen.dart';
 import '../screens/company_sidebar_screen.dart';
 
 /// Application route names
@@ -18,6 +19,7 @@ class AppRoutes {
   static const String quotationInvoice = '/quotation-invoice';
   static const String purchaseOrder = '/purchase-order';
   static const String jobCost = '/job-cost';
+  static const String reports = '/reports';
   static const String notifications = '/notifications';
   static const String settings = '/settings';
 }
@@ -83,6 +85,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.jobCost,
       builder: (context, state) => const JobCostScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.reports,
+      builder: (context, state) => const ReportsScreen(),
     ),
     GoRoute(
       path: AppRoutes.notifications,

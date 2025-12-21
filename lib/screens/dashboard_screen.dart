@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
 import 'package:tilework/cubits/dashboard/dashboard_cubit.dart';
 import 'package:tilework/cubits/dashboard/dashboard_state.dart';
 import 'package:tilework/cubits/material_sale/material_sale_cubit.dart';
+import 'package:tilework/routes/company_routes.dart';
 
 import 'package:tilework/models/dashboard/dashboard_models.dart';
 import 'package:tilework/widget/dashboard/dashboard_period_selector.dart';
@@ -171,12 +173,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                     child: TabBarView(
                       controller: _tabController,
                       children: [
-                        MaterialSalesDashboardTab(
+                        ProjectsDashboardTab(
                           selectedPeriod: _selectedPeriod,
                           customDateRange: _customDateRange,
                           onNavigateToReports: _navigateToReports,
                         ),
-                        ProjectsDashboardTab(
+                        MaterialSalesDashboardTab(
                           selectedPeriod: _selectedPeriod,
                           customDateRange: _customDateRange,
                           onNavigateToReports: _navigateToReports,
@@ -576,10 +578,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.store_rounded, size: 18),
+                  child: const Icon(Icons.work_rounded, size: 18),
                 ),
                 const SizedBox(width: 10),
-                const Text('Material Sales'),
+                const Text('Projects'),
               ],
             ),
           ),
@@ -593,10 +595,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.work_rounded, size: 18),
+                  child: const Icon(Icons.store_rounded, size: 18),
                 ),
                 const SizedBox(width: 10),
-                const Text('Projects'),
+                const Text('Material Sales'),
               ],
             ),
           ),
@@ -637,7 +639,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _navigateToReports() {
-    _showSnackBar('Navigate to Reports - Coming soon!', const Color(0xFF3B82F6));
+    context.go(AppRoutes.reports);
   }
 
   void _refreshDashboard() {
