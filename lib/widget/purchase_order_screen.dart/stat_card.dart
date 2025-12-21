@@ -7,6 +7,7 @@ class StatCard extends StatelessWidget {
   final String value;
   final Color color;
   final bool isWide;
+  final VoidCallback? onTap;
 
   const StatCard({
     Key? key,
@@ -15,6 +16,7 @@ class StatCard extends StatelessWidget {
     required this.value,
     required this.color,
     this.isWide = false,
+    this.onTap,
   }) : super(key: key);
 
   @override
@@ -26,6 +28,7 @@ class StatCard extends StatelessWidget {
       color: color,
       isWide: isWide,
       borderRadius: 12,
+      onTap: onTap,
     );
   }
 }

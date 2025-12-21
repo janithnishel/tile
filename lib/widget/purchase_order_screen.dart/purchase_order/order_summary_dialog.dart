@@ -814,8 +814,11 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
                 const SizedBox(height: 24),
                 _buildTotalsSection(),
                 const SizedBox(height: 32),
-                _buildEnhancedInvoiceSection(),
-                const SizedBox(height: 32),
+                // Only show invoice section for Ordered or higher status
+                if (_currentOrder.isOrdered || _currentOrder.isDelivered || _currentOrder.isPaid) ...[
+                  _buildEnhancedInvoiceSection(),
+                  const SizedBox(height: 32),
+                ],
                 _buildTermsSection(),
                 const SizedBox(height: 24),
                 _buildSignatureSection(),
@@ -1512,8 +1515,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
               ),
               const SizedBox(width: 10),
 
-              // Edit Button
-              // Edit or View depending on status
+              // Edit/View Button - State-based restrictions
               if (_currentOrder.isDraft)
                 _buildActionButton(
                   icon: Icons.edit_rounded,

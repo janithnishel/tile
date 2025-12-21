@@ -47,14 +47,23 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
   // PROJECT PO FILTERS
   // ============================================
   String? _selectedQuotationId;
+  String? _selectedSupplierId;
   String _searchQuery = '';
   String _statusFilter = 'All';
+  DateTime? _startDate;
+  DateTime? _endDate;
 
   // ============================================
   // APPROVED QUOTATIONS (loaded from API)
   // ============================================
   List<ApprovedQuotation> _approvedQuotations = [];
   bool _isLoadingQuotations = true;
+
+  // ============================================
+  // SUPPLIERS (loaded from API)
+  // ============================================
+  List<Supplier> _suppliers = [];
+  bool _isLoadingSuppliers = true;
 
   // ============================================
   // PURCHASE ORDERS (loaded from API)
@@ -73,6 +82,11 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController!.addListener(_onTabChanged);
+
+    // Set default date range to current month
+    final now = DateTime.now();
+    _startDate = DateTime(now.year, now.month, 1);
+    _endDate = DateTime(now.year, now.month + 1, 0);
   }
 
   @override
@@ -88,17 +102,20 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
     try {
       final quotationCubit = context.read<QuotationCubit>();
       final purchaseOrderCubit = context.read<PurchaseOrderCubit>();
+      final supplierCubit = context.read<SupplierCubit>();
 
-      // Load both quotations and purchase orders in parallel
+      // Load quotations, purchase orders, and suppliers in parallel
       await Future.wait([
         quotationCubit.loadQuotations(queryParams: {'status': 'approved'}),
         purchaseOrderCubit.loadPurchaseOrders(),
+        supplierCubit.loadSuppliers(),
       ]);
 
-      // Update local state with loaded quotations
+      // Update local state with loaded data
       if (mounted) {
         final quotationState = quotationCubit.state;
         final purchaseOrderState = purchaseOrderCubit.state;
+        final supplierState = supplierCubit.state;
         setState(() {
           _approvedQuotations = quotationState.quotations.map((doc) {
             return ApprovedQuotation(
@@ -125,6 +142,10 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
           // Load purchase orders
           _purchaseOrders = purchaseOrderState.purchaseOrders;
           _isLoadingPurchaseOrders = false;
+
+          // Load suppliers
+          _suppliers = supplierState.suppliers;
+          _isLoadingSuppliers = false;
         });
       }
     } catch (e) {
@@ -135,6 +156,8 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
           _isLoadingQuotations = false;
           _purchaseOrders = [];
           _isLoadingPurchaseOrders = false;
+          _suppliers = [];
+          _isLoadingSuppliers = false;
         });
       }
     }
@@ -165,6 +188,22 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
     // Use API-loaded purchase orders
     List<PurchaseOrder> list = _purchaseOrders;
 
+    // Filter by Date Range (Order Date)
+    if (_startDate != null && _endDate != null) {
+      list = list.where((po) {
+        final orderDate = po.orderDate;
+        return orderDate.isAfter(_startDate!.subtract(const Duration(days: 1))) &&
+               orderDate.isBefore(_endDate!.add(const Duration(days: 1)));
+      }).toList();
+    }
+
+    // Filter by Supplier ID
+    if (_selectedSupplierId != null) {
+      list = list
+          .where((po) => po.supplier.id == _selectedSupplierId)
+          .toList();
+    }
+
     // Filter by Quotation ID
     if (_selectedQuotationId != null) {
       list = list
@@ -174,7 +213,11 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
 
     // Filter by Status
     if (_statusFilter != 'All') {
-      list = list.where((po) => po.status == _statusFilter).toList();
+      if (_statusFilter == 'Active') {
+        list = list.where((po) => ['Ordered', 'Delivered', 'Paid'].contains(po.status)).toList();
+      } else {
+        list = list.where((po) => po.status == _statusFilter).toList();
+      }
     }
 
     // Search
@@ -657,10 +700,17 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
       children: [
         // Header Section with real API data
         POHeaderSection(
+          selectedSupplierId: _selectedSupplierId,
           selectedQuotationId: _selectedQuotationId,
           searchQuery: _searchQuery,
           statusFilter: _statusFilter,
+          startDate: _startDate,
+          endDate: _endDate,
           quotations: _approvedQuotations,
+          suppliers: _suppliers,
+          onSupplierChanged: (value) {
+            setState(() => _selectedSupplierId = value);
+          },
           onQuotationChanged: (value) {
             setState(() => _selectedQuotationId = value);
           },
@@ -670,6 +720,12 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
           onStatusFilterChanged: (value) {
             setState(() => _statusFilter = value);
           },
+          onDateRangeChanged: (start, end) {
+            setState(() {
+              _startDate = start;
+              _endDate = end;
+            });
+          },
           onClearSearch: () {
             setState(() => _searchQuery = '');
           },
@@ -677,7 +733,10 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
         ),
 
         // Stats Row (existing)
-        POStatsRow(orders: _filteredOrders),
+        POStatsRow(
+          orders: _filteredOrders,
+          onFilterChanged: (filter) => setState(() => _statusFilter = filter ?? 'All'),
+        ),
 
         // Main Content (existing)
         Expanded(child: _buildMainContent()),

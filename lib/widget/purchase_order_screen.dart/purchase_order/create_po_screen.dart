@@ -276,6 +276,7 @@ class _EditPODialogState extends State<EditPODialog> {
   Widget _buildEditableItemCard(SelectedPOItem item, int index) {
     final controller = _priceControllers[item.id];
     final currentPrice = double.tryParse(controller?.text ?? '') ?? item.price;
+    final isSelected = true; // In edit mode, all items are selected
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -295,7 +296,7 @@ class _EditPODialogState extends State<EditPODialog> {
               // Selection checkbox (always selected in edit mode)
               Checkbox(
                 value: true,
-                onChanged: null, // Disabled in edit mode
+                onChanged: null, // Disabled in edit mode - all items must remain selected
               ),
               Container(
                 padding: const EdgeInsets.all(8),
@@ -394,6 +395,8 @@ class _EditPODialogState extends State<EditPODialog> {
                           setState(() {
                             item.quantity = qty;
                           });
+                          // Trigger real-time total update
+                          setState(() {});
                         },
                       ),
                     ),
@@ -421,9 +424,10 @@ class _EditPODialogState extends State<EditPODialog> {
                 child: TextField(
                   controller: _priceControllers[item.id],
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
+                    color: item.isPriceHigherThanLast ? Colors.red.shade700 : null,
                   ),
                   decoration: InputDecoration(
                     labelText: 'Unit Price',
@@ -433,9 +437,13 @@ class _EditPODialogState extends State<EditPODialog> {
                     ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: item.isPriceHigherThanLast ? Colors.red.shade50 : Colors.white,
                   ),
-                  onChanged: (value) => _updatePrice(item.id, value),
+                  onChanged: (value) {
+                    _updatePrice(item.id, value);
+                    // Trigger real-time total update
+                    setState(() {});
+                  },
                 ),
               ),
               const SizedBox(width: 16),
@@ -461,6 +469,35 @@ class _EditPODialogState extends State<EditPODialog> {
               ),
             ],
           ),
+
+          // Price warning for higher prices
+          if (item.isPriceHigherThanLast) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Price is ${item.priceDifferencePercentage.toStringAsFixed(1)}% higher than last purchase',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.red.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -761,7 +798,7 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
   @override
   void initState() {
     super.initState();
-    _expectedDeliveryDate = DateTime.now().add(const Duration(days: 7));
+    _expectedDeliveryDate = DateTime.now().add(const Duration(days: 7)); // Default: Current Date + 7 days
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -898,6 +935,8 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
     if (_selectedItems.containsKey(id)) {
       setState(() {
         _selectedItems[id]!.quantity = newQty;
+        // Real-time total update
+        setState(() {});
       });
     }
   }
@@ -907,6 +946,8 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
     if (_selectedItems.containsKey(id)) {
       setState(() {
         _selectedItems[id]!.price = double.tryParse(priceText) ?? 0;
+        // Real-time total update
+        setState(() {});
       });
     }
   }

@@ -14,6 +14,7 @@ class StatCard extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final bool isHighlighted;
   final double borderRadius;
+  final VoidCallback? onTap;
 
   const StatCard({
     Key? key,
@@ -30,6 +31,7 @@ class StatCard extends StatelessWidget {
     this.padding,
     this.isHighlighted = false,
     this.borderRadius = 12,
+    this.onTap,
   }) : super(key: key);
 
   @override
@@ -42,35 +44,46 @@ class StatCard extends StatelessWidget {
   }
 
   Widget _buildHorizontalCard() {
-    return Expanded(
-      flex: isWide ? 2 : 1,
-      child: Container(
-        padding: padding ?? const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(borderRadius),
-          border: isHighlighted ? Border.all(color: color, width: 2) : null,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            _buildIconContainer(),
-            const SizedBox(width: 12),
-            _buildTextContent(),
-          ],
-        ),
+    final card = Container(
+      padding: padding ?? const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: isHighlighted ? Border.all(color: color, width: 2) : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          _buildIconContainer(),
+          const SizedBox(width: 12),
+          _buildTextContent(),
+        ],
       ),
     );
+
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: card,
+        ),
+      );
+    }
+
+    return card;
   }
 
   Widget _buildVerticalCard() {
-    return Container(
+    final card = Container(
       padding: padding ?? const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -131,6 +144,20 @@ class StatCard extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: card,
+        ),
+      );
+    }
+
+    return card;
   }
 
   Widget _buildIconContainer() {
