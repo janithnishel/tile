@@ -357,12 +357,14 @@ import 'package:image_picker/image_picker.dart';
 import 'package:tilework/models/purchase_order/purchase_order.dart';
 import 'package:tilework/models/purchase_order/invoice_details.dart';
 import 'package:tilework/models/purchase_order/delivery_item.dart';
+import 'package:tilework/models/purchase_order/supplier.dart';
 import 'package:tilework/utils/po_status_helpers.dart';
 import 'package:tilework/cubits/purchase_order/purchase_order_cubit.dart';
 import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/create_po_screen.dart';
 
 class OrderSummaryDialog extends StatefulWidget {
   final PurchaseOrder order;
+  final List<Supplier> suppliers;
   final VoidCallback onClose;
   final Function(PurchaseOrder)? onOrderUpdated;
   final Function(String status)? onStatusChanged;
@@ -375,6 +377,7 @@ class OrderSummaryDialog extends StatefulWidget {
   const OrderSummaryDialog({
     Key? key,
     required this.order,
+    required this.suppliers,
     required this.onClose,
     this.onOrderUpdated,
     this.onStatusChanged,
@@ -1332,16 +1335,35 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
       child: Row(
         children: [
           if (_selectedInvoiceImage != null || _invoiceDetails.hasImage)
-            Container(
-              width: 100,
-              height: 80,
-              margin: const EdgeInsets.only(right: 16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
-                image: _selectedInvoiceImage != null
-                    ? DecorationImage(image: FileImage(_selectedInvoiceImage!), fit: BoxFit.cover)
-                    : (_invoiceDetails.imageUrl != null ? DecorationImage(image: NetworkImage(_invoiceDetails.imageUrl!), fit: BoxFit.cover) : null),
+            GestureDetector(
+              onTap: () {
+                // open full screen zoomable viewer
+                showDialog(
+                  context: context,
+                  builder: (_) => Dialog(
+                    insetPadding: EdgeInsets.all(0),
+                    child: InteractiveViewer(
+                      panEnabled: true,
+                      minScale: 1,
+                      maxScale: 5,
+                      child: _selectedInvoiceImage != null
+                          ? Image.file(_selectedInvoiceImage!)
+                          : (_invoiceDetails.imageUrl != null ? Image.network(_invoiceDetails.imageUrl!) : const SizedBox.shrink()),
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                width: 100,
+                height: 80,
+                margin: const EdgeInsets.only(right: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                  image: _selectedInvoiceImage != null
+                      ? DecorationImage(image: FileImage(_selectedInvoiceImage!), fit: BoxFit.cover)
+                      : (_invoiceDetails.imageUrl != null ? DecorationImage(image: NetworkImage(_invoiceDetails.imageUrl!), fit: BoxFit.cover) : null),
+                ),
               ),
             ),
           Expanded(
@@ -1355,7 +1377,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
             ),
           ),
           IconButton(onPressed: _showInvoiceUploadDialog, icon: const Icon(Icons.edit), tooltip: 'Edit Invoice Details', color: Colors.blue),
-        ],
+        ]
       ),
     );
   }
@@ -1491,12 +1513,21 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
               const SizedBox(width: 10),
 
               // Edit Button
-              _buildActionButton(
-                icon: Icons.edit_rounded,
-                label: 'Edit',
-                color: Colors.blue.shade600,
-                onPressed: _handleEdit,
-              ),
+              // Edit or View depending on status
+              if (_currentOrder.isDraft)
+                _buildActionButton(
+                  icon: Icons.edit_rounded,
+                  label: 'Edit',
+                  color: Colors.blue.shade600,
+                  onPressed: _handleEdit,
+                )
+              else
+                _buildActionButton(
+                  icon: Icons.remove_red_eye_rounded,
+                  label: 'View',
+                  color: Colors.grey.shade700,
+                  onPressed: _handleView,
+                ),
               const SizedBox(width: 10),
 
               // Delete Button (only for Draft)
@@ -1701,6 +1732,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
         MaterialPageRoute(
           builder: (context) => EditPODialog(
             order: _currentOrder,
+            suppliers: widget.suppliers,
             onUpdate: (updatedOrder) {
               setState(() {
                 _currentOrder = updatedOrder;
@@ -1719,6 +1751,15 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
         builder: (context) => _buildEditDialog(),
       );
     }
+  }
+
+  /// Handle View Button - Opens Full Screen Preview for non-draft orders
+  void _handleView() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (_) => _buildFullScreenPreview(),
+    );
   }
 
   /// Handle Place Order (Draft -> Ordered)

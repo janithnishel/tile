@@ -46,11 +46,13 @@ class SelectedPOItem {
 
 class EditPODialog extends StatefulWidget {
   final PurchaseOrder order;
+  final List<Supplier> suppliers;
   final Function(PurchaseOrder updatedOrder) onUpdate;
 
   const EditPODialog({
     Key? key,
     required this.order,
+    required this.suppliers,
     required this.onUpdate,
   }) : super(key: key);
 
@@ -64,6 +66,14 @@ class _EditPODialogState extends State<EditPODialog> {
   late String _selectedQuotationId;
   late Supplier _selectedSupplier;
 
+  void _onSupplierChanged(Supplier? supplier) {
+    if (supplier != null) {
+      setState(() {
+        _selectedSupplier = supplier;
+      });
+    }
+  }
+
   // Controllers
   final Map<String, TextEditingController> _quantityControllers = {};
   final Map<String, TextEditingController> _priceControllers = {};
@@ -73,7 +83,11 @@ class _EditPODialogState extends State<EditPODialog> {
     super.initState();
     _currentOrder = widget.order;
     _selectedQuotationId = _currentOrder.quotationId;
-    _selectedSupplier = _currentOrder.supplier;
+    // Find the matching supplier from the loaded suppliers list
+    _selectedSupplier = widget.suppliers.firstWhere(
+      (s) => s.id == _currentOrder.supplier.id,
+      orElse: () => _currentOrder.supplier, // Fallback to order supplier if not found
+    );
     _initializeSelectedItems();
   }
 
@@ -197,15 +211,44 @@ class _EditPODialogState extends State<EditPODialog> {
         children: [
           _buildDetailRow('PO ID', _currentOrder.poId),
           const SizedBox(height: 8),
-          _buildDetailRow('Supplier', _selectedSupplier.name),
+          // Supplier selector (editable)
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              SizedBox(width: 120, child: Text('Supplier:', style: TextStyle(fontSize: 12, color: Colors.grey.shade600))),
+              Expanded(
+                child: DropdownButton<Supplier>(
+                  value: _selectedSupplier,
+                  isExpanded: true,
+                  hint: const Text('Select supplier'),
+                  items: widget.suppliers.map((s) => DropdownMenuItem(value: s, child: Text(s.name))).toList(),
+                  onChanged: (s) => _onSupplierChanged(s),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           _buildDetailRow('Customer', _currentOrder.customerName),
           const SizedBox(height: 8),
           _buildDetailRow('Order Date', DateFormat('d MMMM yyyy').format(_currentOrder.orderDate)),
-          if (_currentOrder.expectedDelivery != null) ...[
-            const SizedBox(height: 8),
-            _buildDetailRow('Expected Delivery', DateFormat('d MMMM yyyy').format(_currentOrder.expectedDelivery!)),
-          ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              SizedBox(width: 120, child: Text('Expected Delivery:', style: TextStyle(fontSize: 12, color: Colors.grey.shade600))),
+              Expanded(
+                  child: InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(context: context, initialDate: _currentOrder.expectedDelivery, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
+                    if (picked != null) setState(() => _currentOrder = _currentOrder.copyWith(expectedDelivery: picked));
+                  },
+                  child: Text(
+                    _currentOrder.expectedDelivery != null ? DateFormat('d MMMM yyyy').format(_currentOrder.expectedDelivery!) : DateFormat('d MMMM yyyy').format(DateTime.now().add(const Duration(days: 7))),
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -249,6 +292,11 @@ class _EditPODialogState extends State<EditPODialog> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Selection checkbox (always selected in edit mode)
+              Checkbox(
+                value: true,
+                onChanged: null, // Disabled in edit mode
+              ),
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(

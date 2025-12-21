@@ -208,40 +208,51 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
   // ============================================
 
   void _showOrderSummaryDialog(PurchaseOrder order) async {
+    // Load suppliers for the dialog
+    try {
+      final supplierCubit = context.read<SupplierCubit>();
+      await supplierCubit.loadSuppliers();
+    } catch (e) {
+      // Continue with empty list if loading fails
+    }
+
     final result = await showDialog<String>(
       context: context,
-      builder: (context) => OrderSummaryDialog(
-        order: order,
-        onClose: () => Navigator.pop(context),
-        onOrderUpdated: (PurchaseOrder updatedOrder) {
-          setState(() {
-            // Update the order in the local list
-            final index = _purchaseOrders.indexWhere((po) => po.id == updatedOrder.id);
-            if (index != -1) {
-              _purchaseOrders[index] = updatedOrder;
-            }
-          });
-        },
-        onStatusChanged: (String newStatus) async {
-          await _updatePurchaseOrderStatus(order, newStatus);
-        },
-        onCancel: (order.isOrdered || order.isDelivered)
-            ? () async {
-                final confirm = await _showCancelConfirmation(order);
-                if (confirm == true) {
-                  await _updatePurchaseOrderStatus(order, 'Cancelled');
-                }
+      builder: (context) => BlocBuilder<SupplierCubit, SupplierState>(
+        builder: (context, supplierState) => OrderSummaryDialog(
+          order: order,
+          suppliers: supplierState.suppliers,
+          onClose: () => Navigator.pop(context),
+          onOrderUpdated: (PurchaseOrder updatedOrder) {
+            setState(() {
+              // Update the order in the local list
+              final index = _purchaseOrders.indexWhere((po) => po.id == updatedOrder.id);
+              if (index != -1) {
+                _purchaseOrders[index] = updatedOrder;
               }
-            : null,
-        onDelete: order.isDraft
-            ? () async {
-                final confirm = await _showDeleteConfirmation(order);
-                if (confirm == true) {
-                  await _deletePurchaseOrder(order);
-                  Navigator.pop(context, 'deleted');
+            });
+          },
+          onStatusChanged: (String newStatus) async {
+            await _updatePurchaseOrderStatus(order, newStatus);
+          },
+          onCancel: (order.isOrdered || order.isDelivered)
+              ? () async {
+                  final confirm = await _showCancelConfirmation(order);
+                  if (confirm == true) {
+                    await _updatePurchaseOrderStatus(order, 'Cancelled');
+                  }
                 }
-              }
-            : null,
+              : null,
+          onDelete: order.isDraft
+              ? () async {
+                  final confirm = await _showDeleteConfirmation(order);
+                  if (confirm == true) {
+                    await _deletePurchaseOrder(order);
+                    Navigator.pop(context, 'deleted');
+                  }
+                }
+              : null,
+        ),
       ),
     );
 
