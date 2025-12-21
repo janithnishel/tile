@@ -8,7 +8,7 @@ class PurchaseOrder {
   final String customerName;
   final Supplier supplier;
   final DateTime orderDate;
-  final DateTime? expectedDelivery;
+  final DateTime expectedDelivery;
   String status;
   final List<POItem> items;
   String? invoiceImagePath;
@@ -21,7 +21,7 @@ class PurchaseOrder {
     required this.customerName,
     required this.supplier,
     required this.orderDate,
-    this.expectedDelivery,
+    required this.expectedDelivery,
     this.status = 'Draft',
     required this.items,
     this.invoiceImagePath,
@@ -39,7 +39,7 @@ class PurchaseOrder {
       orderDate: DateTime.parse(json['orderDate'] as String? ?? DateTime.now().toIso8601String()),
       expectedDelivery: json['expectedDelivery'] != null
           ? DateTime.parse(json['expectedDelivery'] as String)
-          : null,
+          : DateTime.now().add(const Duration(days: 7)),
       status: json['status'] as String? ?? 'Draft',
       items: (json['items'] as List<dynamic>?)
           ?.map((item) => POItem.fromJson(item as Map<String, dynamic>))
@@ -58,7 +58,7 @@ class PurchaseOrder {
       'customerName': customerName,
       'supplier': supplier.id, // Send only the supplier ID, not the full object
       'orderDate': orderDate.toIso8601String(),
-      if (expectedDelivery != null) 'expectedDelivery': expectedDelivery!.toIso8601String(),
+      'expectedDelivery': expectedDelivery.toIso8601String(),
       'status': status,
       'items': items.map((item) => item.toJson()).toList(),
       if (invoiceImagePath != null) 'invoiceImagePath': invoiceImagePath,
@@ -117,9 +117,8 @@ class PurchaseOrder {
       items.map((i) => i.displayText).join(', ');
 
   // Days until expected delivery
-  int? get daysUntilDelivery {
-    if (expectedDelivery == null) return null;
-    return expectedDelivery!.difference(DateTime.now()).inDays;
+  int get daysUntilDelivery {
+    return expectedDelivery.difference(DateTime.now()).inDays;
   }
 
   // Copy with method for creating modified instances
@@ -143,7 +142,7 @@ class PurchaseOrder {
       customerName: customerName ?? this.customerName,
       supplier: supplier ?? this.supplier,
       orderDate: orderDate ?? this.orderDate,
-      expectedDelivery: expectedDelivery,
+      expectedDelivery: expectedDelivery ?? this.expectedDelivery,
       status: status ?? this.status,
       items: items ?? this.items,
       invoiceImagePath: invoiceImagePath,

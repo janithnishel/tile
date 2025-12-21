@@ -359,6 +359,7 @@ import 'package:tilework/models/purchase_order/invoice_details.dart';
 import 'package:tilework/models/purchase_order/delivery_item.dart';
 import 'package:tilework/utils/po_status_helpers.dart';
 import 'package:tilework/cubits/purchase_order/purchase_order_cubit.dart';
+import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/create_po_screen.dart';
 
 class OrderSummaryDialog extends StatefulWidget {
   final PurchaseOrder order;
@@ -1691,13 +1692,33 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
   //   }
   }
 
-  /// Handle Edit Button - Opens Edit Dialog
+  /// Handle Edit Button - Opens Edit Dialog or Full-Screen Edit
   void _handleEdit() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => _buildEditDialog(),
-    );
+    if (_currentOrder.isDraft) {
+      // For Draft POs, navigate to full-screen edit
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EditPODialog(
+            order: _currentOrder,
+            onUpdate: (updatedOrder) {
+              setState(() {
+                _currentOrder = updatedOrder;
+              });
+              widget.onOrderUpdated?.call(updatedOrder);
+              _showSuccessSnackBar('Purchase Order updated successfully!');
+            },
+          ),
+        ),
+      );
+    } else {
+      // For non-draft POs, show small edit dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _buildEditDialog(),
+      );
+    }
   }
 
   /// Handle Place Order (Draft -> Ordered)
@@ -2055,44 +2076,46 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Expected Delivery Date
-                  const Text('Expected Delivery Date', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: expectedDelivery ?? DateTime.now().add(const Duration(days: 7)),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                      );
-                      if (picked != null) {
-                        setDialogState(() => expectedDelivery = picked);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.grey.shade400),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.calendar_today, color: Colors.grey.shade600),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              expectedDelivery != null ? DateFormat('d MMMM yyyy').format(expectedDelivery!) : 'Select date',
-                              style: TextStyle(fontSize: 15, color: expectedDelivery != null ? Colors.black87 : Colors.grey.shade500),
+                  // Expected Delivery Date (only for Draft POs)
+                  if (_currentOrder.isDraft) ...[
+                    const Text('Expected Delivery Date', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: expectedDelivery ?? DateTime.now().add(const Duration(days: 7)),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                        );
+                        if (picked != null) {
+                          setDialogState(() => expectedDelivery = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade400),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today, color: Colors.grey.shade600),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                expectedDelivery != null ? DateFormat('d MMMM yyyy').format(expectedDelivery!) : 'Select date',
+                                style: TextStyle(fontSize: 15, color: expectedDelivery != null ? Colors.black87 : Colors.grey.shade500),
+                              ),
                             ),
-                          ),
-                          Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
-                        ],
+                            Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
+                  ],
 
                   // Notes
                   const Text('Notes / Remarks', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),

@@ -304,7 +304,7 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
                   quotations: approvedQuotations,
                   suppliers: supplierState
                       .suppliers, // Now using real suppliers from API
-                  onCreate: (quotationId, supplier, items) async {
+                  onCreate: (quotationId, supplier, items, expectedDeliveryDate) async {
                     try {
                       final purchaseOrderCubit = context
                           .read<PurchaseOrderCubit>();
@@ -333,9 +333,9 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
                         customerName: selectedQuotation.customerName,
                         supplier: supplier,
                         orderDate: DateTime.now(),
-                        expectedDelivery: DateTime.now().add(
+                        expectedDelivery: expectedDeliveryDate ?? DateTime.now().add(
                           const Duration(days: 14),
-                        ), // Default 14 days
+                        ), // Use selected date or default to 14 days
                         status: 'Draft',
                         items: poItems,
                         notes: 'Created from quotation $quotationId',

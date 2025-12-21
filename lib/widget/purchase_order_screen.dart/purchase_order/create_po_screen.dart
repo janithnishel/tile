@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:tilework/models/purchase_order/approved_quotation.dart';
 import 'package:tilework/models/purchase_order/quotation_item.dart';
 import 'package:tilework/models/purchase_order/supplier.dart';
 import 'package:tilework/models/purchase_order/supplier_item.dart';
+import 'package:tilework/models/purchase_order/purchase_order.dart';
+import 'package:tilework/models/purchase_order/po_item.dart';
 
 // ========== LOCAL MODEL CLASSES ==========
 
@@ -39,12 +42,636 @@ class SelectedPOItem {
   }
 }
 
+// ========== EDIT PO DIALOG ==========
+
+class EditPODialog extends StatefulWidget {
+  final PurchaseOrder order;
+  final Function(PurchaseOrder updatedOrder) onUpdate;
+
+  const EditPODialog({
+    Key? key,
+    required this.order,
+    required this.onUpdate,
+  }) : super(key: key);
+
+  @override
+  State<EditPODialog> createState() => _EditPODialogState();
+}
+
+class _EditPODialogState extends State<EditPODialog> {
+  late PurchaseOrder _currentOrder;
+  late List<SelectedPOItem> _selectedItems;
+  late String _selectedQuotationId;
+  late Supplier _selectedSupplier;
+
+  // Controllers
+  final Map<String, TextEditingController> _quantityControllers = {};
+  final Map<String, TextEditingController> _priceControllers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _currentOrder = widget.order;
+    _selectedQuotationId = _currentOrder.quotationId;
+    _selectedSupplier = _currentOrder.supplier;
+    _initializeSelectedItems();
+  }
+
+  void _initializeSelectedItems() {
+    _selectedItems = _currentOrder.items.map((item) {
+      final controllerId = item.id ?? item.itemName;
+      _initializeItemControllers(controllerId, item.quantity.toInt(), item.unitPrice);
+      return SelectedPOItem(
+        id: item.id ?? item.itemName,
+        name: item.itemName,
+        category: item.category ?? 'Other',
+        quantity: item.quantity.toInt(),
+        unit: item.unit ?? 'pcs',
+        price: item.unitPrice,
+        isFromQuotation: true,
+      );
+    }).toList();
+  }
+
+  void _initializeItemControllers(String id, int qty, double price) {
+    _quantityControllers[id] = TextEditingController(text: qty.toString());
+    _priceControllers[id] = TextEditingController(text: price.toString());
+  }
+
+  void _updateQuantity(String id, int delta) {
+    final controller = _quantityControllers[id];
+    if (controller == null) return;
+
+    int currentQty = int.tryParse(controller.text) ?? 0;
+    int newQty = (currentQty + delta).clamp(1, 99999);
+
+    controller.text = newQty.toString();
+
+    final itemIndex = _selectedItems.indexWhere((item) => item.id == id);
+    if (itemIndex != -1) {
+      setState(() {
+        _selectedItems[itemIndex].quantity = newQty;
+      });
+    }
+  }
+
+  void _updatePrice(String id, String priceText) {
+    final itemIndex = _selectedItems.indexWhere((item) => item.id == id);
+    if (itemIndex != -1) {
+      setState(() {
+        _selectedItems[itemIndex].price = double.tryParse(priceText) ?? 0;
+      });
+    }
+  }
+
+  double get _totalAmount {
+    return _selectedItems.fold(0.0, (sum, item) {
+      final qty = int.tryParse(_quantityControllers[item.id]?.text ?? '') ?? item.quantity;
+      return sum + (qty * item.price);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text('Edit Purchase Order - ${_currentOrder.poId}'),
+        backgroundColor: Colors.indigo,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Column(
+        children: [
+          Expanded(child: _buildContent()),
+          _buildTotalSection(),
+          _buildFooter(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Info Section
+          _buildStepSection(
+            step: 1,
+            title: 'Purchase Order Details',
+            icon: Icons.info_outline,
+            child: _buildOrderDetails(),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Items Section
+          _buildStepSection(
+            step: 2,
+            title: 'Order Items',
+            subtitle: 'Edit quantities and prices',
+            icon: Icons.inventory_2_rounded,
+            child: _buildItemsList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderDetails() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildDetailRow('PO ID', _currentOrder.poId),
+          const SizedBox(height: 8),
+          _buildDetailRow('Supplier', _selectedSupplier.name),
+          const SizedBox(height: 8),
+          _buildDetailRow('Customer', _currentOrder.customerName),
+          const SizedBox(height: 8),
+          _buildDetailRow('Order Date', DateFormat('d MMMM yyyy').format(_currentOrder.orderDate)),
+          if (_currentOrder.expectedDelivery != null) ...[
+            const SizedBox(height: 8),
+            _buildDetailRow('Expected Delivery', DateFormat('d MMMM yyyy').format(_currentOrder.expectedDelivery!)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Row(
+      children: [
+        SizedBox(width: 120, child: Text('$label:', style: TextStyle(fontSize: 12, color: Colors.grey.shade600))),
+        Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+      ],
+    );
+  }
+
+  Widget _buildItemsList() {
+    return Column(
+      children: _selectedItems.asMap().entries.map((entry) {
+        final index = entry.key;
+        final item = entry.value;
+        return _buildEditableItemCard(item, index);
+      }).toList(),
+    );
+  }
+
+  Widget _buildEditableItemCard(SelectedPOItem item, int index) {
+    final controller = _priceControllers[item.id];
+    final currentPrice = double.tryParse(controller?.text ?? '') ?? item.price;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.indigo.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.indigo.shade700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        item.category,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Quantity & Price Row
+          Row(
+            children: [
+              // Quantity Control
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () => _updateQuantity(item.id, -1),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(9),
+                            bottomLeft: Radius.circular(9),
+                          ),
+                        ),
+                        child: Icon(Icons.remove, size: 18, color: Colors.grey.shade700),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 50,
+                      child: TextField(
+                        controller: _quantityControllers[item.id],
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        enabled: true,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        onChanged: (value) {
+                          final qty = int.tryParse(value) ?? 0;
+                          setState(() {
+                            item.quantity = qty;
+                          });
+                        },
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => _updateQuantity(item.id, 1),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: const BorderRadius.only(
+                            topRight: Radius.circular(9),
+                            bottomRight: Radius.circular(9),
+                          ),
+                        ),
+                        child: Icon(Icons.add, size: 18, color: Colors.grey.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(item.unit, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+              const SizedBox(width: 16),
+              Expanded(
+                child: TextField(
+                  controller: _priceControllers[item.id],
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'Unit Price',
+                    prefixText: 'Rs ',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  onChanged: (value) => _updatePrice(item.id, value),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Total',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  Text(
+                    'Rs ${_formatCurrency(_calculateItemTotal(item))}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.indigo.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  double _calculateItemTotal(SelectedPOItem item) {
+    final qty = int.tryParse(_quantityControllers[item.id]?.text ?? '') ?? item.quantity;
+    final price = double.tryParse(_priceControllers[item.id]?.text ?? '') ?? item.price;
+    return qty * price;
+  }
+
+  Widget _buildTotalSection() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.indigo.shade50,
+        border: Border(
+          top: BorderSide(color: Colors.indigo.shade100),
+          bottom: BorderSide(color: Colors.indigo.shade100),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.inventory_2_rounded, size: 18, color: Colors.indigo.shade700),
+                const SizedBox(width: 8),
+                Text(
+                  '${_selectedItems.length} items',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.indigo.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Text(
+                'TOTAL AMOUNT',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Rs ${_formatCurrency(_totalAmount)}',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.indigo.shade700,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooter(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
+      ),
+      child: Row(
+        children: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          const Spacer(),
+          ElevatedButton.icon(
+            onPressed: _handleUpdate,
+            icon: const Icon(Icons.save),
+            label: const Text('Update PO'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.indigo,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleUpdate() async {
+    try {
+      // Update items with current values
+      final updatedItems = _selectedItems.map((item) {
+        final qty = int.tryParse(_quantityControllers[item.id]?.text ?? '') ?? item.quantity;
+        final price = double.tryParse(_priceControllers[item.id]?.text ?? '') ?? item.price;
+
+        return POItem(
+          id: item.id,
+          itemName: item.name,
+          quantity: qty.toDouble(),
+          unit: item.unit,
+          unitPrice: price,
+          category: item.category,
+        );
+      }).toList();
+
+      final updatedOrder = _currentOrder.copyWith(items: updatedItems);
+
+      // Call the update callback
+      widget.onUpdate(updatedOrder);
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Purchase Order updated successfully!')
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white),
+              const SizedBox(width: 12),
+              Text('Failed to update PO: $e')
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Widget _buildStepSection({
+    required int step,
+    required String title,
+    String? subtitle,
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.indigo.shade400, Colors.indigo.shade600],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text(
+                    '$step',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (subtitle != null)
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  String _formatCurrency(double amount) {
+    return amount.toStringAsFixed(2);
+  }
+
+  @override
+  void dispose() {
+    for (var c in _quantityControllers.values) {
+      c.dispose();
+    }
+    for (var c in _priceControllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+}
+
 // ========== MAIN DIALOG ==========
 
 class CreatePODialog extends StatefulWidget {
   final List<ApprovedQuotation> quotations;
   final List<Supplier> suppliers;
-  final Function(String quotationId, Supplier supplier, List<SelectedPOItem> items) onCreate;
+  final Function(String quotationId, Supplier supplier, List<SelectedPOItem> items, DateTime? expectedDeliveryDate) onCreate;
 
   const CreatePODialog({
     Key? key,
@@ -61,6 +688,7 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
   // Selection State
   String? _selectedQuotationId;
   Supplier? _selectedSupplier;
+  DateTime? _expectedDeliveryDate;
 
   // Items
   List<QuotationItem> _quotationItems = [];
@@ -85,6 +713,7 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
   @override
   void initState() {
     super.initState();
+    _expectedDeliveryDate = DateTime.now().add(const Duration(days: 7));
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -125,7 +754,7 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
 
       if (value != null) {
         final quotation = widget.quotations.firstWhere((q) => q.quotationId == value);
-        _quotationItems = quotation.availableItems;
+        _quotationItems = quotation.availableItems.where((item) => item.category != 'Services').toList();
 
         for (var item in _quotationItems) {
           _initializeItemControllers(item.id, item.quantity, item.estimatedPrice);
@@ -363,7 +992,23 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
               ),
             ),
 
-            const SizedBox(height: 20),
+            if (_selectedSupplier != null) ...[
+              const SizedBox(height: 20),
+
+              // Step 3: Expected Delivery Date
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: _buildStepSection(
+                  step: 3,
+                  title: 'Expected Delivery Date',
+                  subtitle: 'Select the expected delivery date',
+                  icon: Icons.calendar_today,
+                  child: _buildDeliveryDatePicker(),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+            ],
 
             // Category Filter Chips
             if (_availableCategories.length > 1) ...[
@@ -471,6 +1116,78 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
           const SizedBox(height: 16),
           child,
         ],
+      ),
+    );
+  }
+
+  // ========== DELIVERY DATE PICKER ==========
+  Widget _buildDeliveryDatePicker() {
+    return InkWell(
+      onTap: () async {
+        final DateTime? pickedDate = await showDatePicker(
+          context: context,
+          initialDate: _expectedDeliveryDate ?? DateTime.now().add(const Duration(days: 7)),
+          firstDate: DateTime.now(),
+          lastDate: DateTime.now().add(const Duration(days: 365)),
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: const ColorScheme.light(
+                  primary: Colors.indigo,
+                  onPrimary: Colors.white,
+                  surface: Colors.white,
+                  onSurface: Colors.black,
+                ),
+              ),
+              child: child!,
+            );
+          },
+        );
+
+        if (pickedDate != null) {
+          setState(() {
+            _expectedDeliveryDate = pickedDate;
+          });
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.grey.shade50,
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today, color: Colors.indigo.shade400, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Expected Delivery Date',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    DateFormat('EEEE, d MMMM yyyy').format(_expectedDeliveryDate!),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.indigo,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+          ],
+        ),
       ),
     );
   }
@@ -1294,8 +2011,8 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
               backgroundColor: Colors.indigo,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(12)),
               ),
             ),
           ),
@@ -1322,6 +2039,7 @@ class _CreatePODialogState extends State<CreatePODialog> with TickerProviderStat
       _selectedQuotationId!,
       _selectedSupplier!,
       itemsList,
+      _expectedDeliveryDate,
     );
     Navigator.pop(context);
   }

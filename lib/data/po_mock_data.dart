@@ -211,6 +211,7 @@ List<PurchaseOrder> mockPurchaseOrders = [
     customerName: 'Mrs. Kumudu Perera',
     supplier: mockSuppliers[1],
     orderDate: DateTime(2025, 7, 2),
+    expectedDelivery: DateTime(2025, 7, 9),
     status: 'Paid',
     items: [
       POItem(itemName: 'Cement', quantity: 35, unit: 'bags', unitPrice: 2100),

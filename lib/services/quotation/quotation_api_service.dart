@@ -89,11 +89,23 @@ class QuotationApiService {
       body: json.encode(data),
     );
 
+    print('📤 Quotation API - Status Code: ${response.statusCode}');
+    print('📤 Quotation API - Response Body: ${response.body}');
+
     if (response.statusCode == 201) {
       final responseData = json.decode(response.body);
-      return responseData['data'] ?? responseData;
+      print('📤 Quotation API - Parsed Response: $responseData');
+      print('📤 Quotation API - Has data field: ${responseData.containsKey('data')}');
+
+      if (responseData['data'] != null) {
+        return responseData['data'];
+      } else {
+        // Return the whole response if no data field
+        return responseData;
+      }
     } else {
-      throw Exception('Failed to create quotation: ${response.statusCode}');
+      print('❌ Quotation API - Error response: ${response.body}');
+      throw Exception('Failed to create quotation: ${response.statusCode} - ${response.body}');
     }
   }
 
