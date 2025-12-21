@@ -125,4 +125,56 @@ class PurchaseOrderApiService {
       throw Exception('Failed to update purchase order status: ${response.statusCode}');
     }
   }
+
+  // POST: Upload invoice image
+  Future<Map<String, dynamic>> uploadInvoiceImage(
+    String id,
+    String filePath, {
+    String? token,
+  }) async {
+    final currentToken = token ?? await _getToken();
+    if (currentToken == null) {
+      throw Exception('No authentication token available');
+    }
+
+    // Create multipart request for file upload
+    final uri = Uri.parse('$baseUrl/purchase-orders/$id/invoice-image');
+    final request = http.MultipartRequest('POST', uri);
+
+    // Add authorization header
+    request.headers['Authorization'] = 'Bearer $currentToken';
+
+    // Add file to request
+    request.files.add(await http.MultipartFile.fromPath('invoice', filePath));
+
+    // Use a timeout for the file upload
+    final response = await request.send().timeout(const Duration(seconds: 30));
+    final responseData = await response.stream.bytesToString();
+
+    if (response.statusCode == 200) {
+      return json.decode(responseData);
+    } else {
+      throw Exception('Failed to upload invoice image: ${response.statusCode} - $responseData');
+    }
+  }
+
+  // PUT: Update delivery verification
+  Future<Map<String, dynamic>> updateDeliveryVerification(
+    String id,
+    List<Map<String, dynamic>> deliveryItems, {
+    String? token,
+  }) async {
+    final headers = await _getHeaders(token: token);
+    final response = await http.put(
+      Uri.parse('$baseUrl/purchase-orders/$id/delivery-verification'),
+      headers: headers,
+      body: json.encode({'deliveryItems': deliveryItems}),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to update delivery verification: ${response.statusCode}');
+    }
+  }
 }

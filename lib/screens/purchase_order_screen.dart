@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
 import 'package:tilework/cubits/purchase_order/purchase_order_cubit.dart';
+import 'package:tilework/cubits/purchase_order/purchase_order_state.dart';
 import 'package:tilework/cubits/quotation/quotation_cubit.dart';
 import 'package:tilework/cubits/quotation/quotation_state.dart';
 import 'package:tilework/cubits/supplier/supplier_cubit.dart';
@@ -229,6 +230,15 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
                 final confirm = await _showCancelConfirmation(order);
                 if (confirm == true) {
                   await _updatePurchaseOrderStatus(order, 'Cancelled');
+                }
+              }
+            : null,
+        onDelete: order.isDraft
+            ? () async {
+                final confirm = await _showDeleteConfirmation(order);
+                if (confirm == true) {
+                  await _deletePurchaseOrder(order);
+                  Navigator.pop(context, 'deleted');
                 }
               }
             : null,
@@ -513,21 +523,36 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: _buildAppBar(),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // Tab 1: Project POs
-          _buildProjectPOContent(),
+    return BlocConsumer<PurchaseOrderCubit, PurchaseOrderState>(
+      listener: (context, state) {
+        // Update local state when cubit state changes
+        if (state.purchaseOrders.isNotEmpty) {
+          setState(() {
+            _purchaseOrders = state.purchaseOrders;
+          });
+        }
+        if (state.errorMessage != null) {
+          _showSnackBar('Error: ${state.errorMessage}');
+        }
+      },
+      builder: (context, purchaseOrderState) {
+        return Scaffold(
+          key: _scaffoldKey,
+          backgroundColor: const Color(0xFFF5F7FA),
+          appBar: _buildAppBar(),
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              // Tab 1: Project POs
+              _buildProjectPOContent(),
 
-          // Tab 2: Material Sale POs
-          _buildMaterialSalePOContent(),
-        ],
-      ),
-      floatingActionButton: _buildFloatingActionButton(),
+              // Tab 2: Material Sale POs
+              _buildMaterialSalePOContent(),
+            ],
+          ),
+          floatingActionButton: _buildFloatingActionButton(),
+        );
+      },
     );
   }
 

@@ -151,7 +151,44 @@ class PurchaseOrderCubit extends Cubit<PurchaseOrderState> {
     emit(state.copyWith(selectedPurchaseOrder: purchaseOrder));
   }
 
-  // 7. 🧹 Clear Error
+  // 7. 📤 Upload Invoice Image
+  Future<void> uploadInvoiceImage(String id, String filePath) async {
+    try {
+      debugPrint('📎 PurchaseOrderCubit: Uploading invoice image for PO: $id');
+      await _purchaseOrderRepository.uploadInvoiceImage(id, filePath, token: _currentToken);
+      debugPrint('✅ PurchaseOrderCubit: Invoice image uploaded successfully');
+    } catch (e) {
+      debugPrint('💥 PurchaseOrderCubit: Failed to upload invoice image: $e');
+      emit(state.copyWith(errorMessage: 'Failed to upload invoice image.'));
+      rethrow;
+    }
+  }
+
+  // 8. 📦 Update Delivery Verification
+  Future<void> updateDeliveryVerification(String id, List<Map<String, dynamic>> deliveryItems) async {
+    try {
+      debugPrint('✅ PurchaseOrderCubit: Updating delivery verification for PO: $id');
+      final updatedPurchaseOrder = await _purchaseOrderRepository.updateDeliveryVerification(
+        id,
+        deliveryItems,
+        token: _currentToken,
+      );
+
+      // Update local state
+      final updatedList = state.purchaseOrders.map((po) {
+        return po.id == updatedPurchaseOrder.id ? updatedPurchaseOrder : po;
+      }).toList();
+
+      emit(state.copyWith(purchaseOrders: updatedList));
+      debugPrint('✅ PurchaseOrderCubit: Delivery verification updated successfully');
+    } catch (e) {
+      debugPrint('💥 PurchaseOrderCubit: Failed to update delivery verification: $e');
+      emit(state.copyWith(errorMessage: 'Failed to update delivery verification.'));
+      rethrow;
+    }
+  }
+
+  // 9. 🧹 Clear Error
   void clearError() {
     emit(state.copyWith(errorMessage: null));
   }

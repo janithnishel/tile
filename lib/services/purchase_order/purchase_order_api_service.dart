@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:mime/mime.dart';
+import 'package:http_parser/http_parser.dart';
 
 class PurchaseOrderApiService {
   final String baseUrl;
@@ -158,21 +160,44 @@ class PurchaseOrderApiService {
     required String filePath,
     String? token,
   }) async {
-    // Note: File upload requires multipart/form-data, this is a simplified version
-    // In a real implementation, you'd use http.MultipartRequest
-    final headers = await _getHeaders(token: token);
-    // This is a placeholder - actual file upload implementation would be more complex
-    final response = await http.post(
-      Uri.parse('$baseUrl/purchase-orders/$id/invoice-image'),
-      headers: headers,
-      body: json.encode({'filePath': filePath}),
-    );
+    // Use MultipartRequest to upload the file as `invoice` form field
+    try {
+      final uri = Uri.parse('$baseUrl/purchase-orders/$id/invoice-image');
 
-    if (response.statusCode == 200) {
-      final responseData = json.decode(response.body);
-      return responseData['data'] ?? responseData;
-    } else {
-      throw Exception('Failed to upload invoice image: ${response.statusCode}');
+      final request = http.MultipartRequest('POST', uri);
+
+      // Add Authorization header only (don't set Content-Type here)
+      final currentToken = token ?? await _getToken();
+      if (currentToken == null) {
+        throw Exception('No authentication token available');
+      }
+      request.headers['Authorization'] = 'Bearer $currentToken';
+      request.headers['Accept'] = 'application/json';
+
+      // Attach file with proper MIME type and log debug info
+      final mimeType = lookupMimeType(filePath) ?? 'application/octet-stream';
+      final mimeParts = mimeType.split('/');
+      final fileName = filePath.split(RegExp(r'[\\/]')).last;
+      print('DEBUG: API Service attaching file -> $fileName, mime=$mimeType');
+      final file = await http.MultipartFile.fromPath(
+        'invoice',
+        filePath,
+        filename: fileName,
+        contentType: MediaType(mimeParts[0], mimeParts.length > 1 ? mimeParts[1] : 'octet-stream'),
+      );
+      request.files.add(file);
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return responseData['data'] ?? responseData;
+      } else {
+        throw Exception('Failed to upload invoice image: ${response.statusCode} ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Failed to upload invoice image: $e');
     }
   }
 }

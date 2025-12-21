@@ -1,3 +1,10 @@
+import 'dart:io';
+
+import 'dart:io';
+
+import 'package:mime/mime.dart';
+import 'package:path/path.dart' as p;
+
 import '../../models/purchase_order/purchase_order.dart';
 import '../../services/purchase_order/api_service.dart';
 
@@ -148,6 +155,74 @@ class PurchaseOrderRepository {
     } catch (e) {
       print('💥 Failed to update purchase order status: $e');
       throw Exception('Failed to update purchase order status: $e');
+    }
+  }
+
+  // POST: Upload invoice image
+  Future<Map<String, dynamic>> uploadInvoiceImage(
+    String id,
+    String filePath, {
+    String? token,
+  }) async {
+    try {
+      // Validate file exists and size before attempting upload
+      final file = File(filePath);
+      if (!file.existsSync()) {
+        throw Exception('File not found at path: $filePath');
+      }
+
+      final fileSize = await file.length();
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (fileSize > maxSize) {
+        throw Exception('File size exceeds 5MB limit');
+      }
+
+      // Basic extension whitelist
+      final allowedExt = ['.jpg', '.jpeg', '.png', '.pdf'];
+      final lower = filePath.toLowerCase();
+      if (!allowedExt.any((ext) => lower.endsWith(ext))) {
+        throw Exception('Unsupported file type. Allowed: JPG, JPEG, PNG, PDF');
+      }
+
+      // Debug info
+      final fileName = p.basename(filePath);
+      final mimeType = lookupMimeType(filePath) ?? 'unknown';
+      print('DEBUG: Preparing upload -> path=$filePath, name=$fileName, size=$fileSize, mime=$mimeType');
+      final currentToken = token ?? _token;
+      final response = await _apiService.uploadInvoiceImage(
+        id,
+        filePath,
+        token: currentToken,
+      );
+
+      // Backend should return upload result
+      return response;
+    } catch (e) {
+      print('💥 Failed to upload invoice image: $e');
+      throw Exception('Failed to upload invoice image: $e');
+    }
+  }
+
+  // PUT: Update delivery verification
+  Future<PurchaseOrder> updateDeliveryVerification(
+    String id,
+    List<Map<String, dynamic>> deliveryItems, {
+    String? token,
+  }) async {
+    try {
+      final currentToken = token ?? _token;
+      final response = await _apiService.updateDeliveryVerification(
+        id,
+        deliveryItems,
+        token: currentToken,
+      );
+
+      // Backend should return the updated purchase order data
+      final data = response['data'];
+      return PurchaseOrder.fromJson(data);
+    } catch (e) {
+      print('💥 Failed to update delivery verification: $e');
+      throw Exception('Failed to update delivery verification: $e');
     }
   }
 }

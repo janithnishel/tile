@@ -351,12 +351,14 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tilework/models/purchase_order/purchase_order.dart';
 import 'package:tilework/models/purchase_order/invoice_details.dart';
 import 'package:tilework/models/purchase_order/delivery_item.dart';
 import 'package:tilework/utils/po_status_helpers.dart';
+import 'package:tilework/cubits/purchase_order/purchase_order_cubit.dart';
 
 class OrderSummaryDialog extends StatefulWidget {
   final PurchaseOrder order;
@@ -367,6 +369,7 @@ class OrderSummaryDialog extends StatefulWidget {
   final Function(List<DeliveryItem>)? onDeliveryVerified;
   final String? invoiceImageUrl;
   final VoidCallback? onCancel;
+  final VoidCallback? onDelete;
 
   const OrderSummaryDialog({
     Key? key,
@@ -378,6 +381,7 @@ class OrderSummaryDialog extends StatefulWidget {
     this.onDeliveryVerified,
     this.invoiceImageUrl,
     this.onCancel,
+    this.onDelete,
   }) : super(key: key);
 
   @override
@@ -1492,6 +1496,16 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
                 color: Colors.blue.shade600,
                 onPressed: _handleEdit,
               ),
+              const SizedBox(width: 10),
+
+              // Delete Button (only for Draft)
+              if (_currentOrder.isDraft && widget.onDelete != null)
+                _buildActionButton(
+                  icon: Icons.delete_outline,
+                  label: 'Delete',
+                  color: Colors.red.shade600,
+                  onPressed: widget.onDelete!,
+                ),
 
               const Spacer(),
 
@@ -1734,7 +1748,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(context);
-              _updateStatus('ordered');
+              _updateStatus('Ordered');
               _showSuccessSnackBar('Order placed successfully! Status: ORDERED');
             },
             icon: const Icon(Icons.check, size: 18),
@@ -1802,11 +1816,22 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(context);
-              _updateStatus('delivered');
-              widget.onDeliveryVerified?.call(_deliveryItems);
-              _showSuccessSnackBar('Delivery confirmed! Status: DELIVERED');
+            onPressed: () async {
+              try {
+                // Update delivery verification in backend
+                final deliveryItemsMap = _deliveryItems.map((item) => item.toJson()).toList();
+                await context.read<PurchaseOrderCubit>().updateDeliveryVerification(
+                  widget.order.id!,
+                  deliveryItemsMap,
+                );
+
+                Navigator.pop(context);
+                _updateStatus('Delivered');
+                widget.onDeliveryVerified?.call(_deliveryItems);
+                _showSuccessSnackBar('Delivery confirmed! Status: DELIVERED');
+              } catch (e) {
+                _showErrorSnackBar('Failed to confirm delivery: $e');
+              }
             },
             icon: const Icon(Icons.check, size: 18),
             label: const Text('Confirm Delivery'),
@@ -2306,7 +2331,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
               TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
               ElevatedButton.icon(
                 onPressed: invoiceNumberController.text.isNotEmpty
-                    ? () {
+                    ? () async {
                         final newInvoiceDetails = InvoiceDetails(
                           invoiceNumber: invoiceNumberController.text.trim(),
                           receivedDate: selectedDate,
@@ -2314,6 +2339,15 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
                           uploadedAt: DateTime.now(),
                         );
 
+                        // Upload invoice image if selected
+                        if (tempSelectedImage != null) {
+                          await context.read<PurchaseOrderCubit>().uploadInvoiceImage(
+                            widget.order.id!,
+                            tempSelectedImage!.path,
+                          );
+                        }
+
+                        // Update local state with invoice details
                         setState(() {
                           _invoiceDetails = newInvoiceDetails;
                           _selectedInvoiceImage = tempSelectedImage;
@@ -2321,7 +2355,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
 
                         widget.onInvoiceUploaded?.call(newInvoiceDetails);
                         Navigator.pop(dialogContext);
-                        _showSuccessSnackBar('Invoice #${invoiceNumberController.text} saved!');
+                        _showSuccessSnackBar('Invoice #${invoiceNumberController.text} saved and uploaded!');
                       }
                     : null,
                 icon: const Icon(Icons.save, size: 18),
@@ -2426,7 +2460,7 @@ class _OrderSummaryDialogState extends State<OrderSummaryDialog> {
               ElevatedButton.icon(
                 onPressed: () {
                   Navigator.pop(dialogContext);
-                  _updateStatus('paid');
+                  _updateStatus('Paid');
                   _showSuccessSnackBar('${_currentOrder.poId} marked as PAID!');
                 },
                 icon: const Icon(Icons.check, size: 18),
