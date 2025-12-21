@@ -20,8 +20,10 @@ class MenuItem {
     this.badgeCount,
     this.badgeColor,
     this.permission,
-  }) : assert(route != null || onTap != null,
-            'Either route or onTap must be provided');
+  }) : assert(
+         route != null || onTap != null,
+         'Either route or onTap must be provided',
+       );
 
   /// Check if this menu item has a badge
   bool get hasBadge => badgeCount != null && badgeCount! > 0;

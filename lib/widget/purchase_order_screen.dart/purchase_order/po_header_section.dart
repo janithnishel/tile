@@ -19,6 +19,7 @@ class POHeaderSection extends StatelessWidget {
   final Function(DateTime?, DateTime?) onDateRangeChanged;
   final VoidCallback onClearSearch;
   final VoidCallback onManageSuppliers;
+  final VoidCallback onCreatePO;
 
   bool get _hasDateRange => startDate != null || endDate != null;
 
@@ -39,6 +40,7 @@ class POHeaderSection extends StatelessWidget {
     required this.onDateRangeChanged,
     required this.onClearSearch,
     required this.onManageSuppliers,
+    required this.onCreatePO,
   }) : super(key: key);
 
   @override
@@ -98,14 +100,28 @@ class POHeaderSection extends StatelessWidget {
             ),
           ],
         ),
-        OutlinedButton.icon(
-          onPressed: onManageSuppliers,
-          icon: const Icon(Icons.business, color: Colors.white, size: 18),
-          label: const Text('Suppliers', style: TextStyle(color: Colors.white)),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Colors.white54),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
+        Row(
+          children: [
+            OutlinedButton.icon(
+              onPressed: onCreatePO,
+              icon: const Icon(Icons.add_shopping_cart, color: Colors.white, size: 18),
+              label: const Text('New PO', style: TextStyle(color: Colors.white)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.white54),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+            const SizedBox(width: 12),
+            OutlinedButton.icon(
+              onPressed: onManageSuppliers,
+              icon: const Icon(Icons.business, color: Colors.white, size: 18),
+              label: const Text('Suppliers', style: TextStyle(color: Colors.white)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.white54),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          ],
         ),
       ],
     );

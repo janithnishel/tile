@@ -730,6 +730,7 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
             setState(() => _searchQuery = '');
           },
           onManageSuppliers: _showSupplierManagementDialog,
+          onCreatePO: _showCreatePODialog,
         ),
 
         // Stats Row (existing)
@@ -861,13 +862,7 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
   Widget? _buildFloatingActionButton() {
     // Project Tab FAB
     if (_currentTabIndex == 0) {
-      return FloatingActionButton.extended(
-        heroTag: 'fab_project_po',
-        onPressed: _showCreatePODialog,
-        icon: const Icon(Icons.add_shopping_cart, color: Colors.white),
-        label: const Text('New PO', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.indigo,
-      );
+      return null; // Remove FAB for Project tab
     }
 
     // Material Sale Tab FAB

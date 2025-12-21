@@ -226,56 +226,22 @@ class _CompanySidebarScreenState extends State<CompanySidebarScreen> {
           Expanded(
             child: Container(
               color: Colors.grey.shade100,
-              child: Column(
-                children: [
-                  // App Bar
-                  Container(
-                    padding: EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          menuItems[selectedIndex].title,
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Content
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
-                              blurRadius: 8,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: getPage(selectedIndex),
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                  child: getPage(selectedIndex),
+                ),
               ),
             ),
           ),
