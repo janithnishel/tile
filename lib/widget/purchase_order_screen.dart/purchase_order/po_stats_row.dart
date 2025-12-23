@@ -43,57 +43,48 @@ class POStatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 240,
-              child: StatCard(
-                icon: Icons.receipt_long,
-                title: 'Total Active Orders',
-                value: _totalOrders.toString(),
-                color: Colors.indigo,
-                onTap: () => onFilterChanged?.call('Active'),
-              ),
+      child: Row(
+        children: [
+          Expanded(
+            child: StatCard(
+              icon: Icons.receipt_long,
+              title: 'Total Active Orders',
+              value: _totalOrders.toString(),
+              color: Colors.indigo,
+              onTap: () => onFilterChanged?.call('Active'),
             ),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: 240,
-              child: StatCard(
-                icon: Icons.local_shipping,
-                title: 'Pending Delivery',
-                value: _pendingOrders.toString(),
-                color: Colors.orange,
-                onTap: () => onFilterChanged?.call('Ordered'),
-              ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: StatCard(
+              icon: Icons.local_shipping,
+              title: 'Pending Delivery',
+              value: _pendingOrders.toString(),
+              color: Colors.orange,
+              onTap: () => onFilterChanged?.call('Ordered'),
             ),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: 240,
-              child: StatCard(
-                icon: Icons.check_circle,
-                title: 'Ready for Payment',
-                value: _deliveredOrders.toString(),
-                color: Colors.green,
-                onTap: () => onFilterChanged?.call('Delivered'),
-              ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: StatCard(
+              icon: Icons.check_circle,
+              title: 'Ready for Payment',
+              value: _deliveredOrders.toString(),
+              color: Colors.green,
+              onTap: () => onFilterChanged?.call('Delivered'),
             ),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: 480,
-              child: StatCard(
-                icon: Icons.account_balance_wallet,
-                title: 'Total Investment',
-                value: 'Rs ${NumberFormat('#,##0').format(_totalValue)}',
-                color: Colors.blue,
-                isWide: true,
-                onTap: () => onFilterChanged?.call('Active'),
-              ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: StatCard(
+              icon: Icons.account_balance_wallet,
+              title: 'Total Investment',
+              value: 'Rs ${NumberFormat('#,##0').format(_totalValue)}',
+              color: Colors.blue,
+              onTap: () => onFilterChanged?.call('Active'),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

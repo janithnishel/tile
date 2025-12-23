@@ -698,7 +698,7 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
   Widget _buildProjectPOContent() {
     return Column(
       children: [
-        // Header Section with real API data
+        // Header Section with real API data (show immediately)
         POHeaderSection(
           selectedSupplierId: _selectedSupplierId,
           selectedQuotationId: _selectedQuotationId,
@@ -733,14 +733,41 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
           onCreatePO: _showCreatePODialog,
         ),
 
-        // Stats Row (existing)
-        POStatsRow(
-          orders: _filteredOrders,
-          onFilterChanged: (filter) => setState(() => _statusFilter = filter ?? 'All'),
-        ),
+        // Stats Row and Main Content with loading indicator
+        Expanded(
+          child: _isLoadingQuotations || _isLoadingPurchaseOrders || _isLoadingSuppliers
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.indigo),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Loading Purchase Orders...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
+                  children: [
+                    // Stats Row (existing)
+                    POStatsRow(
+                      orders: _filteredOrders,
+                      onFilterChanged: (filter) => setState(() => _statusFilter = filter ?? 'All'),
+                    ),
 
-        // Main Content (existing)
-        Expanded(child: _buildMainContent()),
+                    // Main Content (existing)
+                    Expanded(child: _buildMainContent()),
+                  ],
+                ),
+        ),
       ],
     );
   }

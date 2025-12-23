@@ -69,8 +69,8 @@ class POHeaderSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTitleRow(),
-            const SizedBox(height: 20),
+            _buildCombinedRow(),
+            const SizedBox(height: 16),
             _buildFilterRow(),
           ],
         ),
@@ -78,47 +78,55 @@ class POHeaderSection extends StatelessWidget {
     );
   }
 
-  Widget _buildTitleRow() {
+  Widget _buildCombinedRow() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Purchase Orders',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Manage vendor orders for approved quotations',
-              style: TextStyle(fontSize: 14, color: Colors.white70),
-            ),
-          ],
-        ),
+        // Date Filters (left side, expanded)
+        Expanded(child: _buildStartDatePicker()),
+        const SizedBox(width: 12),
+        Expanded(child: _buildEndDatePicker()),
+        // Clear Button (only show when dates are selected)
+        if (_hasDateRange) ...[
+          const SizedBox(width: 12),
+          _buildClearDateButton(),
+        ],
+        const SizedBox(width: 20),
+        // Action Buttons (right side)
         Row(
           children: [
             OutlinedButton.icon(
               onPressed: onCreatePO,
-              icon: const Icon(Icons.add_shopping_cart, color: Colors.white, size: 18),
-              label: const Text('New PO', style: TextStyle(color: Colors.white)),
+              icon: const Icon(
+                Icons.add_shopping_cart,
+                color: Colors.white,
+                size: 18,
+              ),
+              label: const Text(
+                'New PO',
+                style: TextStyle(color: Colors.white),
+              ),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Colors.white54),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
               ),
             ),
             const SizedBox(width: 12),
             OutlinedButton.icon(
               onPressed: onManageSuppliers,
               icon: const Icon(Icons.business, color: Colors.white, size: 18),
-              label: const Text('Suppliers', style: TextStyle(color: Colors.white)),
+              label: const Text(
+                'Suppliers',
+                style: TextStyle(color: Colors.white),
+              ),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Colors.white54),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
               ),
             ),
           ],
@@ -127,38 +135,57 @@ class POHeaderSection extends StatelessWidget {
     );
   }
 
-  Widget _buildFilterRow() {
-    return Column(
+  Widget _buildDateFilterRow() {
+    return Row(
       children: [
-        Row(
-          children: [
-            // Supplier Dropdown
-            Expanded(flex: 2, child: _buildSupplierDropdown()),
-            const SizedBox(width: 12),
-            // Quotation Dropdown
-            Expanded(flex: 2, child: _buildQuotationDropdown()),
-            const SizedBox(width: 12),
-            // Status Filter
-            _buildStatusDropdown(),
-          ],
+        // Start Date
+        Expanded(child: _buildStartDatePicker()),
+        const SizedBox(width: 12),
+        // End Date
+        Expanded(child: _buildEndDatePicker()),
+        // Clear Button (only show when dates are selected)
+        if (_hasDateRange) ...[
+          const SizedBox(width: 12),
+          _buildClearDateButton(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildFilterRow() {
+    return Row(
+      children: [
+        // Custom flex distribution for optimal space usage
+        Expanded(
+          flex: 2,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 160),
+            child: _buildSupplierDropdown(),
+          ),
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            // Search Bar
-            Expanded(flex: 2, child: _buildSearchBar()),
-            const SizedBox(width: 12),
-            // Start Date
-            Expanded(child: _buildStartDatePicker()),
-            const SizedBox(width: 12),
-            // End Date
-            Expanded(child: _buildEndDatePicker()),
-            // Clear Button (only show when dates are selected)
-            if (_hasDateRange) ...[
-              const SizedBox(width: 12),
-              _buildClearDateButton(),
-            ],
-          ],
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 2,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 160),
+            child: _buildQuotationDropdown(),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 2,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 160),
+            child: _buildSearchBar(),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 100),
+            child: _buildStatusDropdown(),
+          ),
         ),
       ],
     );
@@ -179,7 +206,12 @@ class POHeaderSection extends StatelessWidget {
             children: [
               Icon(Icons.business, color: Colors.grey, size: 20),
               SizedBox(width: 8),
-              Text('Select Supplier (All)'),
+              Expanded(
+                child: Text(
+                  'Select Supplier (All)',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           items: [
@@ -189,7 +221,12 @@ class POHeaderSection extends StatelessWidget {
                 children: [
                   Icon(Icons.all_inclusive, color: Colors.indigo, size: 20),
                   SizedBox(width: 8),
-                  Text('All Suppliers'),
+                  Expanded(
+                    child: Text(
+                      'All Suppliers',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -216,7 +253,12 @@ class POHeaderSection extends StatelessWidget {
             children: [
               Icon(Icons.description, color: Colors.grey, size: 20),
               SizedBox(width: 8),
-              Text('Select Quotation (All)'),
+              Expanded(
+                child: Text(
+                  'Select Quotation (All)',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           items: [
@@ -226,7 +268,12 @@ class POHeaderSection extends StatelessWidget {
                 children: [
                   Icon(Icons.all_inclusive, color: Colors.indigo, size: 20),
                   SizedBox(width: 8),
-                  Text('All Quotations'),
+                  Expanded(
+                    child: Text(
+                      'All Quotations',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -341,7 +388,7 @@ class POHeaderSection extends StatelessWidget {
       child: TextField(
         onChanged: onSearchChanged,
         decoration: InputDecoration(
-          hintText: 'Search PO, Supplier, Item...',
+          hintText: 'Search...',
           prefixIcon: const Icon(Icons.search, color: Colors.grey),
           suffixIcon: searchQuery.isNotEmpty
               ? IconButton(
@@ -369,6 +416,7 @@ class POHeaderSection extends StatelessWidget {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: statusFilter,
+          isExpanded: true,
           items: POStatusHelpers.allStatuses
               .map(
                 (status) => DropdownMenuItem(
@@ -384,7 +432,9 @@ class POHeaderSection extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(status),
+                      Expanded(
+                        child: Text(status, overflow: TextOverflow.ellipsis),
+                      ),
                     ],
                   ),
                 ),
@@ -399,7 +449,6 @@ class POHeaderSection extends StatelessWidget {
   Widget _buildStartDatePicker() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
-
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -421,7 +470,7 @@ class POHeaderSection extends StatelessWidget {
           label: Text(
             startDate != null
                 ? '${startDate!.day}/${startDate!.month}/${startDate!.year}'
-                : 'Start Date',
+                : 'Select Start Date',
             style: TextStyle(
               color: startDate != null ? Colors.black : Colors.grey,
               fontSize: 14,
@@ -435,7 +484,6 @@ class POHeaderSection extends StatelessWidget {
   Widget _buildEndDatePicker() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
-
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -457,7 +505,7 @@ class POHeaderSection extends StatelessWidget {
           label: Text(
             endDate != null
                 ? '${endDate!.day}/${endDate!.month}/${endDate!.year}'
-                : 'End Date',
+                : 'Select End Date',
             style: TextStyle(
               color: endDate != null ? Colors.black : Colors.grey,
               fontSize: 14,

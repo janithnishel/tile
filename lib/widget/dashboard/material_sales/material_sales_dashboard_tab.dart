@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:tilework/cubits/material_sale/material_sale_cubit.dart';
 import 'package:tilework/cubits/material_sale/material_sale_state.dart';
 import 'package:tilework/models/dashboard/dashboard_models.dart';
+import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_document.dart';
 import 'package:tilework/widget/dashboard/charts/dashboard_donut_chart.dart';
 import 'package:tilework/widget/dashboard/charts/dashboard_bar_chart.dart';
 import 'package:tilework/widget/dashboard/charts/dashboard_line_chart.dart';
@@ -239,7 +240,7 @@ class MaterialSalesDashboardTab extends StatelessWidget {
   }
 
   // Generate sales trend data from real material sales
-  List<LineChartDataPoint> _generateSalesTrendData(List<dynamic> materialSales) {
+  List<LineChartDataPoint> _generateSalesTrendData(List<MaterialSaleDocument> materialSales) {
     final now = DateTime.now();
     final last14Days = List.generate(14, (index) => now.subtract(Duration(days: 13 - index)));
 
@@ -256,7 +257,7 @@ class MaterialSalesDashboardTab extends StatelessWidget {
   }
 
   // Generate collection status data from real material sales
-  List<ChartSegment> _generateCollectionStatusData(List<dynamic> materialSales) {
+  List<ChartSegment> _generateCollectionStatusData(List<MaterialSaleDocument> materialSales) {
     final paid = materialSales.where((sale) => sale.isPaid).fold<double>(0, (sum, sale) => sum + sale.totalAmount);
     final partial = materialSales.where((sale) => sale.hasAdvancePayment).fold<double>(0, (sum, sale) => sum + sale.totalAmount);
     final pending = materialSales.where((sale) => sale.isPending).fold<double>(0, (sum, sale) => sum + sale.totalAmount);
@@ -287,7 +288,7 @@ class MaterialSalesDashboardTab extends StatelessWidget {
   }
 
   // Generate top profitable items data from real material sales
-  List<ChartDataPoint> _generateTopProfitableItems(List<dynamic> materialSales) {
+  List<ChartDataPoint> _generateTopProfitableItems(List<MaterialSaleDocument> materialSales) {
     final itemProfits = <String, double>{};
 
     // Aggregate profits by item name
@@ -323,7 +324,7 @@ class MaterialSalesDashboardTab extends StatelessWidget {
   }
 
   // Generate pending invoices list from real material sales
-  List<ActionableListItem> _generatePendingInvoices(List<dynamic> materialSales) {
+  List<ActionableListItem> _generatePendingInvoices(List<MaterialSaleDocument> materialSales) {
     final pendingSales = materialSales.where((sale) =>
       sale.isPending || sale.hasAdvancePayment
     ).toList();
@@ -351,7 +352,7 @@ class MaterialSalesDashboardTab extends StatelessWidget {
   }
 
   // Calculate collection percentage
-  double _calculateCollectionPercentage(List<dynamic> materialSales) {
+  double _calculateCollectionPercentage(List<MaterialSaleDocument> materialSales) {
     if (materialSales.isEmpty) return 0.0;
 
     final totalRevenue = materialSales.fold<double>(0, (sum, sale) => sum + sale.totalAmount);

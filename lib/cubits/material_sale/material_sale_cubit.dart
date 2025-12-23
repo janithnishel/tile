@@ -61,10 +61,10 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
 
       // Extract data from paginated response
       final data = response['data'] ?? [];
-      final List<dynamic> materialSales = data is List ? data : [];
+      final List<dynamic> rawSales = data is List ? data : [];
+      final List<MaterialSaleDocument> materialSales = rawSales.map((item) => MaterialSaleDocument.fromJson(item as Map<String, dynamic>)).toList();
 
       debugPrint('📦 MaterialSaleCubit: Loaded ${materialSales.length} material sales');
-      // For now, store raw data - UI can convert to models as needed
       emit(state.copyWith(materialSales: materialSales, isLoading: false));
     } catch (e) {
       debugPrint('💥 MaterialSaleCubit: Failed to load material sales: $e');
@@ -115,7 +115,7 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
 
       // Update local state
       final updatedList = state.materialSales.map((sale) {
-        return sale.id == updatedSale.id ? updatedSale : sale;
+        return sale.id! == updatedSale.id! ? updatedSale : sale;
       }).toList();
 
       emit(state.copyWith(materialSales: updatedList));
@@ -132,7 +132,7 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
       await _materialSaleRepository.deleteMaterialSale(id, token: _currentToken);
 
       // Remove from local state
-      final updatedList = state.materialSales.where((sale) => sale.id != id).toList();
+      final updatedList = state.materialSales.where((sale) => sale.id! != id).toList();
       emit(state.copyWith(materialSales: updatedList));
     } catch (e) {
       debugPrint('💥 MaterialSaleCubit: Failed to delete material sale: $e');
@@ -149,7 +149,7 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
 
       // Update local state
       final updatedList = state.materialSales.map((sale) {
-        return sale.id == updatedSale.id ? updatedSale : sale;
+        return sale.id! == updatedSale.id! ? updatedSale : sale;
       }).toList();
 
       emit(state.copyWith(materialSales: updatedList));
@@ -168,7 +168,7 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
 
       // Update local state
       final updatedList = state.materialSales.map((sale) {
-        return sale.id == updatedSale.id ? updatedSale : sale;
+        return sale.id! == updatedSale.id! ? updatedSale : sale;
       }).toList();
 
       emit(state.copyWith(materialSales: updatedList));

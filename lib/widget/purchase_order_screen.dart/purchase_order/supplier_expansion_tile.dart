@@ -28,7 +28,7 @@ class SupplierExpansionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: ExpansionTile(
-        initiallyExpanded: orders.length <= 3,
+        initiallyExpanded: false,
         leading: _buildSupplierAvatar(),
         title: Text(
           supplier.name,
@@ -118,7 +118,7 @@ class SupplierExpansionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        '${orders.length} Orders',
+        '${orders.length} PO',
         style: TextStyle(
           fontSize: 11,
           color: Colors.indigo.shade700,
@@ -135,6 +135,31 @@ class SupplierExpansionTile extends StatelessWidget {
         fontSize: 13,
         fontWeight: FontWeight.bold,
         color: Colors.green.shade700,
+      ),
+    );
+  }
+
+  Widget _buildTrailingBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.indigo.shade500,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.indigo.shade300,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        '${orders.length} POs',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
