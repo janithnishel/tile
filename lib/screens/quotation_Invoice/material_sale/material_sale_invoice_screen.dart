@@ -216,6 +216,16 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
     );
   }
 
+  void _showDuePaymentDialog() {
+    MSPaymentDialog.show(
+      context,
+      totalAmount: _workingDocument.totalAmount,
+      amountDue: _workingDocument.amountDue,
+      onPaymentRecorded: _onPaymentRecorded,
+      initialTabIndex: 0, // Force Full Payment tab
+    );
+  }
+
   void _onPaymentRecorded(PaymentRecord payment, bool isFullPayment) {
     setState(() {
       _workingDocument.paymentHistory = List.from(_workingDocument.paymentHistory)..add(payment);
@@ -307,7 +317,7 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
                 paymentHistory: _workingDocument.paymentHistory,
                 isEditable: _isEditable,
                 onAddPayment: _isNewDocument ? _recordPayment : null,
-                onRecordFinalPayment: null,
+                onRecordFinalPayment: !_isNewDocument ? _showDuePaymentDialog : null,
               ),
               const SizedBox(height: 24),
 

@@ -7,12 +7,14 @@ class MSPaymentDialog extends StatefulWidget {
   final double totalAmount;
   final double amountDue;
   final Function(PaymentRecord, bool) onPaymentRecorded; // bool indicates if full payment
+  final int initialTabIndex; // 0 for Full Payment, 1 for Advance Payment
 
   const MSPaymentDialog({
     Key? key,
     required this.totalAmount,
     required this.amountDue,
     required this.onPaymentRecorded,
+    this.initialTabIndex = 0,
   }) : super(key: key);
 
   static Future<void> show(
@@ -20,6 +22,7 @@ class MSPaymentDialog extends StatefulWidget {
     required double totalAmount,
     required double amountDue,
     required Function(PaymentRecord, bool) onPaymentRecorded,
+    int initialTabIndex = 0,
   }) {
     return showDialog(
       context: context,
@@ -27,6 +30,7 @@ class MSPaymentDialog extends StatefulWidget {
         totalAmount: totalAmount,
         amountDue: amountDue,
         onPaymentRecorded: onPaymentRecorded,
+        initialTabIndex: initialTabIndex,
       ),
     );
   }
@@ -52,9 +56,9 @@ class _MSPaymentDialogState extends State<MSPaymentDialog> with TickerProviderSt
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTabIndex);
     _tabController.addListener(_onTabChanged);
-    _updateForTab(0); // Full Payment tab
+    _updateForTab(widget.initialTabIndex);
   }
 
   @override

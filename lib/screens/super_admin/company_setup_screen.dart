@@ -909,7 +909,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
     String? selectedBaseUnit;
 
     // Packaging unit options and state
-    final List<String> packagingUnits = ['None', 'Box', 'Roll', 'Sheet', 'Pcs'];
+    final List<String> packagingUnits = ['None', 'Box', 'Roll', 'Sheet', 'Pcs', 'Strip'];
     String? selectedPackagingUnit = 'None';
 
     await showDialog(
@@ -1270,8 +1270,15 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
     String? selectedBaseUnit = item.baseUnit;
 
     // Packaging unit options and state
-    final List<String> packagingUnits = ['None', 'Box', 'Roll', 'Sheet', 'Pcs'];
-    String? selectedPackagingUnit = item.packagingUnit?.isNotEmpty == true ? item.packagingUnit : 'None';
+    final List<String> packagingUnits = ['None', 'Box', 'Roll', 'Sheet', 'Pcs', 'Strip'];
+    String? selectedPackagingUnit = (item.packagingUnit == null || item.packagingUnit == "null" || item.packagingUnit!.isEmpty)
+        ? 'None'
+        : item.packagingUnit;
+
+    // Ensure the selected value is in the dropdown options
+    if (selectedPackagingUnit != null && selectedPackagingUnit != 'None' && !packagingUnits.contains(selectedPackagingUnit)) {
+      packagingUnits.add(selectedPackagingUnit!);
+    }
 
     await showDialog(
       context: dialogContext,
@@ -1396,6 +1403,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
                     children: [
                       Text(
                         'Base Unit',
+                        
                         style: AppTheme.labelText,
                       ),
                       const SizedBox(height: 8),

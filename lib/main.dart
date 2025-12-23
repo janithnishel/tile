@@ -118,6 +118,11 @@ class MyApp extends StatelessWidget {
             context.read<AuthCubit>(),
           ),
         ),
+        BlocProvider(
+          create: (context) => super_admin_dashboard.DashboardCubit(
+            super_admin_dashboard_repo.DashboardRepository(),
+          ),
+        ),
       ],
       child: MaterialApp.router(
         title: 'TileWork',

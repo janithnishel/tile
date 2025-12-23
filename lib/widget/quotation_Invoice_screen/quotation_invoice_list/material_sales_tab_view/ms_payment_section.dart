@@ -180,26 +180,50 @@ class MSPaymentSection extends StatelessWidget {
   Widget _buildActionButtons(BuildContext context) {
     final hasPayments = paymentHistory.isNotEmpty;
     final buttonText = hasPayments ? 'Add Further Payment' : 'Record Payment';
+    final showDuePayment = onRecordFinalPayment != null && amountDue > 0;
 
     return Column(
       children: [
-        // Single Record Payment Button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: onAddPayment,
-            icon: const Icon(Icons.payment, size: 18),
-            label: Text(buttonText),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue.shade600,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+        // Primary payment button (for new documents)
+        if (onAddPayment != null)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onAddPayment,
+              icon: const Icon(Icons.payment, size: 18),
+              label: Text(buttonText),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade600,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ),
-        ),
+
+        // Due payment button (for existing documents with outstanding balance)
+        if (showDuePayment) ...[
+          if (onAddPayment != null) const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onRecordFinalPayment,
+              icon: const Icon(Icons.receipt_long, size: 18),
+              label: const Text('Add Due Payment'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.orange.shade700,
+                side: BorderSide(color: Colors.orange.shade300),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ],
+
         const SizedBox(height: 8),
         // Helper text
         Container(
@@ -214,7 +238,9 @@ class MSPaymentSection extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Record full payment or advance amount',
+                  showDuePayment
+                      ? 'Add due payment for outstanding balance'
+                      : 'Record full payment or advance amount',
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.blue.shade700,
