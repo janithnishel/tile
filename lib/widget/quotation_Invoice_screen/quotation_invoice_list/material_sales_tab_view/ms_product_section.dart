@@ -228,6 +228,26 @@ class _ProductItemCardState extends State<_ProductItemCard> {
     );
   }
 
+  void _initSelections(List<CategoryModel> categories) {
+    if (_selectedCategory != null || _selectedItem != null) return; // Already initialized
+
+    // Find category by categoryId
+    if (widget.item.categoryId.isNotEmpty) {
+      _selectedCategory = categories.firstWhere(
+        (category) => category.id == widget.item.categoryId,
+        orElse: () => null as CategoryModel,
+      );
+
+      // Find item by itemId within the selected category
+      if (_selectedCategory != null && widget.item.itemId.isNotEmpty) {
+        _selectedItem = _selectedCategory!.items.firstWhere(
+          (item) => item.id == widget.item.itemId,
+          orElse: () => null as ItemModel,
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _plankController.dispose();
@@ -381,6 +401,11 @@ class _ProductItemCardState extends State<_ProductItemCard> {
     return BlocBuilder<CategoryCubit, CategoryState>(
       builder: (context, categoryState) {
         final categories = categoryState.categories;
+
+        // Initialize selections when categories are loaded
+        if (categories.isNotEmpty) {
+          _initSelections(categories);
+        }
 
         return DropdownButtonFormField<CategoryModel>(
           value: _selectedCategory,

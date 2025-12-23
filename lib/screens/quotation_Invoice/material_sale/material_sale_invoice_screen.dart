@@ -48,6 +48,8 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
     // Create a deep copy for editing
     _workingDocument = _deepCopyDocument(widget.document);
 
+
+
     _customerNameController = TextEditingController(text: _workingDocument.customerName);
     _customerPhoneController = TextEditingController(text: _workingDocument.customerPhone);
     _customerAddressController = TextEditingController(text: _workingDocument.customerAddress);
@@ -465,22 +467,24 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: _getStatusColor().withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _getStatusColor()),
-            ),
-            child: Text(
-              _workingDocument.status.name.toUpperCase(),
-              style: TextStyle(
-                color: _getStatusColor(),
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
+          // Only show status badge in details mode (not create mode)
+          if (!_isNewDocument)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _getStatusColor().withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _getStatusColor()),
+              ),
+              child: Text(
+                _workingDocument.status.name.toUpperCase(),
+                style: TextStyle(
+                  color: _getStatusColor(),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

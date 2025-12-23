@@ -62,6 +62,15 @@ class CategoryModel {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is CategoryModel && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 enum ServicePricingType {
@@ -157,6 +166,15 @@ class ItemModel {
       pricingType: pricingType ?? this.pricingType,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ItemModel && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 // Request/Response Models for API
