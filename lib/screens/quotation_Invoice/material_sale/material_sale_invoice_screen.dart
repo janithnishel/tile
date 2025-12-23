@@ -207,33 +207,25 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
     );
   }
 
-  void _addAdvancePayment() {
+  void _recordPayment() {
     MSPaymentDialog.show(
       context,
+      totalAmount: _workingDocument.totalAmount,
       amountDue: _workingDocument.amountDue,
-      isAdvance: true,
       onPaymentRecorded: _onPaymentRecorded,
     );
   }
 
-  void _recordFinalPayment() {
-    MSPaymentDialog.show(
-      context,
-      amountDue: _workingDocument.amountDue,
-      isAdvance: false,
-      onPaymentRecorded: _onPaymentRecorded,
-    );
-  }
-
-  void _onPaymentRecorded(PaymentRecord payment) {
+  void _onPaymentRecorded(PaymentRecord payment, bool isFullPayment) {
     setState(() {
       _workingDocument.paymentHistory = List.from(_workingDocument.paymentHistory)..add(payment);
 
-      // Update status based on payment
-      if (_workingDocument.amountDue <= 0) {
+      // Update status based on payment type
+      if (isFullPayment) {
         _workingDocument.status = MaterialSaleStatus.paid;
-      } else if (_workingDocument.paymentHistory.isNotEmpty) {
-        _workingDocument.status = MaterialSaleStatus.partial;
+      } else {
+        // For advance payment, keep as pending
+        _workingDocument.status = MaterialSaleStatus.pending;
       }
 
       _hasUnsavedChanges = true;
@@ -314,8 +306,8 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
                 amountDue: _workingDocument.amountDue,
                 paymentHistory: _workingDocument.paymentHistory,
                 isEditable: _isEditable,
-                onAddPayment: _isEditable ? _addAdvancePayment : null,
-                onRecordFinalPayment: _isEditable && _workingDocument.amountDue > 0 ? _recordFinalPayment : null,
+                onAddPayment: _isNewDocument ? _recordPayment : null,
+                onRecordFinalPayment: null,
               ),
               const SizedBox(height: 24),
 
@@ -446,7 +438,7 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Invoice MS-${_workingDocument.invoiceNumber}',
+                  _workingDocument.invoiceNumber.isNotEmpty ? 'Invoice MS-${_workingDocument.invoiceNumber}' : 'New Material Sale Invoice',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,

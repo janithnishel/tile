@@ -178,45 +178,27 @@ class MSPaymentSection extends StatelessWidget {
   }
 
   Widget _buildActionButtons(BuildContext context) {
+    final hasPayments = paymentHistory.isNotEmpty;
+    final buttonText = hasPayments ? 'Add Further Payment' : 'Record Payment';
+
     return Column(
       children: [
-        // Row with two buttons
-        Row(
-          children: [
-            // Add Advance Payment
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: onAddPayment,
-                icon: const Icon(Icons.payments_outlined, size: 18),
-                label: const Text('Advance Payment'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.purple.shade600,
-                  side: BorderSide(color: Colors.purple.shade300),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+        // Single Record Payment Button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: onAddPayment,
+            icon: const Icon(Icons.payment, size: 18),
+            label: Text(buttonText),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade600,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
-            const SizedBox(width: 12),
-            // Record Due Payment
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: onRecordFinalPayment,
-                icon: const Icon(Icons.receipt_long, size: 18),
-                label: const Text('Due Payment'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade600,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
         const SizedBox(height: 8),
         // Helper text
@@ -232,7 +214,7 @@ class MSPaymentSection extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Advance: Paid before delivery • Due: Paid for outstanding amount',
+                  'Record full payment or advance amount',
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.blue.shade700,
