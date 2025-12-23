@@ -64,7 +64,9 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
       final List<dynamic> rawSales = data is List ? data : [];
       final List<MaterialSaleDocument> materialSales = rawSales.map((item) => MaterialSaleDocument.fromJson(item as Map<String, dynamic>)).toList();
 
-      debugPrint('📦 MaterialSaleCubit: Loaded ${materialSales.length} material sales');
+
+
+      debugPrint(' MaterialSaleCubit: Loaded ${materialSales.length} material sales');
       emit(state.copyWith(materialSales: materialSales, isLoading: false));
     } catch (e) {
       debugPrint('💥 MaterialSaleCubit: Failed to load material sales: $e');
@@ -110,15 +112,21 @@ class MaterialSaleCubit extends Cubit<MaterialSaleState> {
   // 3. Update Material Sale
   Future<void> updateMaterialSale(MaterialSaleDocument materialSale) async {
     try {
+      debugPrint('🔄 MaterialSaleCubit: Updating material sale with ID: ${materialSale.id}');
       final response = await _materialSaleRepository.updateMaterialSale(materialSale.id!, materialSale.toJson(), token: _currentToken);
+      debugPrint('📥 MaterialSaleCubit: Update response received');
+
       final updatedSale = MaterialSaleDocument.fromJson(response);
+      debugPrint('📝 MaterialSaleCubit: Parsed updated sale with ID: ${updatedSale.id}');
 
       // Update local state
       final updatedList = state.materialSales.map((sale) {
+        debugPrint('🔍 Checking sale ID: ${sale.id} against updated ID: ${updatedSale.id}');
         return sale.id! == updatedSale.id! ? updatedSale : sale;
       }).toList();
 
       emit(state.copyWith(materialSales: updatedList));
+      debugPrint('✅ MaterialSaleCubit: Updated local state successfully');
     } catch (e) {
       debugPrint('💥 MaterialSaleCubit: Failed to update material sale: $e');
       emit(state.copyWith(errorMessage: 'Failed to update material sale.'));

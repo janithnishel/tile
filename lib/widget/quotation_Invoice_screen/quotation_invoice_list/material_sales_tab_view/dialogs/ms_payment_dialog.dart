@@ -23,8 +23,8 @@ class MSPaymentDialog extends StatefulWidget {
     required double amountDue,
     required Function(PaymentRecord, bool) onPaymentRecorded,
     int initialTabIndex = 0,
-  }) {
-    return showDialog(
+  }) async {
+    await showDialog(
       context: context,
       builder: (context) => MSPaymentDialog(
         totalAmount: totalAmount,
@@ -32,6 +32,7 @@ class MSPaymentDialog extends StatefulWidget {
         onPaymentRecorded: onPaymentRecorded,
         initialTabIndex: initialTabIndex,
       ),
+      barrierDismissible: false, // Prevent dismissing while processing
     );
   }
 
@@ -44,6 +45,7 @@ class _MSPaymentDialogState extends State<MSPaymentDialog> with TickerProviderSt
   final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
   String _paymentMethod = 'Cash';
+  bool _isLoading = false;
 
   final List<String> _paymentMethods = [
     'Cash',
@@ -89,7 +91,7 @@ class _MSPaymentDialogState extends State<MSPaymentDialog> with TickerProviderSt
     });
   }
 
-  void _recordPayment() {
+  Future<void> _recordPayment() async {
     final amount = double.tryParse(_amountController.text) ?? 0;
 
     if (amount <= 0) {
@@ -114,16 +116,30 @@ class _MSPaymentDialogState extends State<MSPaymentDialog> with TickerProviderSt
       return;
     }
 
-    final description = '${_descriptionController.text} - $_paymentMethod';
+    setState(() {
+      _isLoading = true;
+    });
 
-    final payment = PaymentRecord(
-      amount,
-      DateTime.now(),
-      description: description,
-    );
+    try {
+      final description = '${_descriptionController.text} - $_paymentMethod';
 
-    widget.onPaymentRecorded(payment, isFullPayment);
-    Navigator.pop(context);
+      final payment = PaymentRecord(
+        amount,
+        DateTime.now(),
+        description: description,
+      );
+
+      await widget.onPaymentRecorded(payment, isFullPayment);
+      Navigator.pop(context);
+    } catch (e) {
+      _showError('Failed to record payment: ${e.toString()}');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _showError(String message) {
@@ -499,7 +515,7 @@ class _MSPaymentDialogState extends State<MSPaymentDialog> with TickerProviderSt
       children: [
         Expanded(
           child: OutlinedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: _isLoading ? null : () => Navigator.pop(context),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
@@ -513,9 +529,18 @@ class _MSPaymentDialogState extends State<MSPaymentDialog> with TickerProviderSt
         Expanded(
           flex: 2,
           child: ElevatedButton.icon(
-            onPressed: _recordPayment,
-            icon: const Icon(Icons.check),
-            label: const Text('Record Payment'),
+            onPressed: _isLoading ? null : _recordPayment,
+            icon: _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Icon(Icons.check),
+            label: Text(_isLoading ? 'Recording...' : 'Record Payment'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue.shade600,
               foregroundColor: Colors.white,

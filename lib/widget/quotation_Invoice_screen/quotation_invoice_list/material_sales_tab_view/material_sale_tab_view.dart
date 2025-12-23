@@ -5,7 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/material_sale/material_sale_cubit.dart';
 import 'package:tilework/cubits/material_sale/material_sale_state.dart';
 import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_document.dart';
+import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_enums.dart';
 import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/material_sales_tab_view/material_sale_list_tile.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/quotation_invoice_list/material_sales_tab_view/material_sale_search_filter_section.dart';
 
 class MaterialSaleTabView extends StatefulWidget {
   final Function(MaterialSaleCubit) onCreateNew;
@@ -22,12 +24,76 @@ class MaterialSaleTabView extends StatefulWidget {
 }
 
 class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
+  // Search & Filter State
+  String _searchQuery = '';
+  String _statusFilter = 'All';
+  DateTime? _startDate;
+  DateTime? _endDate;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
     // Load material sales when the tab is first opened
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MaterialSaleCubit>().loadMaterialSales();
+    });
+  }
+
+  // ============================================
+  // FILTER METHODS
+  // ============================================
+
+  void _onSearchChanged(String value) {
+    setState(() => _searchQuery = value);
+  }
+
+  void _onStatusFilterChanged(String value) {
+    setState(() => _statusFilter = value);
+  }
+
+  void _onStartDateChanged(DateTime? value) {
+    setState(() => _startDate = value);
+  }
+
+  void _onEndDateChanged(DateTime? value) {
+    setState(() => _endDate = value);
+  }
+
+  void _clearSearch() {
+    setState(() {
+      _searchQuery = '';
+      _searchController.clear();
+    });
+  }
+
+  void _clearDateFilter() {
+    setState(() {
+      _startDate = null;
+      _endDate = null;
+    });
+  }
+
+  bool _hasActiveFilters() {
+    return _searchQuery.isNotEmpty ||
+        _statusFilter != 'All' ||
+        _startDate != null ||
+        _endDate != null;
+  }
+
+  void _clearAllFilters() {
+    setState(() {
+      _searchQuery = '';
+      _searchController.clear();
+      _statusFilter = 'All';
+      _startDate = null;
+      _endDate = null;
     });
   }
 
@@ -51,15 +117,39 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
         final groupedDocs = _groupByCustomer(filteredDocs);
         final customerNames = groupedDocs.keys.toList()..sort();
 
-        return Container(
-          color: Colors.grey.shade50,
-          child: state.isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : state.errorMessage != null
-                  ? _buildErrorState(state.errorMessage!)
-                  : customerNames.isEmpty
-                      ? _buildEmptyState(context.read<MaterialSaleCubit>())
-                      : _buildDocumentList(customerNames, groupedDocs, context.read<MaterialSaleCubit>()),
+        return Column(
+          children: [
+            // Search & Filter Section
+            MaterialSaleSearchFilterSection(
+              searchQuery: _searchQuery,
+              statusFilter: _statusFilter,
+              startDate: _startDate,
+              endDate: _endDate,
+              searchController: _searchController,
+              onSearchChanged: _onSearchChanged,
+              onStatusFilterChanged: _onStatusFilterChanged,
+              onStartDateChanged: _onStartDateChanged,
+              onEndDateChanged: _onEndDateChanged,
+              onClearSearch: _clearSearch,
+              onClearDateFilter: _clearDateFilter,
+              customerCount: customerNames.length,
+              invoiceCount: filteredDocs.length,
+            ),
+
+            // Document List
+            Expanded(
+              child: Container(
+                color: Colors.grey.shade50,
+                child: state.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : state.errorMessage != null
+                        ? _buildErrorState(state.errorMessage!)
+                        : customerNames.isEmpty
+                            ? _buildEmptyState(context.read<MaterialSaleCubit>())
+                            : _buildDocumentList(customerNames, groupedDocs, context.read<MaterialSaleCubit>()),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -67,8 +157,22 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
 
   List<MaterialSaleDocument> _getFilteredDocuments(List<MaterialSaleDocument> documents) {
     return documents.where((doc) {
-      // Add filtering logic here if needed
-      return true;
+      final query = _searchQuery.toLowerCase();
+
+      final matchesSearch = query.isEmpty ||
+          doc.customerName.toLowerCase().contains(query) ||
+          doc.invoiceNumber.toLowerCase().contains(query) ||
+          doc.customerPhone.toLowerCase().contains(query);
+
+      final matchesStatus = _statusFilter == 'All' ||
+          doc.status.name.toUpperCase() == _statusFilter.toUpperCase();
+
+      final matchesDate = (_startDate == null ||
+              doc.saleDate.isAfter(_startDate!.subtract(const Duration(days: 1)))) &&
+          (_endDate == null ||
+              doc.saleDate.isBefore(_endDate!.add(const Duration(days: 1))));
+
+      return matchesSearch && matchesStatus && matchesDate;
     }).toList();
   }
 
@@ -251,6 +355,9 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
   }
 
   Widget _buildEmptyState(MaterialSaleCubit cubit) {
+    final hasFilters = _hasActiveFilters();
+    final originalCount = context.read<MaterialSaleCubit>().state.materialSales.length;
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -262,14 +369,14 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.store_outlined,
+              hasFilters ? Icons.search_off : Icons.store_outlined,
               size: 64,
               color: Colors.grey.shade400,
             ),
           ),
           const SizedBox(height: 24),
           Text(
-            'No material sales yet',
+            hasFilters ? 'No sales match your filters' : 'No material sales yet',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -278,29 +385,52 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Create your first material sale',
+            hasFilters
+                ? 'Try adjusting your search or filters'
+                : 'Create your first material sale',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey.shade500,
             ),
           ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () => widget.onCreateNew(cubit),
-            icon: const Icon(Icons.add_shopping_cart),
-            label: const Text('Create New Sale'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange.shade600,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          if (hasFilters && originalCount > 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Found $originalCount sales in total',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade400,
               ),
             ),
-          ),
+          ],
+          const SizedBox(height: 32),
+          if (!hasFilters)
+            ElevatedButton.icon(
+              onPressed: () => widget.onCreateNew(cubit),
+              icon: const Icon(Icons.add_shopping_cart),
+              label: const Text('Create New Sale'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade600,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          if (hasFilters) ...[
+            TextButton.icon(
+              onPressed: _clearAllFilters,
+              icon: const Icon(Icons.filter_alt_off),
+              label: const Text('Clear All Filters'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.grey.shade600,
+              ),
+            ),
+          ],
         ],
       ),
     );

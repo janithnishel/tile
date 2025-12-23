@@ -39,6 +39,7 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
   late MaterialSaleDocument _workingDocument;
   late bool _isNewDocument;
   bool _hasUnsavedChanges = false;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -75,6 +76,7 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
 
   MaterialSaleDocument _deepCopyDocument(MaterialSaleDocument original) {
     return MaterialSaleDocument(
+      id: original.id, // Include the ID!
       invoiceNumber: original.invoiceNumber,
       saleDate: original.saleDate,
       customerName: original.customerName,
@@ -180,20 +182,49 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
     }
   }
 
-  void _saveDocument() {
-    // Copy changes back
-    widget.document.customerName = _customerNameController.text.trim();
-    widget.document.customerPhone = _customerPhoneController.text.trim();
-    widget.document.customerAddress = _customerAddressController.text.trim();
-    widget.document.items = _workingDocument.items;
-    widget.document.paymentHistory = _workingDocument.paymentHistory;
-    widget.document.status = _workingDocument.status;
+  Future<void> _saveDocument() async {
+    if (_workingDocument.id == null) {
+      _showSnackBar('Cannot save: Document ID is missing');
+      return;
+    }
 
-    setState(() {
-      _hasUnsavedChanges = false;
-    });
+    try {
+      // Show loading state
+      setState(() {
+        _isSaving = true;
+      });
 
-    _showSnackBar('Sale saved successfully!');
+      // Update customer details from controllers
+      final updatedDocument = _workingDocument.copyWith(
+        customerName: _customerNameController.text.trim(),
+        customerPhone: _customerPhoneController.text.trim(),
+        customerAddress: _customerAddressController.text.trim(),
+      );
+
+      // Call API to update the material sale
+      await context.read<MaterialSaleCubit>().updateMaterialSale(updatedDocument);
+
+      // Update local document reference
+      widget.document.customerName = updatedDocument.customerName;
+      widget.document.customerPhone = updatedDocument.customerPhone;
+      widget.document.customerAddress = updatedDocument.customerAddress;
+      widget.document.items = updatedDocument.items;
+      widget.document.paymentHistory = updatedDocument.paymentHistory;
+      widget.document.status = updatedDocument.status;
+
+      setState(() {
+        _hasUnsavedChanges = false;
+        _isSaving = false;
+      });
+
+      _showSnackBar('Sale saved successfully!');
+    } catch (e) {
+      setState(() {
+        _isSaving = false;
+      });
+
+      _showSnackBar('Failed to save changes: ${e.toString()}');
+    }
   }
 
   void _showSummary() {
@@ -228,22 +259,50 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
     );
   }
 
-  void _onPaymentRecorded(PaymentRecord payment, bool isFullPayment) {
-    setState(() {
-      _workingDocument.paymentHistory = List.from(_workingDocument.paymentHistory)..add(payment);
+  Future<void> _onPaymentRecorded(PaymentRecord payment, bool isFullPayment) async {
+    if (!_isNewDocument && _workingDocument.id != null) {
+      // For existing documents, call API to add payment
+      try {
+        final paymentData = {
+          'amount': payment.amount,
+          'date': payment.date.toIso8601String(),
+          'description': payment.description,
+        };
 
-      // Update status based on payment type
-      if (isFullPayment) {
-        _workingDocument.status = MaterialSaleStatus.paid;
-      } else {
-        // For advance payment, keep as pending
-        _workingDocument.status = MaterialSaleStatus.pending;
+        // Call cubit to add payment via API
+        await context.read<MaterialSaleCubit>().addPayment(_workingDocument.id!, paymentData);
+
+        // Update local working document with the new payment (the cubit should handle the response)
+        final updatedDocument = context.read<MaterialSaleCubit>().state.materialSales
+            .firstWhere((sale) => sale.id == _workingDocument.id);
+
+        setState(() {
+          _workingDocument = _deepCopyDocument(updatedDocument);
+          _hasUnsavedChanges = false; // API call succeeded, no unsaved changes
+        });
+
+        _showSnackBar('Payment recorded successfully!');
+      } catch (e) {
+        _showSnackBar('Failed to record payment: ${e.toString()}');
       }
+    } else {
+      // For new documents, just update local state
+      setState(() {
+        _workingDocument.paymentHistory = List.from(_workingDocument.paymentHistory)..add(payment);
 
-      _hasUnsavedChanges = true;
-    });
+        // Update status based on payment type
+        if (isFullPayment) {
+          _workingDocument.status = MaterialSaleStatus.paid;
+        } else {
+          // For advance payment, keep as pending
+          _workingDocument.status = MaterialSaleStatus.pending;
+        }
 
-    _showSnackBar('Payment recorded successfully!');
+        _hasUnsavedChanges = true;
+      });
+
+      _showSnackBar('Payment recorded successfully!');
+    }
   }
 
   void _showPreview() {
@@ -376,8 +435,17 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _hasUnsavedChanges ? _saveDocument : null,
-                        child: const Text('Save'),
+                        onPressed: (_hasUnsavedChanges && !_isSaving) ? _saveDocument : null,
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Text('Save'),
                       ),
                     ),
                   ],
