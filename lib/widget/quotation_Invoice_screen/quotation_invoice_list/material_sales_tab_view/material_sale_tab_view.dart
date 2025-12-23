@@ -215,7 +215,7 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
     MaterialSaleCubit cubit,
   ) {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16), // Standard padding, no extra bottom needed
       itemCount: customerNames.length,
       itemBuilder: (context, index) {
         final customerName = customerNames[index];

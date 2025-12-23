@@ -228,7 +228,7 @@ class _ProjectTabViewState extends State<ProjectTabView> {
     Map<String, List<QuotationDocument>> groupedDocs,
   ) {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16), // Standard padding, no extra bottom needed
       itemCount: customerNames.length,
       itemBuilder: (context, index) {
         final customerName = customerNames[index];

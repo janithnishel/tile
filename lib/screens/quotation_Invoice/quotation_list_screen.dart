@@ -238,7 +238,7 @@ class _QuotationListScreenState extends State<QuotationListScreen>
           ),
         ],
       ),
-      floatingActionButton: _buildFloatingActionButton(quotationCubit, materialSaleCubit),
+      bottomNavigationBar: _buildBottomActionBar(quotationCubit, materialSaleCubit),
     );
   }
 
@@ -319,31 +319,87 @@ class _QuotationListScreenState extends State<QuotationListScreen>
     );
   }
 
-  Widget? _buildFloatingActionButton(QuotationCubit quotationCubit, MaterialSaleCubit materialSaleCubit) {
-    // Project Tab FAB
-    if (_currentTabIndex == 0) {
-      return FloatingActionButton.extended(
-        heroTag: 'fab_project',
-        onPressed: () => _createNewQuotation(quotationCubit),
-        label: const Text(
-          'New Quotation',
-          style: TextStyle(color: Colors.white),
-        ),
-        icon: const Icon(Icons.add, color: Colors.white),
-        backgroundColor: Colors.purple.shade700,
-      );
-    }
+  Widget _buildBottomActionBar(QuotationCubit quotationCubit, MaterialSaleCubit materialSaleCubit) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 1),
+            end: Offset.zero,
+          ).animate(animation),
+          child: FadeTransition(
+            opacity: animation,
+            child: child,
+          ),
+        );
+      },
+      child: _currentTabIndex == 0
+          ? _buildActionBarButton(
+              key: const ValueKey('project_action_bar'),
+              label: 'New Project',
+              icon: Icons.add,
+              color: Colors.purple.shade700,
+              onPressed: () => _createNewQuotation(quotationCubit),
+            )
+          : _buildActionBarButton(
+              key: const ValueKey('material_sale_action_bar'),
+              label: 'New Sale',
+              icon: Icons.add_shopping_cart,
+              color: Colors.orange.shade600,
+              onPressed: () => _createNewMaterialSale(materialSaleCubit),
+            ),
+    );
+  }
 
-    // Material Sale Tab FAB
-    return FloatingActionButton.extended(
-      heroTag: 'fab_material_sale',
-      onPressed: () => _createNewMaterialSale(materialSaleCubit),
-      label: const Text(
-        'New Sale',
-        style: TextStyle(color: Colors.white),
+  Widget _buildActionBarButton({
+    required Key key,
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      key: key,
+      height: 80,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
-      icon: const Icon(Icons.add_shopping_cart, color: Colors.white),
-      backgroundColor: Colors.orange.shade600,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: ElevatedButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon, color: Colors.white, size: 24),
+          label: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            minimumSize: const Size(double.infinity, 56),
+          ),
+        ),
+      ),
     );
   }
 }
