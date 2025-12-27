@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
+import 'package:tilework/cubits/material_sale/material_sale_cubit.dart';
+import 'package:tilework/cubits/material_sale/material_sale_state.dart';
 import 'package:tilework/cubits/purchase_order/purchase_order_cubit.dart';
 import 'package:tilework/cubits/purchase_order/purchase_order_state.dart';
 import 'package:tilework/cubits/quotation/quotation_cubit.dart';
 import 'package:tilework/cubits/quotation/quotation_state.dart';
 import 'package:tilework/cubits/supplier/supplier_cubit.dart';
 import 'package:tilework/cubits/supplier/supplier_state.dart';
+import 'package:tilework/models/quotation_Invoice_screen/material_sale/material_sale_enums.dart';
 
 import 'package:tilework/models/purchase_order/approved_quotation.dart';
 import 'package:tilework/models/purchase_order/po_item.dart';
@@ -16,6 +19,7 @@ import 'package:tilework/models/purchase_order/quotation_item.dart';
 import 'package:tilework/models/purchase_order/supplier.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/item_description.dart';
 import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/add_supplier_screen.dart';
+import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/create_material_sale_po_dialog.dart';
 import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/create_po_screen.dart';
 import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/order_summary_dialog.dart';
 import 'package:tilework/widget/purchase_order_screen.dart/purchase_order/po_header_section.dart';
@@ -54,6 +58,11 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
   DateTime? _endDate;
 
   // ============================================
+  // MATERIAL SALE PO FILTERS
+  // ============================================
+  String? _selectedMaterialSaleId;
+
+  // ============================================
   // APPROVED QUOTATIONS (loaded from API)
   // ============================================
   List<ApprovedQuotation> _approvedQuotations = [];
@@ -76,6 +85,66 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
   // ============================================
   String _materialSearchQuery = '';
   String _materialStatusFilter = 'All';
+
+  // ============================================
+  // MATERIAL SALE PO LIST
+  // ============================================
+
+  List<PurchaseOrder> get _filteredMaterialSaleOrders {
+    // Filter POs created from Material Sales
+    List<PurchaseOrder> list = _purchaseOrders.where((po) =>
+        po.notes?.startsWith('Created from Material Sale') ?? false).toList();
+
+    // Filter by Date Range (Order Date)
+    if (_startDate != null && _endDate != null) {
+      list = list.where((po) {
+        final orderDate = po.orderDate;
+        return orderDate.isAfter(_startDate!.subtract(const Duration(days: 1))) &&
+               orderDate.isBefore(_endDate!.add(const Duration(days: 1)));
+      }).toList();
+    }
+
+    // Filter by Supplier ID
+    if (_selectedSupplierId != null) {
+      list = list
+          .where((po) => po.supplier.id == _selectedSupplierId)
+          .toList();
+    }
+
+    // Filter by Status
+    if (_materialStatusFilter != 'All') {
+      if (_materialStatusFilter == 'Active') {
+        list = list.where((po) => ['Ordered', 'Delivered', 'Paid'].contains(po.status)).toList();
+      } else {
+        list = list.where((po) => po.status == _materialStatusFilter).toList();
+      }
+    }
+
+    // Search
+    if (_materialSearchQuery.isNotEmpty) {
+      final query = _materialSearchQuery.toLowerCase();
+      list = list.where((po) {
+        return po.poId.toLowerCase().contains(query) ||
+            po.supplier.name.toLowerCase().contains(query) ||
+            po.customerName.toLowerCase().contains(query) ||
+            po.items.any((item) => item.name.toLowerCase().contains(query));
+      }).toList();
+    }
+
+    return list;
+  }
+
+  Map<String, List<PurchaseOrder>> get _groupedMaterialSaleOrders {
+    final filtered = _filteredMaterialSaleOrders;
+    final Map<String, List<PurchaseOrder>> grouped = {};
+
+    for (var po in filtered) {
+      final supplierName = po.supplier.name;
+      grouped.putIfAbsent(supplierName, () => []).add(po);
+    }
+
+    return grouped;
+  }
 
   @override
   void initState() {
@@ -440,9 +509,127 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
     );
   }
 
-  void _showCreateMaterialSalePODialog() {
-    // TODO: Implement Material Sale PO creation dialog
-    _showSnackBar('Material Sale PO creation coming soon!');
+  void _showCreateMaterialSalePODialog() async {
+    // Capture the screen context for snackbar
+    final screenContext = context;
+
+    // Load approved Material Sale invoices and suppliers for the dropdowns
+    try {
+      final materialSaleCubit = context.read<MaterialSaleCubit>();
+      final supplierCubit = context.read<SupplierCubit>();
+
+      // Load both material sales and suppliers in parallel
+      await Future.wait([
+        materialSaleCubit.loadMaterialSales(),
+        supplierCubit.loadSuppliers(),
+      ]);
+    } catch (e) {
+      // Continue with empty lists if loading fails
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BlocBuilder<MaterialSaleCubit, MaterialSaleState>(
+          builder: (context, materialSaleState) {
+            return BlocBuilder<SupplierCubit, SupplierState>(
+              builder: (context, supplierState) {
+                // Convert MaterialSaleDocument to ApprovedMaterialSale
+                final approvedMaterialSales = materialSaleState.materialSales
+                    .where((doc) => doc.status == MaterialSaleStatus.paid) // Use paid as "approved"
+                    .map((doc) {
+                      return ApprovedMaterialSale(
+                        saleId: doc.id ?? doc.invoiceNumber,
+                        customerName: doc.customerName,
+                        projectTitle: 'Material Sale', // No specific project for material sales
+                        approvedDate: doc.saleDate,
+                        totalAmount: doc.totalAmount,
+                        items: doc.items.map((item) {
+                          return QuotationItem(
+                            id: '${doc.id}_${item.productName}', // Create unique ID
+                            name: item.productName,
+                            category: item.categoryName, // Use categoryName
+                            quantity: item.totalSqft.toInt(), // Use sqft as quantity
+                            unit: 'sqft', // Use sqft as unit
+                            estimatedPrice: item.amount / item.totalSqft, // Price per sqft
+                            isOrdered: false,
+                          );
+                        }).toList(),
+                      );
+                    }).toList();
+
+                return CreateMaterialSalePODialog(
+                  materialSales: approvedMaterialSales,
+                  suppliers: supplierState.suppliers,
+                  onCreate: (saleId, supplier, items, expectedDeliveryDate) async {
+                    try {
+                      final purchaseOrderCubit = context.read<PurchaseOrderCubit>();
+
+                      // Convert SelectedPOItem to POItem
+                      final poItems = items.map((item) => POItem(
+                        itemName: item.name,
+                        quantity: item.quantity.toDouble(),
+                        unit: item.unit,
+                        unitPrice: item.price,
+                      )).toList();
+
+                      // Get sale details for customer name
+                      final selectedSale = approvedMaterialSales.firstWhere(
+                        (sale) => sale.saleId == saleId,
+                      );
+
+                      // Create PurchaseOrder object
+                      final purchaseOrder = PurchaseOrder(
+                        poId: '', // Will be generated by backend
+                        quotationId: saleId, // Link to material sale ID
+                        customerName: selectedSale.customerName,
+                        supplier: supplier,
+                        orderDate: DateTime.now(),
+                        expectedDelivery: expectedDeliveryDate ?? DateTime.now().add(const Duration(days: 14)),
+                        status: 'Draft',
+                        items: poItems,
+                        notes: 'Created from Material Sale $saleId',
+                      );
+
+                      // Create the PO via cubit
+                      await purchaseOrderCubit.createPurchaseOrder(purchaseOrder);
+
+                      // Reload purchase orders to show the new PO
+                      await purchaseOrderCubit.loadPurchaseOrders();
+
+                      if (mounted) {
+                        final updatedState = purchaseOrderCubit.state;
+                        setState(() {
+                          _purchaseOrders = updatedState.purchaseOrders;
+                        });
+                      }
+
+                      // Use screen context for snackbar
+                      ScaffoldMessenger.of(screenContext).showSnackBar(
+                        const SnackBar(
+                          content: Text('Material Sale Purchase Order created successfully!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      if (context.mounted) Navigator.pop(context); // Close the page
+                    } catch (e) {
+                      // Use screen context for snackbar
+                      ScaffoldMessenger.of(screenContext).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to create Material Sale PO: ${e.toString()}'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      if (context.mounted) Navigator.pop(context); // Close the page on error too
+                    }
+                  },
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
   }
 
   void _showSupplierManagementDialog() {
@@ -841,9 +1028,88 @@ class _PurchaseOrderScreenState extends State<PurchaseOrderScreen>
   // ============================================
 
   Widget _buildMaterialSalePOContent() {
-    // TODO: Implement Material Sale PO content with real data
-    // For now showing placeholder
-    return _buildMaterialSaleEmptyState();
+    return Column(
+      children: [
+        // Simple Header Section for Material Sale POs
+        Container(
+          padding: const EdgeInsets.all(16),
+          color: Colors.white,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Material Sale Purchase Orders',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange.shade700,
+                  ),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: _showCreateMaterialSalePODialog,
+                icon: const Icon(Icons.add_shopping_cart),
+                label: const Text('Create PO'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange.shade600,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Main Content with loading indicator
+        Expanded(
+          child: _isLoadingPurchaseOrders
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Loading Material Sale Purchase Orders...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : _buildMaterialSaleMainContent(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMaterialSaleMainContent() {
+    final groupedOrders = _groupedMaterialSaleOrders;
+
+    if (groupedOrders.isEmpty) {
+      return _buildMaterialSaleEmptyState();
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: groupedOrders.keys.length,
+      itemBuilder: (context, index) {
+        final supplierName = groupedOrders.keys.elementAt(index);
+        final supplierOrders = groupedOrders[supplierName]!;
+        final supplier = supplierOrders.first.supplier;
+
+        return SupplierExpansionTile(
+          supplier: supplier,
+          orders: supplierOrders,
+          onOrderTap: _showOrderSummaryDialog,
+        );
+      },
+    );
   }
 
   Widget _buildMaterialSaleEmptyState() {
