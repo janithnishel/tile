@@ -75,10 +75,16 @@ class _LineItemRowState extends State<LineItemRow> {
         : '';
 
     if (_quantityController.text != newQty) {
-      _quantityController.text = newQty;
+      _quantityController.value = _quantityController.value.copyWith(
+        text: newQty,
+        selection: TextSelection.collapsed(offset: newQty.length),
+      );
     }
     if (_priceController.text != newPrice) {
-      _priceController.text = newPrice;
+      _priceController.value = _priceController.value.copyWith(
+        text: newPrice,
+        selection: TextSelection.collapsed(offset: newPrice.length),
+      );
     }
   }
 

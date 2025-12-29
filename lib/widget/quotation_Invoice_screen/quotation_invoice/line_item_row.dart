@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:tilework/data/mock_data.dart';
 import 'package:tilework/models/category_model.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/invoice_line_item.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/item_description.dart';
@@ -38,19 +37,77 @@ class LineItemRow extends StatefulWidget {
 
 class _LineItemRowState extends State<LineItemRow> {
   CategoryModel? selectedCategory;
+  late TextEditingController _quantityController;
+  late TextEditingController _priceController;
+  late FocusNode _quantityFocusNode;
+  late FocusNode _priceFocusNode;
 
   @override
   void initState() {
     super.initState();
-    // Find the selected category based on the item's categoryId
+    _initSelectedCategory();
+
+    // Initialize FocusNodes to preserve focus during rebuilds
+    _quantityFocusNode = FocusNode();
+    _priceFocusNode = FocusNode();
+
+    // මුලින්ම පවතින අගයන්ගෙන් controllers සකස් කිරීම
+    _quantityController = TextEditingController(text: widget.item.quantity.toStringAsFixed(1));
+    _priceController = TextEditingController(text: widget.item.item.sellingPrice.toStringAsFixed(2));
+  }
+
+  void _initSelectedCategory() {
     if (widget.item.item.categoryId.isNotEmpty) {
-      selectedCategory = widget.categories.firstWhere(
-        (cat) => cat.id == widget.item.item.categoryId,
-        orElse: () => widget.categories.first,
-      );
+      try {
+        selectedCategory = widget.categories.firstWhere(
+          (cat) => cat.id == widget.item.item.categoryId,
+        );
+      } catch (_) {
+        selectedCategory = widget.categories.isNotEmpty ? widget.categories.first : null;
+      }
     } else {
       selectedCategory = widget.categories.isNotEmpty ? widget.categories.first : null;
     }
+  }
+
+  @override
+  void didUpdateWidget(LineItemRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // මෙතැනදී controller.text එක සහ widget එකෙන් එන අගය වෙනස් නම් පමණක් update කරයි.
+    // එවිට Cursor එක මුලට පැනීම හෝ මුළු text එකම highlight වීම වැළකේ.
+      if (oldWidget.item.quantity != widget.item.quantity) {
+        _updateControllerIfChanged(_quantityController, widget.item.quantity.toStringAsFixed(1));
+    }
+    
+      if (oldWidget.item.item.sellingPrice != widget.item.item.sellingPrice) {
+        _updateControllerIfChanged(_priceController, widget.item.item.sellingPrice.toStringAsFixed(2));
+    }
+
+    if (oldWidget.item.item.categoryId != widget.item.item.categoryId) {
+      _initSelectedCategory();
+    }
+  }
+
+  // අගය වෙනස් නම් පමණක් Cursor position එක රැකගෙන update කරන function එක
+  // Very Important: Only update if the strings are different to prevent cursor reset
+  void _updateControllerIfChanged(TextEditingController controller, String newValue) {
+    // Very Important: Only update if the strings are different to prevent cursor reset
+    if (controller.text != newValue) {
+      controller.value = controller.value.copyWith(
+        text: newValue,
+        selection: TextSelection.collapsed(offset: newValue.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _quantityController.dispose();
+    _priceController.dispose();
+    _quantityFocusNode.dispose();
+    _priceFocusNode.dispose();
+    super.dispose();
   }
 
   @override
@@ -60,45 +117,17 @@ class _LineItemRowState extends State<LineItemRow> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Category Dropdown
-          Expanded(
-            flex: 2,
-            child: _buildCategoryDropdown(),
-          ),
+          Expanded(flex: 2, child: _buildCategoryDropdown()),
           const SizedBox(width: 8),
-
-          // Product Dropdown
-          Expanded(
-            flex: 2,
-            child: _buildProductDropdown(),
-          ),
+          Expanded(flex: 2, child: _buildProductDropdown()),
           const SizedBox(width: 8),
-
-          // Unit Display
           _buildUnitDisplay(),
           const SizedBox(width: 8),
-
-          // Quantity
-          Expanded(
-            flex: 1,
-            child: _buildQuantityField(),
-          ),
+          Expanded(flex: 1, child: _buildQuantityField()),
           const SizedBox(width: 8),
-
-          // Price
-          Expanded(
-            flex: 1,
-            child: _buildPriceField(),
-          ),
+          Expanded(flex: 1, child: _buildPriceField()),
           const SizedBox(width: 8),
-
-          // Amount
-          Expanded(
-            flex: 1,
-            child: _buildAmountDisplay(),
-          ),
-
-          // Delete Button
+          Expanded(flex: 1, child: _buildAmountDisplay()),
           _buildDeleteButton(),
         ],
       ),
@@ -115,19 +144,12 @@ class _LineItemRowState extends State<LineItemRow> {
         fillColor: widget.isDropdownEditable ? null : Colors.grey.shade100,
       ),
       items: widget.categories
-          .map(
-            (cat) => DropdownMenuItem(
-              value: cat,
-              child: Text(cat.name),
-            ),
-          )
+          .map((cat) => DropdownMenuItem(value: cat, child: Text(cat.name)))
           .toList(),
       onChanged: widget.isDropdownEditable
           ? (value) {
               if (value != null) {
-                setState(() {
-                  selectedCategory = value;
-                });
+                setState(() => selectedCategory = value);
               }
             }
           : null,
@@ -150,19 +172,14 @@ class _LineItemRowState extends State<LineItemRow> {
         fillColor: widget.isDropdownEditable ? null : Colors.grey.shade100,
       ),
       items: products
-          .map(
-            (item) => DropdownMenuItem(
-              value: item,
-              child: Text(item.itemName),
-            ),
-          )
+          .map((item) => DropdownMenuItem(value: item, child: Text(item.itemName)))
           .toList(),
       onChanged: widget.isDropdownEditable
           ? (value) {
               if (value != null && selectedCategory != null) {
                 final itemDesc = ItemDescription(
                   '${selectedCategory!.name} - ${value.itemName}',
-                  sellingPrice: 0.0, // Default price
+                  sellingPrice: 0.0,
                   unit: value.baseUnit,
                   category: selectedCategory!.name,
                   categoryId: selectedCategory!.id,
@@ -192,8 +209,9 @@ class _LineItemRowState extends State<LineItemRow> {
 
   Widget _buildQuantityField() {
     return TextField(
-      controller: TextEditingController(text: widget.item.quantity.toStringAsFixed(1)),
-      keyboardType: TextInputType.number,
+      controller: _quantityController,
+      focusNode: _quantityFocusNode,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
       readOnly: !widget.isValueEditable,
       decoration: InputDecoration(
         border: const OutlineInputBorder(),
@@ -203,7 +221,10 @@ class _LineItemRowState extends State<LineItemRow> {
       ),
       onChanged: (value) {
         if (widget.isValueEditable) {
-          widget.onQuantityChanged(double.tryParse(value) ?? 0.0);
+          final parsedValue = double.tryParse(value) ?? 0.0;
+          // මෙතැනදී controller එක අතින් update කිරීම අවශ්‍ය නැත.
+          // එය parent's state change එක හරහා didUpdateWidget මගින් නිවැරදිව සිදු වේ.
+          widget.onQuantityChanged(parsedValue);
         }
       },
     );
@@ -211,10 +232,9 @@ class _LineItemRowState extends State<LineItemRow> {
 
   Widget _buildPriceField() {
     return TextField(
-      controller: TextEditingController(
-        text: widget.item.item.sellingPrice.toStringAsFixed(2),
-      ),
-      keyboardType: TextInputType.number,
+      controller: _priceController,
+      focusNode: _priceFocusNode,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
       readOnly: !widget.isValueEditable,
       decoration: InputDecoration(
         border: const OutlineInputBorder(),
@@ -224,7 +244,8 @@ class _LineItemRowState extends State<LineItemRow> {
       ),
       onChanged: (value) {
         if (widget.isValueEditable) {
-          widget.onPriceChanged(double.tryParse(value) ?? 0.0);
+          final parsedValue = double.tryParse(value) ?? 0.0;
+          widget.onPriceChanged(parsedValue);
         }
       },
     );
@@ -243,15 +264,14 @@ class _LineItemRowState extends State<LineItemRow> {
   }
 
   Widget _buildDeleteButton() {
-    if (widget.isDeleteEnabled) {
-      return SizedBox(
-        width: 40,
-        child: IconButton(
-          icon: const Icon(Icons.delete_outline, color: Colors.red),
-          onPressed: widget.onDelete,
-        ),
-      );
-    }
-    return const SizedBox(width: 40);
+    return widget.isDeleteEnabled
+        ? SizedBox(
+            width: 40,
+            child: IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: widget.onDelete,
+            ),
+          )
+        : const SizedBox(width: 40);
   }
 }

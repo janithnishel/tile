@@ -97,12 +97,8 @@ class QuotationApiService {
       print('📤 Quotation API - Parsed Response: $responseData');
       print('📤 Quotation API - Has data field: ${responseData.containsKey('data')}');
 
-      if (responseData['data'] != null) {
-        return responseData['data'];
-      } else {
-        // Return the whole response if no data field
-        return responseData;
-      }
+      // Always return the full response object for consistency
+      return responseData;
     } else {
       print('❌ Quotation API - Error response: ${response.body}');
       throw Exception('Failed to create quotation: ${response.statusCode} - ${response.body}');

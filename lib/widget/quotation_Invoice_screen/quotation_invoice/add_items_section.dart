@@ -325,7 +325,7 @@ class AddItemsSection extends StatelessWidget {
   // Build a custom LineItemRow with separate Category and Product dropdowns
   Widget _buildLineItemRow(int index, InvoiceLineItem item) {
     return _CustomLineItemRow(
-      key: ValueKey(item),
+      key: ValueKey(item.hashCode),
       index: index,
       item: item,
       categories: _availableCategories,
@@ -407,70 +407,21 @@ class _CustomLineItemRowState extends State<_CustomLineItemRow> {
   void _initControllers() {
     _quantityController = TextEditingController(
       text: widget.item.quantity > 0
-          ? widget.item.quantity.toStringAsFixed(1)
+          ? widget.item.quantity.toString()
           : '',
     );
     _priceController = TextEditingController(
       text: widget.item.item.sellingPrice > 0
-          ? widget.item.item.sellingPrice.toStringAsFixed(2)
+          ? widget.item.item.sellingPrice.toString()
           : '',
     );
 
-    // Initialize local state
+    // Initialize local state for display calculations
     _currentQuantity = widget.item.quantity;
     _currentPrice = widget.item.item.sellingPrice;
-
-    // Add listeners to update local state immediately
-    _quantityController.addListener(() {
-      final newQuantity = _parseMultiNumber(_quantityController.text);
-      if (_currentQuantity != newQuantity) {
-        setState(() {
-          _currentQuantity = newQuantity;
-        });
-        // Defer parent callback to avoid setState during build
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          widget.onQuantityChanged(newQuantity);
-        });
-      }
-    });
-
-    _priceController.addListener(() {
-      final newPrice = _parseMultiNumber(_priceController.text);
-      if (_currentPrice != newPrice) {
-        setState(() {
-          _currentPrice = newPrice;
-        });
-        // Defer parent callback to avoid setState during build
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          widget.onPriceChanged(newPrice);
-        });
-      }
-    });
   }
 
-  // Parse multiple numbers from a single text input and return their SUM.
-  // Accepts separators: comma, semicolon, whitespace. Also handles comma as
-  // decimal separator when appropriate (e.g. "1,5").
-  double _parseMultiNumber(String text) {
-    if (text.trim().isEmpty) return 0.0;
 
-    final parts = text.split(RegExp(r'[,;\s]+'));
-    double sum = 0.0;
-    for (final raw in parts) {
-      final part = raw.trim();
-      if (part.isEmpty) continue;
-
-      // If the part contains a comma but no dot, treat comma as decimal separator
-      String normalized = part;
-      if (part.contains(',') && !part.contains('.')) {
-        normalized = part.replaceAll(',', '.');
-      }
-
-      final value = double.tryParse(normalized);
-      if (value != null) sum += value;
-    }
-    return sum;
-  }
 
   void _initSelections() {
     _selectedCategory = widget.item.item.category.isNotEmpty ? widget.item.item.category : null;
@@ -499,18 +450,27 @@ class _CustomLineItemRowState extends State<_CustomLineItemRow> {
   }
 
   void _updateControllers() {
-    final newQty = widget.item.quantity > 0
-        ? widget.item.quantity.toStringAsFixed(1)
-        : '';
-    final newPrice = widget.item.item.sellingPrice > 0
-        ? widget.item.item.sellingPrice.toStringAsFixed(2)
-        : '';
+    final newQty = widget.item.quantity;
+    final newPrice = widget.item.item.sellingPrice;
 
-    if (_quantityController.text != newQty) {
-      _quantityController.text = newQty;
+    // Update local state for display calculations
+    _currentQuantity = widget.item.quantity;
+    _currentPrice = widget.item.item.sellingPrice;
+
+    // Only update controller if parsed value is different to prevent cursor reset
+    if (double.tryParse(_quantityController.text) != newQty) {
+      final newQtyText = newQty > 0 ? newQty.toString() : '';
+      _quantityController.value = _quantityController.value.copyWith(
+        text: newQtyText,
+        selection: TextSelection.collapsed(offset: newQtyText.length),
+      );
     }
-    if (_priceController.text != newPrice) {
-      _priceController.text = newPrice;
+    if (double.tryParse(_priceController.text) != newPrice) {
+      final newPriceText = newPrice > 0 ? newPrice.toString() : '';
+      _priceController.value = _priceController.value.copyWith(
+        text: newPriceText,
+        selection: TextSelection.collapsed(offset: newPriceText.length),
+      );
     }
   }
 
@@ -792,36 +752,40 @@ class _CustomLineItemRowState extends State<_CustomLineItemRow> {
   Widget _buildQuantityField() {
     return TextField(
       controller: _quantityController,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,1}')),
-      ],
+      keyboardType: TextInputType.text,
       readOnly: !widget.isValueEditable,
       decoration: InputDecoration(
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         filled: !widget.isValueEditable,
         fillColor: widget.isValueEditable ? null : Colors.grey.shade100,
-        hintText: '0',
       ),
+      onChanged: (value) {
+        if (widget.isValueEditable) {
+          final parsedValue = double.tryParse(value) ?? 0.0;
+          widget.onQuantityChanged(parsedValue);
+        }
+      },
     );
   }
 
   Widget _buildPriceField() {
     return TextField(
       controller: _priceController,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-      ],
+      keyboardType: TextInputType.text,
       readOnly: !widget.isValueEditable,
       decoration: InputDecoration(
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         filled: !widget.isValueEditable,
         fillColor: widget.isValueEditable ? null : Colors.grey.shade100,
-        hintText: '0.00',
       ),
+      onChanged: (value) {
+        if (widget.isValueEditable) {
+          final parsedValue = double.tryParse(value) ?? 0.0;
+          widget.onPriceChanged(parsedValue);
+        }
+      },
     );
   }
 
