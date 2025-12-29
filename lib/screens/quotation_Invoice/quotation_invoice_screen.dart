@@ -485,6 +485,17 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
   Future<void> _saveDocument() async {
     if (_isSaving) return; // Prevent multiple save operations
 
+    debugPrint('💾 Save Document - Starting save process...');
+    debugPrint('💾 Save Document - Document ID: ${widget.document.id}');
+    debugPrint('💾 Save Document - Document Number: ${widget.document.documentNumber}');
+    debugPrint('💾 Save Document - Has unsaved changes: $_hasUnsavedChanges');
+
+    if (widget.document.id == null || widget.document.id!.isEmpty) {
+      debugPrint('❌ Save Document - Document ID is null or empty!');
+      _showSnackBar('Cannot save document: Document ID is missing. Please refresh and try again.');
+      return;
+    }
+
     if (mounted) {
       setState(() {
         _isSaving = true;
@@ -503,9 +514,21 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
     widget.document.type = _workingDocument.type;
     widget.document.status = _workingDocument.status;
 
+    debugPrint('💾 Save Document - Updated document data:');
+    debugPrint('   - Customer: ${widget.document.customerName}');
+    debugPrint('   - Phone: ${widget.document.customerPhone}');
+    debugPrint('   - Line items: ${widget.document.lineItems.length}');
+
+    // Log the JSON payload being sent
+    final jsonPayload = widget.document.toJson();
+    debugPrint('💾 Save Document - JSON Payload keys: ${jsonPayload.keys.toList()}');
+    debugPrint('💾 Save Document - Full JSON Payload: $jsonPayload');
+
     try {
       // Update quotation using the cubit (calls backend API)
+      debugPrint('💾 Save Document - Calling cubit.updateQuotation...');
       await context.read<QuotationCubit>().updateQuotation(widget.document);
+      debugPrint('💾 Save Document - Cubit update successful');
 
       if (mounted) {
         setState(() {
@@ -521,6 +544,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
         Navigator.pop(context, true);
       }
     } catch (e) {
+      debugPrint('❌ Save Document - Failed with error: $e');
       if (mounted) {
         setState(() {
           _isSaving = false;

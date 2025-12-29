@@ -37,7 +37,7 @@ class EditModeButtonsSection extends StatelessWidget {
   bool get _isSaveVisible => !document.isLocked;
 
   bool get _isConvertVisible =>
-      document.isQuotation && document.status == DocumentStatus.approved;
+      document.isQuotation && document.status == DocumentStatus.approved && !hasUnsavedChanges;
 
   bool get _isPaymentVisible =>
       document.isInvoice && !document.isLocked && document.amountDue > 0;
@@ -66,6 +66,11 @@ class EditModeButtonsSection extends StatelessWidget {
           if (hasUnsavedChanges) ...[
             const SizedBox(height: 12),
             _buildUnsavedChangesWarning(),
+            // Additional warning for approved quotations with unsaved changes
+            if (document.isQuotation && document.status == DocumentStatus.approved) ...[
+              const SizedBox(height: 8),
+              _buildSaveBeforeConvertWarning(),
+            ],
           ],
 
           const SizedBox(height: 20),
@@ -172,15 +177,42 @@ class EditModeButtonsSection extends StatelessWidget {
     );
   }
 
+  Widget _buildSaveBeforeConvertWarning() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.shade300),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: Colors.blue.shade700),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Save your changes before converting to invoice',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPrimaryActionsRow() {
+    // Implement the specific button state logic requested
+    final isSaveEnabled = hasUnsavedChanges && !isSaving;
+    final isApproveEnabled = !hasUnsavedChanges && document.status == DocumentStatus.pending;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Save Button
+        // Save Quotation Button
         if (_isSaveVisible)
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: (!isSaving && hasUnsavedChanges) ? onSave : null, // Enable only when there are unsaved changes
+              onPressed: isSaveEnabled ? onSave : null,
               icon: isSaving
                   ? SizedBox(
                       width: 20,
@@ -191,29 +223,30 @@ class EditModeButtonsSection extends StatelessWidget {
                       ),
                     )
                   : const Icon(Icons.save),
-              label: Text(isSaving ? 'Saving...' : 'Save ${document.type.name}'),
+              label: Text(isSaving ? 'Saving...' : 'Save Quotation'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.all(16),
-                backgroundColor: Colors.indigo,
-                foregroundColor: Colors.white,
+                backgroundColor: isSaveEnabled ? Colors.indigo : Colors.grey.shade300,
+                foregroundColor: isSaveEnabled ? Colors.white : Colors.grey.shade600,
                 disabledBackgroundColor: Colors.grey.shade300,
               ),
             ),
           ),
 
-        if (_isSaveVisible && (_isConvertVisible || _isPaymentVisible || _isApproveVisible)) const SizedBox(width: 16),
+        if (_isSaveVisible && _isApproveVisible) const SizedBox(width: 16),
 
         // Approve Button (for pending quotations)
         if (_isApproveVisible && onApprove != null)
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: onApprove,
+              onPressed: isApproveEnabled ? onApprove : null,
               icon: const Icon(Icons.check_circle),
               label: const Text('Approve'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.all(16),
-                backgroundColor: Colors.green.shade600,
-                foregroundColor: Colors.white,
+                backgroundColor: isApproveEnabled ? Colors.green.shade600 : Colors.grey.shade300,
+                foregroundColor: isApproveEnabled ? Colors.white : Colors.grey.shade600,
+                disabledBackgroundColor: Colors.grey.shade300,
               ),
             ),
           ),

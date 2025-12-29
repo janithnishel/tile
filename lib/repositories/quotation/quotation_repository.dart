@@ -111,10 +111,35 @@ class QuotationRepository {
       final currentToken = token ?? _token;
       final response = await _apiService.updateQuotation(id: quotation.id ?? '', data: quotation.toJson(), token: currentToken);
 
-      // Backend should return the updated quotation data
-      final data = response['data'];
-      return QuotationDocument.fromJson(data);
+      print('📦 Update Repository - API Response: $response');
+
+      // Handle different response formats
+      Map<String, dynamic>? data;
+
+      if (response.containsKey('data') && response['data'] != null) {
+        data = response['data'] as Map<String, dynamic>;
+        print('📦 Update Repository - Found data field: $data');
+      } else if (response is Map<String, dynamic> && response.containsKey('id')) {
+        // Response is directly the quotation data
+        data = response;
+        print('📦 Update Repository - Response is direct data: $data');
+      } else {
+        print('📦 Update Repository - No valid data found, using original quotation');
+        // If no data returned, return the original quotation (assuming update was successful)
+        return quotation;
+      }
+
+      // Try to create the quotation document
+      try {
+        return QuotationDocument.fromJson(data);
+      } catch (e) {
+        print('❌ Update Repository - Failed to parse quotation from response: $e');
+        print('❌ Update Repository - Response data: $data');
+        // If parsing fails, return the original quotation
+        return quotation;
+      }
     } catch (e) {
+      print('❌ Update Repository - API call failed: $e');
       throw Exception('Failed to update quotation: $e');
     }
   }

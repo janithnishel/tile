@@ -111,18 +111,77 @@ class QuotationApiService {
     required Map<String, dynamic> data,
     String? token,
   }) async {
+    print('🔄 Update Quotation API - ID: $id');
+    print('🔄 Update Quotation API - Data keys: ${data.keys.toList()}');
+
+    // Log the full JSON payload being sent
+    final jsonPayload = json.encode(data);
+    print('🔄 Update Quotation API - Full JSON Payload: $jsonPayload');
+
+    // Check for null values in critical fields
+    print('🔄 Update Quotation API - Checking for null values:');
+    print('   - customerName: ${data['customerName']}');
+    print('   - customerPhone: ${data['customerPhone']}');
+    print('   - lineItems count: ${(data['lineItems'] as List?)?.length ?? 0}');
+
+    // Check lineItems for null values
+    if (data['lineItems'] != null) {
+      final lineItems = data['lineItems'] as List;
+      for (int i = 0; i < lineItems.length; i++) {
+        final item = lineItems[i] as Map<String, dynamic>;
+        print('   - Item $i: name=${item['item']?['name']}, sellingPrice=${item['item']?['sellingPrice']}, unit=${item['item']?['unit']}, categoryId=${item['item']?['categoryId']}');
+      }
+    }
+
     final headers = await _getHeaders(token: token);
     final response = await http.put(
       Uri.parse('$baseUrl/quotations/$id'),
       headers: headers,
-      body: json.encode(data),
+      body: jsonPayload,
     );
 
+    print('🔄 Update Quotation API - Status Code: ${response.statusCode}');
+    print('🔄 Update Quotation API - Response Body Length: ${response.body.length}');
+    print('🔄 Update Quotation API - Response Body: "${response.body}"');
+
     if (response.statusCode == 200) {
-      final responseData = json.decode(response.body);
-      return responseData['data'] ?? responseData;
+      // Handle empty response body
+      if (response.body.trim().isEmpty) {
+        print('🔄 Update Quotation API - Empty response body, returning success data');
+        return {
+          'id': id,
+          'updated': true,
+          'message': 'Quotation updated successfully'
+        };
+      }
+
+      try {
+        final responseData = json.decode(response.body);
+        print('🔄 Update Quotation API - Parsed Response: $responseData');
+
+        // Handle different response formats
+        if (responseData is Map<String, dynamic>) {
+          return responseData['data'] ?? responseData;
+        } else {
+          print('❌ Update Quotation API - Response is not a Map: $responseData');
+          return {
+            'id': id,
+            'updated': true,
+            'rawResponse': responseData
+          };
+        }
+      } catch (e) {
+        print('❌ Update Quotation API - Failed to parse JSON: $e');
+        // If JSON parsing fails but status is 200, assume success
+        return {
+          'id': id,
+          'updated': true,
+          'parseError': e.toString()
+        };
+      }
     } else {
-      throw Exception('Failed to update quotation: ${response.statusCode}');
+      print('❌ Update Quotation API - Error response: ${response.body}');
+      throw Exception('Failed to update quotation: ${response.statusCode} - ${response.body}');
     }
   }
 
