@@ -56,6 +56,8 @@ class StatusBadge extends StatelessWidget {
         return AppColors.warningYellowLight;
       case SiteVisitStatus.invoiced:
         return AppColors.infoBlueLight;
+      case SiteVisitStatus.paid:
+        return AppColors.successGreenLight.withOpacity(0.8);
     }
   }
 
@@ -67,6 +69,8 @@ class StatusBadge extends StatelessWidget {
         return AppColors.warningYellow.withOpacity(0.5);
       case SiteVisitStatus.invoiced:
         return AppColors.infoBlue.withOpacity(0.5);
+      case SiteVisitStatus.paid:
+        return AppColors.successGreen.withOpacity(0.7);
     }
   }
 
@@ -78,6 +82,8 @@ class StatusBadge extends StatelessWidget {
         return Colors.amber.shade800;
       case SiteVisitStatus.invoiced:
         return AppColors.infoBlue;
+      case SiteVisitStatus.paid:
+        return AppColors.successGreen;
     }
   }
 
@@ -89,6 +95,8 @@ class StatusBadge extends StatelessWidget {
         return Icons.schedule;
       case SiteVisitStatus.invoiced:
         return Icons.description;
+      case SiteVisitStatus.paid:
+        return Icons.payment;
     }
   }
 }

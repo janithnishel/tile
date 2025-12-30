@@ -469,10 +469,13 @@
 // }
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/services/site_visits/print_service.dart';
 import '../../providers/site_visit_provider.dart';
 import '../../models/site_visits/site_visit_model.dart';
 import '../../utils/site_visits/constants.dart';
+import '../../cubits/auth/auth_cubit.dart';
+import '../../cubits/auth/auth_state.dart';
 import 'create_site_visit_screen.dart';
 import 'site_visit_detail_screen.dart';
 
@@ -487,6 +490,22 @@ class SiteVisitListScreen extends StatefulWidget {
 
 class _SiteVisitListScreenState extends State<SiteVisitListScreen> {
   final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Set auth token for API calls - safe way to access context
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final authState = context.read<AuthCubit>().state;
+        if (authState is AuthAuthenticated) {
+          if (mounted) {
+            context.read<SiteVisitProvider>().setAuthToken(authState.token);
+          }
+        }
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -933,54 +952,60 @@ class _SiteVisitListScreenState extends State<SiteVisitListScreen> {
   Widget _buildStatistics(SiteVisitProvider provider) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: _StatCard(
-              title: 'Total Visits',
-              value: provider.totalVisits.toString(),
-              icon: Icons.description,
-              color: AppColors.primaryPurple,
-              subtitle: 'All time',
-              onTap: () {},
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _StatCard(
+                  title: 'Total Visits',
+                  value: provider.totalVisits.toString(),
+                  icon: Icons.description,
+                  color: AppColors.primaryPurple,
+                  subtitle: 'All time',
+                  onTap: () {},
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _StatCard(
+                  title: 'Paid',
+                  value: provider.paidCount.toString(),
+                  icon: Icons.payment,
+                  color: AppColors.successGreen,
+                  trend: '+${provider.paidCount}',
+                  isPositiveTrend: true,
+                  subtitle: 'Completed',
+                  onTap: () {},
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _StatCard(
-              title: 'Converted',
-              value: provider.convertedCount.toString(),
-              icon: Icons.check_circle,
-              color: AppColors.successGreen,
-              trend: '+${provider.convertedCount}',
-              isPositiveTrend: true,
-              subtitle: 'To quotations',
-              onTap: () {},
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _StatCard(
-              title: 'Invoiced',
-              value: provider.invoicedCount.toString(),
-              icon: Icons.receipt,
-              color: AppColors.infoBlue,
-              trend: '+${provider.invoicedCount}',
-              isPositiveTrend: true,
-              subtitle: 'Completed',
-              onTap: () {},
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _StatCard(
-              title: 'Pending',
-              value: provider.pendingCount.toString(),
-              icon: Icons.schedule,
-              color: Colors.amber.shade700,
-              subtitle: 'Awaiting action',
-              onTap: () {},
-            ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _StatCard(
+                  title: 'Invoiced',
+                  value: provider.invoicedCount.toString(),
+                  icon: Icons.receipt,
+                  color: AppColors.infoBlue,
+                  subtitle: 'Sent to customer',
+                  onTap: () {},
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _StatCard(
+                  title: 'Pending',
+                  value: provider.pendingCount.toString(),
+                  icon: Icons.schedule,
+                  color: Colors.amber.shade700,
+                  subtitle: 'Awaiting action',
+                  onTap: () {},
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1240,6 +1265,8 @@ class _SiteVisitListScreenState extends State<SiteVisitListScreen> {
         return AppColors.warningYellow;
       case SiteVisitStatus.invoiced:
         return AppColors.infoBlue;
+      case SiteVisitStatus.paid:
+        return AppColors.successGreen;
     }
   }
 

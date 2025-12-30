@@ -233,6 +233,8 @@ class CustomerExpansionTile extends StatelessWidget {
         return AppColors.warningYellow;
       case SiteVisitStatus.invoiced:
         return AppColors.infoBlue;
+      case SiteVisitStatus.paid:
+        return AppColors.successGreen;
     }
   }
 }

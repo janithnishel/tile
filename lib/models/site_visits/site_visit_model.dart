@@ -4,6 +4,7 @@ import 'inspection_model.dart';
 enum SiteVisitStatus {
   pending,
   invoiced,
+  paid,
   converted,
 }
 
@@ -14,6 +15,8 @@ extension SiteVisitStatusExtension on SiteVisitStatus {
         return 'PENDING';
       case SiteVisitStatus.invoiced:
         return 'INVOICED';
+      case SiteVisitStatus.paid:
+        return 'PAID';
       case SiteVisitStatus.converted:
         return 'CONVERTED';
     }
@@ -25,6 +28,8 @@ extension SiteVisitStatusExtension on SiteVisitStatus {
         return 'බලාපොරොත්තුවෙන්';
       case SiteVisitStatus.invoiced:
         return 'ඉන්වොයිස් කළා';
+      case SiteVisitStatus.paid:
+        return 'ගෙවාගත්තා';
       case SiteVisitStatus.converted:
         return 'පරිවර්තනය කළා';
     }

@@ -9,6 +9,7 @@ import 'package:tilework/cubits/material_sale/material_sale_cubit.dart';
 import 'package:tilework/cubits/purchase_order/purchase_order_cubit.dart';
 import 'package:tilework/cubits/quotation/quotation_cubit.dart';
 import 'package:tilework/cubits/reports/reports_cubit.dart';
+import 'package:tilework/cubits/site_visits/site_visit_cubit.dart';
 import 'package:tilework/cubits/super_admin/category/category_cubit.dart';
 import 'package:tilework/cubits/super_admin/company/company_cubit.dart';
 import 'package:tilework/cubits/super_admin/dashboard/dashboard_cubit.dart' as super_admin_dashboard;
@@ -20,6 +21,8 @@ import 'package:tilework/repositories/material_sale/material_sale_repository.dar
 import 'package:tilework/repositories/purchase_order/purchase_order_repository.dart';
 import 'package:tilework/repositories/quotation/quotation_repository.dart';
 import 'package:tilework/repositories/reports/reports_repository.dart';
+import 'package:tilework/repositories/site_visits/site_visit_repository.dart';
+import 'package:tilework/services/site_visits/site_visit_api_service.dart';
 import 'package:tilework/repositories/super_admin/company_repository.dart';
 import 'package:tilework/repositories/super_admin/category_repository.dart';
 import 'package:tilework/repositories/super_admin/dashboard_repository.dart' as super_admin_dashboard_repo;
@@ -118,6 +121,12 @@ class MyApp extends StatelessWidget {
         BlocProvider(
           create: (context) => ReportsCubit(
             context.read<ReportsRepository>(),
+            context.read<AuthCubit>(),
+          ),
+        ),
+        BlocProvider(
+          create: (context) => SiteVisitCubit(
+            SiteVisitRepository(SiteVisitApiService()),
             context.read<AuthCubit>(),
           ),
         ),

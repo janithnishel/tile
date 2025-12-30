@@ -24,6 +24,8 @@ class SiteVisitCard extends StatelessWidget {
         return Colors.orange;
       case SiteVisitStatus.invoiced:
         return Colors.blue;
+      case SiteVisitStatus.paid:
+        return Colors.purple;
     }
   }
 
@@ -35,6 +37,8 @@ class SiteVisitCard extends StatelessWidget {
         return Icons.access_time;
       case SiteVisitStatus.invoiced:
         return Icons.description;
+      case SiteVisitStatus.paid:
+        return Icons.payment;
     }
   }
 
@@ -239,6 +243,10 @@ class _CustomerSiteVisitsCardState extends State<CustomerSiteVisitsCard> {
         widget.visits.where((v) => v.status == SiteVisitStatus.converted).length;
     final pendingCount =
         widget.visits.where((v) => v.status == SiteVisitStatus.pending).length;
+    final invoicedCount =
+        widget.visits.where((v) => v.status == SiteVisitStatus.invoiced).length;
+    final paidCount =
+        widget.visits.where((v) => v.status == SiteVisitStatus.paid).length;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -356,9 +364,14 @@ class _CustomerSiteVisitsCardState extends State<CustomerSiteVisitsCard> {
                       const SizedBox(width: 8),
                       _buildStatBadge(
                         'Invoiced',
-                        (widget.visits.length - convertedCount - pendingCount)
-                            .toString(),
+                        invoicedCount.toString(),
                         Colors.blue,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildStatBadge(
+                        'Paid',
+                        paidCount.toString(),
+                        Colors.purple,
                       ),
                     ],
                   ),
@@ -541,6 +554,8 @@ class _CustomerSiteVisitsCardState extends State<CustomerSiteVisitsCard> {
         return Colors.orange;
       case SiteVisitStatus.invoiced:
         return Colors.blue;
+      case SiteVisitStatus.paid:
+        return Colors.purple;
     }
   }
 }

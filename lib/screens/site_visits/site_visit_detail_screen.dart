@@ -1,5 +1,6 @@
 // Site Visit Detail Screen
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../models/site_visits/site_visit_model.dart';
@@ -7,13 +8,39 @@ import '../../providers/site_visit_provider.dart';
 import '../../utils/site_visits/constants.dart';
 import '../../widget/site_visits/status_badge.dart';
 import '../../services/site_visits/print_service.dart';
+import '../../cubits/auth/auth_cubit.dart';
+import '../../cubits/auth/auth_state.dart';
 import 'invoice_preview_screen.dart';
 import 'create_site_visit_screen.dart';
 
-class SiteVisitDetailScreen extends StatelessWidget {
+class SiteVisitDetailScreen extends StatefulWidget {
   final SiteVisitModel visit;
 
   const SiteVisitDetailScreen({super.key, required this.visit});
+
+  @override
+  State<SiteVisitDetailScreen> createState() => _SiteVisitDetailScreenState();
+}
+
+class _SiteVisitDetailScreenState extends State<SiteVisitDetailScreen> {
+  String? _authToken;
+
+  @override
+  void initState() {
+    super.initState();
+    // Set auth token for API calls - safe way to access context
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final authState = context.read<AuthCubit>().state;
+        if (authState is AuthAuthenticated) {
+          _authToken = authState.token;
+          if (mounted) {
+            context.read<SiteVisitProvider>().setAuthToken(_authToken);
+          }
+        }
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +61,10 @@ class SiteVisitDetailScreen extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.edit, color: Colors.white),
                 onPressed: () => _navigateToEdit(context),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.white),
+                onPressed: () => _showDeleteConfirmation(context),
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
@@ -59,7 +90,7 @@ class SiteVisitDetailScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    visit.id,
+                                    widget.visit.id,
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: Colors.white.withOpacity(0.8),
@@ -68,7 +99,7 @@ class SiteVisitDetailScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    visit.customerName,
+                                    widget.visit.customerName,
                                     style: const TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,
@@ -78,7 +109,7 @@ class SiteVisitDetailScreen extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            StatusBadge(status: visit.status),
+                            StatusBadge(status: widget.visit.status),
                           ],
                         ),
                       ],
@@ -97,7 +128,7 @@ class SiteVisitDetailScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Project Title Card
-                  if (visit.projectTitle.isNotEmpty)
+                  if (widget.visit.projectTitle.isNotEmpty)
                     _buildProjectCard(),
 
                   const SizedBox(height: 16),
@@ -163,7 +194,7 @@ class SiteVisitDetailScreen extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  visit.projectTitle,
+                  widget.visit.projectTitle,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -193,15 +224,15 @@ class SiteVisitDetailScreen extends StatelessWidget {
             ),
             const Divider(),
             const SizedBox(height: 8),
-            _buildInfoRow(Icons.phone, 'Phone', visit.contactNo, onTap: () {
+            _buildInfoRow(Icons.phone, 'Phone', widget.visit.contactNo, onTap: () {
               // Launch phone
             }),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.location_on, 'Location', visit.location),
+            _buildInfoRow(Icons.location_on, 'Location', widget.visit.location),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.calendar_today, 'Date', dateFormat.format(visit.date)),
+            _buildInfoRow(Icons.calendar_today, 'Date', dateFormat.format(widget.visit.date)),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.business, 'Site Type', visit.siteType),
+            _buildInfoRow(Icons.business, 'Site Type', widget.visit.siteType),
           ],
         ),
       ),
@@ -269,15 +300,15 @@ class SiteVisitDetailScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(child: _buildSpecItem('Color Code', visit.colorCode)),
-                Expanded(child: _buildSpecItem('Thickness', visit.thickness)),
+                Expanded(child: _buildSpecItem('Color Code', widget.visit.colorCode)),
+                Expanded(child: _buildSpecItem('Thickness', widget.visit.thickness)),
               ],
             ),
             const SizedBox(height: 16),
-            _buildTagSection('Floor Condition', visit.floorCondition,
+            _buildTagSection('Floor Condition', widget.visit.floorCondition,
                 AppColors.successGreenLight, AppColors.successGreen),
             const SizedBox(height: 12),
-            _buildTagSection('Target Areas', visit.targetArea,
+            _buildTagSection('Target Areas', widget.visit.targetArea,
                 AppColors.infoBlueLight, AppColors.infoBlue),
           ],
         ),
@@ -362,13 +393,13 @@ class SiteVisitDetailScreen extends StatelessWidget {
             ),
             const Divider(),
             const SizedBox(height: 8),
-            _buildInspectionItem('Skirting', visit.inspection.skirting),
-            _buildInspectionItem('Floor Preparation', visit.inspection.floorPreparation),
-            _buildInspectionItem('Ground Setting', visit.inspection.groundSetting),
-            _buildInspectionItem('Door Clearance', visit.inspection.door),
-            _buildInspectionItem('Window', visit.inspection.window),
-            _buildInspectionItem('Surface Level', visit.inspection.evenUneven),
-            _buildInspectionItem('Overall Condition', visit.inspection.areaCondition, isLast: true),
+            _buildInspectionItem('Skirting', widget.visit.inspection.skirting),
+            _buildInspectionItem('Floor Preparation', widget.visit.inspection.floorPreparation),
+            _buildInspectionItem('Ground Setting', widget.visit.inspection.groundSetting),
+            _buildInspectionItem('Door Clearance', widget.visit.inspection.door),
+            _buildInspectionItem('Window', widget.visit.inspection.window),
+            _buildInspectionItem('Surface Level', widget.visit.inspection.evenUneven),
+            _buildInspectionItem('Overall Condition', widget.visit.inspection.areaCondition, isLast: true),
           ],
         ),
       ),
@@ -442,7 +473,7 @@ class SiteVisitDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'LKR ${NumberFormat('#,###.00').format(visit.charge)}',
+                'LKR ${NumberFormat('#,###.00').format(widget.visit.charge)}',
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -482,34 +513,97 @@ class SiteVisitDetailScreen extends StatelessWidget {
         ],
       ),
       child: SafeArea(
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () => _previewInvoice(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.infoBlue,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                icon: const Icon(Icons.visibility, size: 18),
-                label: const Text('Preview', style: TextStyle(fontSize: 12)),
+            // Status-based action buttons
+            if (widget.visit.status == SiteVisitStatus.pending) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _markAsInvoiced(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.infoBlue,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.receipt, size: 18),
+                      label: const Text('Mark Invoiced', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _convertToQuotation(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.orangeAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.sync, size: 18),
+                      label: const Text('Convert', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () => _printInvoice(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.successGreen,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                icon: const Icon(Icons.print, size: 18),
-                label: const Text('Print', style: TextStyle(fontSize: 12)),
+            ] else if (widget.visit.status == SiteVisitStatus.invoiced) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _markAsPaid(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.successGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.payment, size: 18),
+                      label: const Text('Mark Paid', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _convertToQuotation(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.orangeAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.sync, size: 18),
+                      label: const Text('Convert', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            if (visit.status != SiteVisitStatus.converted) ...[
-              const SizedBox(width: 8),
-              Expanded(
+            ] else if (widget.visit.status == SiteVisitStatus.paid) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _previewInvoice(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.infoBlue,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.visibility, size: 18),
+                      label: const Text('Preview', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _downloadInvoice(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.successGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.download, size: 18),
+                      label: const Text('Download', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () => _convertToQuotation(context),
                   style: ElevatedButton.styleFrom(
@@ -517,8 +611,37 @@ class SiteVisitDetailScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   icon: const Icon(Icons.sync, size: 18),
-                  label: const Text('Convert', style: TextStyle(fontSize: 12)),
+                  label: const Text('Convert to Quotation'),
                 ),
+              ),
+            ] else ...[
+              // Converted status - show limited options
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _previewInvoice(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.infoBlue,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.visibility, size: 18),
+                      label: const Text('Preview', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _printInvoice(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.successGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.print, size: 18),
+                      label: const Text('Print', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ],
               ),
             ],
           ],
@@ -532,7 +655,7 @@ class SiteVisitDetailScreen extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (context) => CreateSiteVisitScreen(
-          editVisit: visit,
+          editVisit: widget.visit,
           onSave: (updatedVisit) => Provider.of<SiteVisitProvider>(context, listen: false).updateSiteVisit(updatedVisit),
         ),
       ),
@@ -543,13 +666,69 @@ class SiteVisitDetailScreen extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => InvoicePreviewScreen(visit: visit),
+        builder: (context) => InvoicePreviewScreen(visit: widget.visit),
       ),
     );
   }
 
   void _printInvoice(BuildContext context) async {
-    await PrintService.printInvoice(visit);
+    await PrintService.printInvoice(widget.visit);
+  }
+
+  void _markAsInvoiced(BuildContext context) async {
+    final provider = Provider.of<SiteVisitProvider>(context, listen: false);
+    final success = await provider.markAsInvoiced(widget.visit.id);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Site visit marked as invoiced'),
+          backgroundColor: AppColors.infoBlue,
+        ),
+      );
+      // Refresh the visit data
+      Navigator.pop(context); // Go back and refresh
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.errorMessage ?? 'Failed to update status'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _markAsPaid(BuildContext context) async {
+    final provider = Provider.of<SiteVisitProvider>(context, listen: false);
+    final success = await provider.markAsPaid(widget.visit.id);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Site visit marked as paid'),
+          backgroundColor: AppColors.successGreen,
+        ),
+      );
+      // Refresh the visit data
+      Navigator.pop(context); // Go back and refresh
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.errorMessage ?? 'Failed to update status'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _downloadInvoice(BuildContext context) {
+    // TODO: Implement PDF generation and download
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('PDF download feature coming soon!'),
+        backgroundColor: AppColors.infoBlue,
+      ),
+    );
   }
 
   void _convertToQuotation(BuildContext context) {
@@ -572,9 +751,9 @@ class SiteVisitDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Customer: ${visit.customerName}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                  Text('Phone: ${visit.contactNo}'),
-                  Text('Location: ${visit.location}'),
+                  Text('Customer: ${widget.visit.customerName}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text('Phone: ${widget.visit.contactNo}'),
+                  Text('Location: ${widget.visit.location}'),
                 ],
               ),
             ),
@@ -588,7 +767,7 @@ class SiteVisitDetailScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               Provider.of<SiteVisitProvider>(context, listen: false)
-                  .convertToQuotation(visit.id);
+                  .convertToQuotation(widget.visit.id);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -599,6 +778,97 @@ class SiteVisitDetailScreen extends StatelessWidget {
               Navigator.pop(context);
             },
             child: const Text('Convert'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.delete_forever, color: Colors.red),
+            ),
+            const SizedBox(width: 12),
+            const Text('Delete Site Visit'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Are you sure you want to permanently delete this site visit?',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This action cannot be undone.',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('ID: ${widget.visit.id}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text('Customer: ${widget.visit.customerName}'),
+                  Text('Project: ${widget.visit.projectTitle}'),
+                  Text('Charge: LKR ${NumberFormat('#,###.00').format(widget.visit.charge)}'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+
+              final provider = Provider.of<SiteVisitProvider>(context, listen: false);
+              final success = await provider.deleteSiteVisit(widget.visit.id);
+
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Site visit deleted successfully'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                Navigator.pop(context); // Go back to list
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(provider.errorMessage ?? 'Failed to delete site visit'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
           ),
         ],
       ),
