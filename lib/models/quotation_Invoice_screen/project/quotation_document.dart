@@ -48,8 +48,8 @@ class QuotationDocument {
       customerPhone: json['customerPhone'] as String? ?? '',
       customerAddress: json['customerAddress'] as String? ?? '',
       projectTitle: json['projectTitle'] as String? ?? '',
-      invoiceDate: DateTime.parse(json['invoiceDate'] as String? ?? DateTime.now().toIso8601String()),
-      dueDate: DateTime.parse(json['dueDate'] as String? ?? DateTime.now().toIso8601String()),
+      invoiceDate: DateTime.parse(json['invoiceDate'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
+      dueDate: DateTime.parse(json['dueDate'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
       lineItems: (json['lineItems'] as List<dynamic>?)
           ?.map((item) => InvoiceLineItem.fromJson(item as Map<String, dynamic>))
           .toList() ?? [],

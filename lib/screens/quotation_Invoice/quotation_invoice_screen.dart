@@ -540,8 +540,8 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
           '${_workingDocument.type.name.toUpperCase()} ${_workingDocument.displayDocumentNumber} Saved.',
         );
 
-        // Navigate back to update the list immediately
-        Navigator.pop(context, true);
+        // Stay on screen to allow user to verify changes
+        // Navigation removed - user can manually go back when ready
       }
     } catch (e) {
       debugPrint('❌ Save Document - Failed with error: $e');
