@@ -10,6 +10,7 @@ import 'package:tilework/screens/job_cost_section.dart';
 import 'package:tilework/screens/quotation_Invoice/quotation_list_screen.dart';
 import 'package:tilework/screens/purchase_order_screen.dart';
 import 'package:tilework/screens/reports_screen.dart';
+import 'package:tilework/screens/site_visits/site_visit_list_screen.dart';
 import 'package:tilework/widget/super_admin/dialogs/confirm_dialog.dart';
 
 class CompanySidebarScreen extends StatefulWidget {
@@ -32,29 +33,34 @@ class _CompanySidebarScreenState extends State<CompanySidebarScreen> {
         onTap: () => _navigateToPage(0),
       ),
       MenuItem(
+        icon: Icons.location_on,
+        title: 'Site Visits',
+        onTap: () => _navigateToPage(1),
+      ),
+      MenuItem(
         icon: Icons.person,
         title: 'Quotation/Invoice',
-        onTap: () => _navigateToPage(1),
+        onTap: () => _navigateToPage(2),
       ),
       MenuItem(
         icon: Icons.receipt_long,
         title: 'Purchase Order',
-        onTap: () => _navigateToPage(2),
+        onTap: () => _navigateToPage(3),
       ),
       MenuItem(
         icon: Icons.mail,
         title: 'Job Cost',
-        onTap: () => _navigateToPage(3),
+        onTap: () => _navigateToPage(4),
       ),
       MenuItem(
         icon: Icons.bar_chart,
         title: 'Reports',
-        onTap: () => _navigateToPage(4),
+        onTap: () => _navigateToPage(5),
       ),
       MenuItem(
         icon: Icons.person_outline_rounded,
         title: 'Profile',
-        onTap: () => _navigateToPage(5),
+        onTap: () => _navigateToPage(6),
       ),
       MenuItem(
         icon: Icons.logout,
@@ -299,14 +305,16 @@ class _CompanySidebarScreenState extends State<CompanySidebarScreen> {
       case 0:
         return DashboardScreen();
       case 1:
-        return QuotationListScreen();
+        return SiteVisitListScreen(useScaffold: false);
       case 2:
-        return PurchaseOrderScreen();
+        return QuotationListScreen();
       case 3:
-        return JobCostScreen();
+        return PurchaseOrderScreen();
       case 4:
-        return ReportsScreen();
+        return JobCostScreen();
       case 5:
+        return ReportsScreen();
+      case 6:
         return profile.ProfileScreen();
 
       default:

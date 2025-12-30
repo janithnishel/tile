@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/dashboard/dashboard_cubit.dart' as user_dashboard;
 import 'package:tilework/cubits/job_cost/job_cost_cubit.dart';
@@ -23,6 +24,7 @@ import 'package:tilework/repositories/super_admin/company_repository.dart';
 import 'package:tilework/repositories/super_admin/category_repository.dart';
 import 'package:tilework/repositories/super_admin/dashboard_repository.dart' as super_admin_dashboard_repo;
 import 'package:tilework/repositories/supplier/supplier_repository.dart';
+import 'package:tilework/providers/site_visit_provider.dart';
 import 'package:tilework/routes/company_routes.dart';
 import 'package:tilework/services/auth/api_service.dart';
 import 'package:tilework/services/dashboard/api_service.dart';
@@ -47,8 +49,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
+    return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => SiteVisitProvider()),
         BlocProvider(
           create: (context) => AuthCubit(
             AuthRepository(ApiService()),

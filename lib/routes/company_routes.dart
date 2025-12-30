@@ -10,12 +10,14 @@ import '../screens/auth/login _screen.dart';
 import '../screens/purchase_order_screen.dart';
 import '../screens/reports_screen.dart';
 import '../screens/company_sidebar_screen.dart';
+import '../screens/site_visits/site_visit_list_screen.dart';
 
 /// Application route names
 class AppRoutes {
   static const String home = '/';
   static const String login = '/login';
   static const String superAdmin = '/super-admin';
+  static const String siteVisits = '/site-visits';
   static const String quotationInvoice = '/quotation-invoice';
   static const String purchaseOrder = '/purchase-order';
   static const String jobCost = '/job-cost';
@@ -73,6 +75,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.superAdmin,
       builder: (context, state) => const SuperAdminDashboard(),
+    ),
+    GoRoute(
+      path: AppRoutes.siteVisits,
+      builder: (context, state) => SiteVisitListScreen(),
     ),
     GoRoute(
       path: AppRoutes.quotationInvoice,
