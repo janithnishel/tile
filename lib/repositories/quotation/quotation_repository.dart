@@ -177,9 +177,29 @@ class QuotationRepository {
 
       final response = await _apiService.convertToInvoice(id: id, token: currentToken);
       print('✅ Convert to invoice API response: $response');
+      print('✅ Response type: ${response.runtimeType}');
 
-      // Backend should return the converted invoice data
-      final data = response['data'];
+      // Handle different response formats
+      Map<String, dynamic>? data;
+
+      if (response.containsKey('data') && response['data'] != null) {
+        data = response['data'] as Map<String, dynamic>;
+        print('📦 Convert - Found data field: $data');
+      } else if (response is Map<String, dynamic> && response.containsKey('id')) {
+        // Response is directly the invoice data
+        data = response;
+        print('📦 Convert - Response is direct data: $data');
+      } else {
+        print('❌ Convert - No valid data found in response');
+        print('❌ Convert - Full response: $response');
+        throw Exception('Invalid response format from server');
+      }
+
+      if (data == null) {
+        throw Exception('Server returned null data for converted invoice');
+      }
+
+      print('✅ Convert - Parsing invoice data...');
       return QuotationDocument.fromJson(data);
     } catch (e) {
       print('❌ Failed to convert quotation to invoice: $e');

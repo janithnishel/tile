@@ -31,6 +31,7 @@ class OtherExpensesTab extends StatelessWidget {
                 label: const Text('Add Expense'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
                 ),
               ),
             ],

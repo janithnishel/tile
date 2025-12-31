@@ -191,8 +191,8 @@ class DocumentPreviewDialog extends StatelessWidget {
                 style: TextStyle(fontSize: 11),
               ),
               Text(
-                'immensehomeprivatelimited@gmail.com',
-                style: TextStyle(fontSize: 11),
+                'Email: immensehomeprivatelimited@gmail.com',
+                style: TextStyle(fontSize: 10),
               ),
             ],
           ),
