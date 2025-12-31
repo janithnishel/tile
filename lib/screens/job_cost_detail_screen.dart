@@ -9,6 +9,7 @@ import 'package:tilework/widget/job_cost_screen.dart/job_cost/job_detail_header.
 import 'package:tilework/widget/job_cost_screen.dart/job_cost/other_expenses_tab.dart';
 import 'package:tilework/widget/job_cost_screen.dart/job_cost/purchase_orders_tab.dart';
 import 'package:tilework/services/pdf_service.dart';
+import 'package:tilework/models/job_cost_report_models.dart';
 
 class JobCostDetailScreen extends StatefulWidget {
   final JobCostDocument job;
@@ -88,8 +89,30 @@ class _JobCostDetailScreenState extends State<JobCostDetailScreen>
         ),
       );
 
+      // Convert JobCostDocument to JobCostReportData
+      final reportData = JobCostReportData(
+        jobId: widget.job.displayId,
+        quotationNumber: widget.job.invoiceId,
+        customerName: widget.job.customerName,
+        customerAddress: 'Customer Address', // TODO: Add to JobCostDocument
+        customerPhone: widget.job.customerPhone,
+        projectDescription: widget.job.projectTitle,
+        startDate: widget.job.invoiceDate,
+        status: ProjectStatus.active, // TODO: Map from actual status
+        items: widget.job.invoiceItems.map((item) => JobCostItem(
+          itemCode: 'ITEM-${widget.job.invoiceItems.indexOf(item) + 1}',
+          description: item.name,
+          quantity: item.quantity,
+          unit: 'units', // TODO: Add unit to InvoiceItem
+          costPrice: item.costPrice,
+          sellingPrice: item.sellingPrice,
+        )).toList(),
+        advanceReceived: 0, // TODO: Add advance payment tracking
+        totalInvoiced: widget.job.totalRevenue,
+      );
+
       // Generate PDF
-      await PDFService.generateJobCostReport(widget.job);
+      await JobCostPdfService.generateReport(reportData);
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
