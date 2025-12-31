@@ -63,7 +63,7 @@ class CostCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            AppFormatters.formatCurrencyAbs(value),
+            title == 'Net Profit' ? AppFormatters.formatCurrency(value) : AppFormatters.formatCurrencyAbs(value),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
