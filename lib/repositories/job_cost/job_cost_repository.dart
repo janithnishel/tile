@@ -1,5 +1,6 @@
 import '../../models/job_cost_screen/job_cost_document.dart';
 import '../../services/job_cost/api_service.dart';
+import '../../data/job_cost_mock_data.dart';
 
 class JobCostRepository {
   final JobCostApiService _apiService;
@@ -12,62 +13,19 @@ class JobCostRepository {
     Map<String, String>? queryParams,
     String? token,
   }) async {
-    try {
-      final currentToken = token ?? _token;
-      print('🔄 JobCostRepository: Calling API with token: ${currentToken?.substring(0, 20)}...');
-      print('🔍 JobCostRepository: Query params: $queryParams');
-
-      final response = await _apiService.getAllJobCosts(
-        token: currentToken,
-        queryParams: queryParams,
-      );
-
-      print('📡 JobCostRepository: API Response keys: ${response.keys.toList()}');
-      print('📊 JobCostRepository: Response success: ${response['success']}');
-
-      // Backend returns: {success: true, data: [...]}
-      List data = [];
-      if (response['data'] != null) {
-        data = response['data'] as List;
-        print('📦 JobCostRepository: Found ${data.length} items in data array');
-      } else if (response is List) {
-        data = response as List;
-        print('📦 JobCostRepository: Response is direct list with ${data.length} items');
-      } else {
-        print('⚠️ JobCostRepository: No data found in response');
-        return [];
-      }
-
-      final jobCosts = data.where((json) => json != null).map((json) {
-        try {
-          return JobCostDocument.fromJson(json as Map<String, dynamic>);
-        } catch (e) {
-          print('❌ JobCostRepository: Failed to parse job cost: $e, JSON: $json');
-          rethrow;
-        }
-      }).toList();
-
-      print('✅ JobCostRepository: Successfully parsed ${jobCosts.length} job costs');
-      return jobCosts;
-    } catch (e) {
-      print('💥 JobCostRepository: Failed to fetch job costs: $e');
-      throw Exception('Failed to fetch job costs: $e');
-    }
+    // Return mock data for now
+    print('� JobCostRepository: Returning mock data with ${MockData.jobCosts.length} job costs');
+    return MockData.jobCosts;
   }
 
   // GET: Fetch single job cost
   Future<JobCostDocument> fetchJobCost(String id, {String? token}) async {
-    try {
-      final currentToken = token ?? _token;
-      final response = await _apiService.getJobCost(id, token: currentToken);
-
-      // Backend should return the job cost data directly
-      final data = response['data'] ?? response;
-      return JobCostDocument.fromJson(data as Map<String, dynamic>);
-    } catch (e) {
-      print('💥 Failed to fetch job cost: $e');
-      throw Exception('Failed to fetch job cost: $e');
-    }
+    // Return mock data for the job with matching ID
+    final job = MockData.jobCosts.firstWhere(
+      (job) => job.id == id || job.invoiceId == id,
+      orElse: () => throw Exception('Job cost not found'),
+    );
+    return job;
   }
 
   // POST: Create job cost
