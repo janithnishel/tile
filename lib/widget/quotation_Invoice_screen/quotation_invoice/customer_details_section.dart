@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+// Custom input formatter to allow only + and digits
+class PhoneNumberInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Allow only digits and + sign
+    final filteredText = newValue.text.replaceAll(RegExp(r'[^\d+]'), '');
+    return newValue.copyWith(text: filteredText);
+  }
+}
+
 class CustomerDetailsSection extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController phoneController;
@@ -82,8 +95,8 @@ class CustomerDetailsSection extends StatelessWidget {
             child: TextField(
               controller: phoneController,
               decoration: InputDecoration(
-                labelText: 'Customer Phone (Unique Key)',
-                hintText: 'Enter customer phone number',
+                labelText: 'Customer Phone',
+                hintText: 'Enter phone number (+9477... or local format)',
                 prefixIcon: const Icon(Icons.phone),
                 border: const OutlineInputBorder(),
                 filled: !isEditable,
@@ -98,15 +111,28 @@ class CustomerDetailsSection extends StatelessWidget {
               readOnly: !isEditable,
               keyboardType: TextInputType.phone,
               inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly, // Only allow digits
+                PhoneNumberInputFormatter(), // Allow + and digits only
               ],
             ),
           ),
           const SizedBox(width: 12),
           SizedBox(
-            height: 56,
+            height: 56, // Match text field height
             child: ElevatedButton.icon(
-              onPressed: isEditable ? onSearchByPhone : null,
+              onPressed: isEditable ? () {
+                // Validate phone number before search
+                final phone = phoneController.text.trim();
+                if (phone.isEmpty) {
+                  // Show error via validator
+                  return;
+                }
+                // Use the same validation logic as the main validator
+                if (!RegExp(r'^\+?[0-9]{7,15}$').hasMatch(phone)) {
+                  // Show error via validator
+                  return;
+                }
+                onSearchByPhone?.call();
+              } : null,
               icon: const Icon(Icons.search, size: 20),
               label: const Text('Search'),
               style: ElevatedButton.styleFrom(
@@ -114,6 +140,9 @@ class CustomerDetailsSection extends StatelessWidget {
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: Colors.grey.shade300,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4), // Match text field border radius
+                ),
               ),
             ),
           ),
@@ -124,7 +153,7 @@ class CustomerDetailsSection extends StatelessWidget {
         controller: phoneController,
         decoration: InputDecoration(
           labelText: 'Customer Phone',
-          hintText: 'Enter customer phone number',
+          hintText: 'Enter phone number (+9477... or local format)',
           prefixIcon: const Icon(Icons.phone),
           border: const OutlineInputBorder(),
           filled: !isEditable,
@@ -134,7 +163,7 @@ class CustomerDetailsSection extends StatelessWidget {
         readOnly: !isEditable,
         keyboardType: TextInputType.phone,
         inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly, // Only allow digits
+          PhoneNumberInputFormatter(), // Allow + and digits only
         ],
       );
     }

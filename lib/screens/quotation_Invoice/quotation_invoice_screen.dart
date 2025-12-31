@@ -238,13 +238,20 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
 
   bool get _showSearchButton => _isNewDocument; // Search button only for new quotations
 
-  // Phone Validation - Basic required field validation
+  // Phone Validation - International phone number validation
   String? _validatePhoneNumber(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Phone number is required'; // Show requirement for empty field
+      return 'Phone number is required';
     }
 
-    // Valid input - no format restrictions
+    final phone = value.trim();
+
+    // Check for international format: optional +, followed by 7-15 digits
+    if (!RegExp(r'^\+?[0-9]{7,15}$').hasMatch(phone)) {
+      return 'Please enter a valid phone number (e.g., +9477... or local format).';
+    }
+
+    // Valid phone number
     return null;
   }
 
@@ -594,6 +601,9 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
             final convertedInvoice = await context.read<QuotationCubit>().convertToInvoice(_workingDocument.id!);
             debugPrint('✅ Conversion successful: ${convertedInvoice.documentNumber}');
 
+            // Check if widget is still mounted after async operation
+            if (!mounted) return;
+
             // Update working document with converted data
             final updatedInvoice = _deepCopyDocument(convertedInvoice);
             updatedInvoice.type = DocumentType.invoice;
@@ -636,6 +646,10 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
             }
           } catch (e) {
             debugPrint('❌ Conversion failed: $e');
+
+            // Check if widget is still mounted before showing error
+            if (!mounted) return;
+
             String errorMessage = 'Failed to convert quotation';
 
             // Provide more specific error messages
