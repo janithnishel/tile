@@ -26,7 +26,7 @@ class JobCostDocument {
   }) : otherExpenses = otherExpenses ?? [];
 
   // Computed Properties
-  String get displayId => 'INV-$invoiceId';
+  String get displayId => 'QUO-$invoiceId';
 
   double get totalRevenue =>
       invoiceItems.fold(0, (sum, item) => sum + item.totalSellingPrice);

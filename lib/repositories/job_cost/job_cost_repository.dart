@@ -6,6 +6,8 @@ import '../../data/job_cost_mock_data.dart';
 import '../quotation/quotation_repository.dart';
 import '../../services/quotation/quotation_api_service.dart';
 import '../../models/quotation_Invoice_screen/project/quotation_document.dart';
+import '../../models/quotation_Invoice_screen/project/invoice_line_item.dart';
+import '../../models/quotation_Invoice_screen/project/document_enums.dart';
 import '../purchase_order/purchase_order_repository.dart';
 import '../../services/purchase_order/api_service.dart';
 import '../../models/purchase_order/purchase_order.dart';
@@ -28,17 +30,20 @@ class JobCostRepository {
       // Fetch all quotations
       final quotations = await quotationRepository.fetchQuotations(token: currentToken);
 
-      // Filter for approved quotations only
-      final approvedQuotations = quotations.where((q) => q.isApproved).toList();
+      // Filter for active job quotations (Approved, Invoiced, Converted, or Paid, but not Closed)
+      final activeJobQuotations = quotations.where((q) =>
+        (q.isApproved || q.status == DocumentStatus.converted || q.status == DocumentStatus.invoiced || q.status == DocumentStatus.paid) &&
+        q.status != DocumentStatus.closed
+      ).toList();
 
-      print('✅ JobCostRepository: Found ${approvedQuotations.length} approved quotations');
+      print('✅ JobCostRepository: Found ${activeJobQuotations.length} active job quotations');
 
       // Load all purchase orders to link with quotations
       final poRepository = PurchaseOrderRepository(PurchaseOrderApiService(), currentToken);
       final allPOs = await poRepository.fetchPurchaseOrders(token: currentToken);
 
       // Convert quotations to JobCostDocuments with linked POs
-      final jobCosts = approvedQuotations.map((quotation) {
+      final jobCosts = activeJobQuotations.map((quotation) {
         final linkedPOs = allPOs.where((po) => po.quotationId == quotation.documentNumber).toList();
         return _quotationToJobCost(quotation, linkedPOs);
       }).toList();
@@ -55,14 +60,17 @@ class JobCostRepository {
 
   // Helper method to convert QuotationDocument to JobCostDocument
   JobCostDocument _quotationToJobCost(QuotationDocument quotation, List<PurchaseOrder> linkedPOs) {
-    // Convert line items to invoice items
+    // Convert line items to invoice items with auto-populated cost prices from POs
     final invoiceItems = quotation.lineItems.map((lineItem) {
+      // Try to find matching PO item for cost price
+      double? costPrice = _findMatchingPOCostPrice(lineItem, linkedPOs);
+
       return InvoiceItem(
         name: lineItem.displayName,
         quantity: lineItem.quantity,
         unit: lineItem.item.unit,
         sellingPrice: lineItem.item.sellingPrice,
-        costPrice: lineItem.item.sellingPrice * 0.8, // Assume 80% cost price
+        costPrice: costPrice, // Default to null (0) if no PO match
       );
     }).toList();
 
@@ -93,6 +101,55 @@ class JobCostRepository {
       purchaseOrderItems: poItemCosts,
       otherExpenses: [], // Will be loaded separately
     );
+  }
+
+  // Helper method to find matching PO cost price for a quotation line item
+  double? _findMatchingPOCostPrice(InvoiceLineItem quotationItem, List<PurchaseOrder> linkedPOs) {
+    final quotationItemName = quotationItem.displayName.toLowerCase();
+
+    // Search through all PO items for matches
+    for (final po in linkedPOs) {
+      for (final poItem in po.items) {
+        final poItemName = poItem.itemName.toLowerCase();
+
+        // Match based on item name similarity (simple string matching)
+        if (_itemsMatch(quotationItemName, poItemName)) {
+          print('✅ Found PO match: "${quotationItem.displayName}" -> "${poItem.itemName}" at Rs. ${poItem.unitPrice}');
+          return poItem.unitPrice;
+        }
+      }
+    }
+
+    print('❌ No PO match found for: "${quotationItem.displayName}"');
+    return null;
+  }
+
+  // Helper method to determine if two item names match
+  bool _itemsMatch(String quotationItem, String poItem) {
+    // Simple matching logic - can be enhanced with more sophisticated algorithms
+    final normalizedQuotation = quotationItem.replaceAll(RegExp(r'[^\w\s]'), '').toLowerCase();
+    final normalizedPO = poItem.replaceAll(RegExp(r'[^\w\s]'), '').toLowerCase();
+
+    // Exact match
+    if (normalizedQuotation == normalizedPO) return true;
+
+    // Contains match (one contains the other)
+    if (normalizedQuotation.contains(normalizedPO) || normalizedPO.contains(normalizedQuotation)) {
+      return true;
+    }
+
+    // Common keywords matching (e.g., "lvt", "vinyl", "plank", etc.)
+    final commonKeywords = ['lvt', 'vinyl', 'plank', 'tile', 'flooring', 'skirting', 'pvc'];
+    final quotationWords = normalizedQuotation.split(' ');
+    final poWords = normalizedPO.split(' ');
+
+    for (final keyword in commonKeywords) {
+      if (quotationWords.contains(keyword) && poWords.contains(keyword)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   // GET: Fetch single job cost

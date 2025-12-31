@@ -38,6 +38,45 @@ class _JobCostDetailScreenState extends State<JobCostDetailScreen>
     setState(() {});
   }
 
+  Future<void> _completeProject() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Complete Project'),
+        content: const Text(
+          'Are you sure you want to mark this project as completed? '
+          'It will be removed from the active job list.'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+            ),
+            child: const Text('Complete Project'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      // TODO: Update quotation status to closed
+      // For now, just show success message and navigate back
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Project marked as completed!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,6 +86,16 @@ class _JobCostDetailScreenState extends State<JobCostDetailScreen>
         backgroundColor: AppColors.jobCostPrimary,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          TextButton.icon(
+            onPressed: _completeProject,
+            icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+            label: const Text(
+              'Complete Project',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -82,7 +131,7 @@ class _JobCostDetailScreenState extends State<JobCostDetailScreen>
                     unselectedLabelColor: AppColors.grey600,
                     indicatorColor: AppColors.jobCostPrimary,
                     tabs: const [
-                      Tab(icon: Icon(Icons.receipt), text: 'Invoice Items'),
+                      Tab(icon: Icon(Icons.receipt), text: 'Quotation Items'),
                       Tab(
                         icon: Icon(Icons.shopping_cart),
                         text: 'Purchase Orders',

@@ -1215,6 +1215,8 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
         return Colors.grey;
       case DocumentStatus.converted:
         return Colors.purple;
+      case DocumentStatus.invoiced:
+        return Colors.teal;
     }
   }
 

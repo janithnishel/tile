@@ -112,6 +112,8 @@ class QuotationDocument {
         return DocumentStatus.closed;
       case 'converted':
         return DocumentStatus.converted;
+      case 'invoiced':
+        return DocumentStatus.invoiced;
       default:
         return DocumentStatus.pending;
     }
@@ -132,6 +134,8 @@ class QuotationDocument {
         return 'closed';
       case DocumentStatus.converted:
         return 'converted';
+      case DocumentStatus.invoiced:
+        return 'invoiced';
     }
   }
 

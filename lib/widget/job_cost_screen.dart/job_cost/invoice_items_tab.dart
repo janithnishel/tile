@@ -43,7 +43,14 @@ class InvoiceItemsTab extends StatelessWidget {
                 return InvoiceItemRow(
                   item: item,
                   index: index,
-                  onEditCostPrice: () => _showCostPriceDialog(context, item),
+                  onCostPriceChanged: (price) async {
+                    item.costPrice = price;
+                    onDataChanged();
+
+                    // TODO: Persist cost price changes to backend
+                    // This would require extending the quotation model to store cost prices
+                    // or creating a separate job cost record
+                  },
                 );
               },
             ),
