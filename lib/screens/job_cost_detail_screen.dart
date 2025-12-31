@@ -8,6 +8,7 @@ import 'package:tilework/widget/job_cost_screen.dart/job_cost/invoice_items_tab.
 import 'package:tilework/widget/job_cost_screen.dart/job_cost/job_detail_header.dart';
 import 'package:tilework/widget/job_cost_screen.dart/job_cost/other_expenses_tab.dart';
 import 'package:tilework/widget/job_cost_screen.dart/job_cost/purchase_orders_tab.dart';
+import 'package:tilework/services/pdf_service.dart';
 
 class JobCostDetailScreen extends StatefulWidget {
   final JobCostDocument job;
@@ -77,6 +78,37 @@ class _JobCostDetailScreenState extends State<JobCostDetailScreen>
     }
   }
 
+  Future<void> _exportToPDF() async {
+    try {
+      // Show loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Generating PDF report...'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Generate PDF
+      await PDFService.generateJobCostReport(widget.job);
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('PDF report generated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to generate PDF: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -87,6 +119,11 @@ class _JobCostDetailScreenState extends State<JobCostDetailScreen>
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          IconButton(
+            onPressed: _exportToPDF,
+            icon: const Icon(Icons.download, color: Colors.white),
+            tooltip: 'Export PDF Report',
+          ),
           TextButton.icon(
             onPressed: _completeProject,
             icon: const Icon(Icons.check_circle_outline, color: Colors.white),
