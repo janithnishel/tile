@@ -10,6 +10,7 @@ import 'package:tilework/widget/job_cost_screen.dart/job_cost/other_expenses_tab
 import 'package:tilework/widget/job_cost_screen.dart/job_cost/purchase_orders_tab.dart';
 import 'package:tilework/services/pdf_service.dart';
 import 'package:tilework/models/job_cost_report_models.dart';
+import 'package:tilework/screens/job_cost_report_preview.dart';
 
 class JobCostDetailScreen extends StatefulWidget {
   final JobCostDocument job;
@@ -111,14 +112,13 @@ class _JobCostDetailScreenState extends State<JobCostDetailScreen>
         totalInvoiced: widget.job.totalRevenue,
       );
 
-      // Generate PDF
-      await JobCostPdfService.generateReport(reportData);
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('PDF report generated successfully!'),
-          backgroundColor: Colors.green,
+      // Navigate to PDF Preview Screen instead of just generating
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => JobCostReportPreview(
+            reportData: reportData,
+          ),
         ),
       );
     } catch (e) {
