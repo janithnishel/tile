@@ -841,6 +841,16 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
     }
   }
 
+  void _rejectQuotation() {
+    if (mounted) {
+      setState(() {
+        _workingDocument.status = DocumentStatus.closed; // Use closed status for rejected
+        _hasUnsavedChanges = true;
+      });
+      _showSnackBar('Quotation rejected successfully!');
+    }
+  }
+
   // Load categories from API
   Future<void> _loadCategories() async {
     try {
@@ -1058,6 +1068,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                   isNewDocument: _isNewDocument,
                   onSave: _saveDocument,
                   onApprove: _approveQuotation,
+                  onReject: _rejectQuotation,
                   onConvert: _showConversionDialog,
                   onAddAdvance: _showAddAdvancePaymentDialog,
                   onRecordPayment: _recordPaymentDialog,

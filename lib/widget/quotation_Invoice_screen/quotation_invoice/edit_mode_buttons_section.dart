@@ -10,6 +10,7 @@ class EditModeButtonsSection extends StatelessWidget {
   final bool isNewDocument;
   final VoidCallback onSave;
   final VoidCallback? onApprove;
+  final VoidCallback? onReject;
   final VoidCallback onConvert;
   final VoidCallback onAddAdvance;
   final VoidCallback onRecordPayment;
@@ -26,6 +27,7 @@ class EditModeButtonsSection extends StatelessWidget {
     this.isNewDocument = false,
     required this.onSave,
     this.onApprove,
+    this.onReject,
     required this.onConvert,
     required this.onAddAdvance,
     required this.onRecordPayment,
@@ -46,6 +48,9 @@ class EditModeButtonsSection extends StatelessWidget {
       document.isQuotation && document.status == DocumentStatus.pending;
 
   bool get _isApproveVisible =>
+      document.isQuotation && document.status == DocumentStatus.pending;
+
+  bool get _isRejectVisible =>
       document.isQuotation && document.status == DocumentStatus.pending;
 
   @override
@@ -204,6 +209,7 @@ class EditModeButtonsSection extends StatelessWidget {
     // Implement the specific button state logic requested
     final isSaveEnabled = hasUnsavedChanges && !isSaving;
     final isApproveEnabled = !hasUnsavedChanges && document.status == DocumentStatus.pending;
+    final isRejectEnabled = !hasUnsavedChanges && document.status == DocumentStatus.pending;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -233,25 +239,51 @@ class EditModeButtonsSection extends StatelessWidget {
             ),
           ),
 
-        if (_isSaveVisible && _isApproveVisible) const SizedBox(width: 16),
+        if (_isSaveVisible && (_isApproveVisible || _isRejectVisible)) const SizedBox(width: 16),
 
-        // Approve Button (for pending quotations)
-        if (_isApproveVisible && onApprove != null)
+        // Approve and Reject Buttons (for pending quotations)
+        if (_isApproveVisible || _isRejectVisible)
           Expanded(
-            child: ElevatedButton.icon(
-              onPressed: isApproveEnabled ? onApprove : null,
-              icon: const Icon(Icons.check_circle),
-              label: const Text('Approve'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.all(16),
-                backgroundColor: isApproveEnabled ? Colors.green.shade600 : Colors.grey.shade300,
-                foregroundColor: isApproveEnabled ? Colors.white : Colors.grey.shade600,
-                disabledBackgroundColor: Colors.grey.shade300,
-              ),
+            child: Row(
+              children: [
+                // Approve Button
+                if (_isApproveVisible && onApprove != null)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: isApproveEnabled ? onApprove : null,
+                      icon: const Icon(Icons.check_circle),
+                      label: const Text('Approve'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.all(16),
+                        backgroundColor: isApproveEnabled ? Colors.green.shade600 : Colors.grey.shade300,
+                        foregroundColor: isApproveEnabled ? Colors.white : Colors.grey.shade600,
+                        disabledBackgroundColor: Colors.grey.shade300,
+                      ),
+                    ),
+                  ),
+
+                if (_isApproveVisible && _isRejectVisible && onApprove != null && onReject != null) const SizedBox(width: 12),
+
+                // Reject Button
+                if (_isRejectVisible && onReject != null)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: isRejectEnabled ? onReject : null,
+                      icon: const Icon(Icons.cancel),
+                      label: const Text('Reject'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.all(16),
+                        backgroundColor: isRejectEnabled ? Colors.red.shade600 : Colors.grey.shade300,
+                        foregroundColor: isRejectEnabled ? Colors.white : Colors.grey.shade600,
+                        disabledBackgroundColor: Colors.grey.shade300,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
 
-        if ((_isSaveVisible || _isApproveVisible) && (_isConvertVisible || _isPaymentVisible)) const SizedBox(width: 16),
+        if ((_isSaveVisible || _isApproveVisible || _isRejectVisible) && (_isConvertVisible || _isPaymentVisible)) const SizedBox(width: 16),
 
         // Convert Button
         if (_isConvertVisible)
