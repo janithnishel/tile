@@ -15,6 +15,7 @@ class QuotationDocument {
   String projectTitle;
   DateTime invoiceDate;
   DateTime dueDate;
+  int paymentTerms;
   List<InvoiceLineItem> lineItems;
   List<ServiceItem> serviceItems;
   List<PaymentRecord> paymentHistory;
@@ -30,6 +31,7 @@ class QuotationDocument {
     this.projectTitle = '',
     required this.invoiceDate,
     required this.dueDate,
+    this.paymentTerms = 30,
     List<InvoiceLineItem>? lineItems,
     List<ServiceItem>? serviceItems,
     List<PaymentRecord>? paymentHistory,
@@ -50,6 +52,7 @@ class QuotationDocument {
       projectTitle: json['projectTitle'] as String? ?? '',
       invoiceDate: DateTime.parse(json['invoiceDate'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
       dueDate: DateTime.parse(json['dueDate'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
+      paymentTerms: json['paymentTerms'] as int? ?? 30,
       lineItems: (json['lineItems'] as List<dynamic>?)
           ?.map((item) => InvoiceLineItem.fromJson(item as Map<String, dynamic>))
           .toList() ?? [],
@@ -76,6 +79,7 @@ class QuotationDocument {
       'projectTitle': projectTitle,
       'invoiceDate': _formatDateForBackend(invoiceDate),
       'dueDate': _formatDateForBackend(dueDate),
+      'paymentTerms': paymentTerms,
       'lineItems': lineItems.map((item) => item.toJson()).toList(),
       'serviceItems': serviceItems.map((item) => item.toJson()).toList(),
       'paymentHistory': paymentHistory.map((payment) => payment.toJson()).toList(),
