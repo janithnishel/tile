@@ -90,7 +90,7 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
     return BlocConsumer<CompanyCubit, CompanyState>(
       listener: (context, state) {
         // දෝෂයක් (Error) ඇති වුවහොත් පෙන්වීමට
-        if (state.errorMessage != null && !state.isLoading) {
+        if (state.errorMessage != null && !state.isLoading && mounted) {
           _showErrorSnackBar(state.errorMessage!);
         }
       },
@@ -496,12 +496,14 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
         final token = _getToken();
         await context.read<CompanyCubit>().loadCompanies(token: token);
 
-        final successMessage =
-            initialCategories != null && initialCategories.isNotEmpty
-            ? 'Company registered with ${initialCategories.length} categories successfully!'
-            : 'Company registered and user created successfully!';
+        if (mounted) {
+          final successMessage =
+              initialCategories != null && initialCategories.isNotEmpty
+              ? 'Company registered with ${initialCategories.length} categories successfully!'
+              : 'Company registered and user created successfully!';
 
-        _showSuccessSnackBar(successMessage);
+          _showSuccessSnackBar(successMessage);
+        }
 
         debugPrint('🎉 Company registration process completed successfully!');
       } catch (e) {
@@ -545,12 +547,14 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
         );
 
         // 2. Local UI එකේ selected company එක update කිරීම
-        if (_selectedCompany?.id == updatedCompany.id) {
+        if (mounted && _selectedCompany?.id == updatedCompany.id) {
           setState(() {
             _selectedCompany = updatedCompany;
           });
         }
-        _showSuccessSnackBar('Company updated successfully!');
+        if (mounted) {
+          _showSuccessSnackBar('Company updated successfully!');
+        }
       } catch (e) {
         _showErrorSnackBar('Update Failed: ${e.toString().split(':').last}');
       }
@@ -582,12 +586,14 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
         );
 
         // 2. සාර්ථක නම්, selected company එක ඉවත් කිරීම
-        if (_selectedCompany?.id == company.id) {
+        if (mounted && _selectedCompany?.id == company.id) {
           setState(() {
             _selectedCompany = null;
           });
         }
-        _showSuccessSnackBar('Company deleted successfully!');
+        if (mounted) {
+          _showSuccessSnackBar('Company deleted successfully!');
+        }
       } catch (e) {
         _showErrorSnackBar('Deletion Failed: ${e.toString().split(':').last}');
       }
