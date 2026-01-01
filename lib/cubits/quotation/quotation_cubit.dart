@@ -130,9 +130,9 @@ class QuotationCubit extends Cubit<QuotationState> {
   }
 
   // 6. 🔄 Convert Quotation to Invoice
-  Future<QuotationDocument> convertToInvoice(String id) async {
+  Future<QuotationDocument> convertToInvoice(String id, {List<Map<String, dynamic>>? advancePayments}) async {
     try {
-      final convertedInvoice = await _quotationRepository.convertToInvoice(id, token: _currentToken);
+      final convertedInvoice = await _quotationRepository.convertToInvoice(id, advancePayments: advancePayments, token: _currentToken);
 
       // Update local state
       final updatedList = state.quotations.map((q) {

@@ -1,7 +1,11 @@
 // lib/widgets/reports/material_sales_report/invoice_summary_tab.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:tilework/cubits/auth/auth_cubit.dart';
+import 'package:tilework/cubits/auth/auth_state.dart';
+import 'package:tilework/services/reports/report_api_service.dart';
 import 'package:tilework/widget/reports/report_data_table.dart';
 import 'package:tilework/widget/reports/report_date_range_picker.dart';
 import 'package:tilework/widget/reports/report_dropdown_filter.dart';
@@ -10,7 +14,7 @@ import 'package:tilework/widget/reports/report_search_field.dart';
 import 'package:tilework/widget/reports/report_summary_card.dart';
 import 'package:tilework/widget/reports/report_theme.dart';
 
-class InvoiceData {
+class MaterialSaleData {
   final String invoiceNo;
   final DateTime date;
   final String customerName;
@@ -18,8 +22,11 @@ class InvoiceData {
   final double totalAmount;
   final double paidAmount;
   final String status;
+  final double totalSqft;
+  final double totalPlanks;
+  final double profitPercentage;
 
-  InvoiceData({
+  MaterialSaleData({
     required this.invoiceNo,
     required this.date,
     required this.customerName,
@@ -27,6 +34,9 @@ class InvoiceData {
     required this.totalAmount,
     required this.paidAmount,
     required this.status,
+    this.totalSqft = 0,
+    this.totalPlanks = 0,
+    this.profitPercentage = 0,
   });
 
   double get dueAmount => totalAmount - paidAmount;
@@ -44,63 +54,79 @@ class _InvoiceSummaryTabState extends State<InvoiceSummaryTab> {
   String? _selectedStatus;
   final TextEditingController _searchController = TextEditingController();
 
+  // API Data
+  List<MaterialSaleData> _materialSales = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
   final _currencyFormat = NumberFormat.currency(
     locale: 'en_LK',
     symbol: 'Rs. ',
     decimalDigits: 0,
   );
 
-  // Mock Data
-  List<InvoiceData> get _mockData => [
-    InvoiceData(
-      invoiceNo: 'INV-1001',
-      date: DateTime.now().subtract(const Duration(days: 2)),
-      customerName: 'Kamal Perera',
-      customerPhone: '0771234567',
-      totalAmount: 125000,
-      paidAmount: 125000,
-      status: 'Paid',
-    ),
-    InvoiceData(
-      invoiceNo: 'INV-1002',
-      date: DateTime.now().subtract(const Duration(days: 5)),
-      customerName: 'Nimal Fernando',
-      customerPhone: '0779876543',
-      totalAmount: 85000,
-      paidAmount: 50000,
-      status: 'Partial',
-    ),
-    InvoiceData(
-      invoiceNo: 'INV-1003',
-      date: DateTime.now().subtract(const Duration(days: 10)),
-      customerName: 'Sunil Silva',
-      customerPhone: '0712345678',
-      totalAmount: 210000,
-      paidAmount: 0,
-      status: 'Pending',
-    ),
-    InvoiceData(
-      invoiceNo: 'INV-1004',
-      date: DateTime.now().subtract(const Duration(days: 15)),
-      customerName: 'Ranjith Kumar',
-      customerPhone: '0765432198',
-      totalAmount: 45000,
-      paidAmount: 45000,
-      status: 'Paid',
-    ),
-    InvoiceData(
-      invoiceNo: 'INV-1005',
-      date: DateTime.now().subtract(const Duration(days: 20)),
-      customerName: 'Mahesh Jayasinghe',
-      customerPhone: '0723456789',
-      totalAmount: 180000,
-      paidAmount: 80000,
-      status: 'Partial',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadMaterialSalesData();
+  }
 
-  List<InvoiceData> get _filteredData {
-    var data = _mockData;
+  Future<void> _loadMaterialSalesData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final authState = context.read<AuthCubit>().state;
+      if (authState is! AuthAuthenticated) {
+        throw Exception('User not authenticated');
+      }
+
+      final apiService = ReportApiService();
+      final startDate = _dateRange?.start.toIso8601String().split('T')[0];
+      final endDate = _dateRange?.end.toIso8601String().split('T')[0];
+
+      final response = await apiService.getMaterialSalesReport(
+        token: authState.token,
+        status: _selectedStatus,
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+      final data = response['data'] as List;
+      final materialSales = data.map((item) => MaterialSaleData(
+        invoiceNo: item['invoiceNo'] as String,
+        date: DateTime.parse(item['date'] as String),
+        customerName: item['customerName'] as String,
+        customerPhone: item['customerPhone'] as String,
+        totalAmount: (item['totalAmount'] as num).toDouble(),
+        paidAmount: (item['paidAmount'] as num).toDouble(),
+        status: item['status'] as String,
+        totalSqft: (item['totalSqft'] as num?)?.toDouble() ?? 0,
+        totalPlanks: (item['totalPlanks'] as num?)?.toDouble() ?? 0,
+        profitPercentage: (item['profitPercentage'] as num?)?.toDouble() ?? 0,
+      )).toList();
+
+      setState(() {
+        _materialSales = materialSales;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to load material sales data: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Mock Data fallback - only used if API fails
+  List<MaterialSaleData> get _mockData => [];
+
+  List<MaterialSaleData> get _filteredData {
+    if (_isLoading || _errorMessage != null) return [];
+
+    var data = _materialSales;
 
     if (_dateRange != null) {
       data = data.where((item) =>
@@ -135,10 +161,10 @@ class _InvoiceSummaryTabState extends State<InvoiceSummaryTab> {
     });
   }
 
-  void _viewInvoiceDetails(InvoiceData invoice) {
+  void _viewInvoiceDetails(MaterialSaleData materialSale) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Opening Invoice ${invoice.invoiceNo}...'),
+        content: Text('Opening Material Sale ${materialSale.invoiceNo}...'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -146,23 +172,81 @@ class _InvoiceSummaryTabState extends State<InvoiceSummaryTab> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Summary Cards
-          _buildSummaryCards(),
-          const SizedBox(height: 24),
-
-          // Filters
-          _buildFilters(),
-          const SizedBox(height: 24),
-
-          // Data Table
-          _buildDataTable(),
-        ],
+    return RefreshIndicator(
+      onRefresh: _loadMaterialSalesData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: _buildContent(),
       ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(48.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(48.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: ReportTheme.errorColor,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Failed to Load Material Sales Data',
+                style: ReportTheme.headingMedium.copyWith(
+                  color: ReportTheme.errorColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: ReportTheme.caption,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadMaterialSalesData,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Try Again'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ReportTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Summary Cards
+        _buildSummaryCards(),
+        const SizedBox(height: 24),
+
+        // Filters
+        _buildFilters(),
+        const SizedBox(height: 24),
+
+        // Data Table
+        _buildDataTable(),
+      ],
     );
   }
 
@@ -234,17 +318,17 @@ class _InvoiceSummaryTabState extends State<InvoiceSummaryTab> {
   }
 
   Widget _buildDataTable() {
-    return ReportDataTable<InvoiceData>(
+    return ReportDataTable<MaterialSaleData>(
       data: _filteredData,
       rowsPerPage: 10,
-      emptyMessage: 'No invoices found',
+      emptyMessage: 'No material sales found',
       header: Text(
-        'Invoice List (${_filteredData.length} records)',
+        'Material Sales List (${_filteredData.length} records)',
         style: ReportTheme.headingSmall,
       ),
       onRowTap: _viewInvoiceDetails,
       columns: [
-        ReportDataColumn<InvoiceData>(
+        ReportDataColumn<MaterialSaleData>(
           label: 'Invoice No.',
           sortable: true,
           compareFunction: (a, b) => a.invoiceNo.compareTo(b.invoiceNo),
@@ -256,7 +340,7 @@ class _InvoiceSummaryTabState extends State<InvoiceSummaryTab> {
             ),
           ),
         ),
-        ReportDataColumn<InvoiceData>(
+        ReportDataColumn<MaterialSaleData>(
           label: 'Date',
           sortable: true,
           compareFunction: (a, b) => a.date.compareTo(b.date),
@@ -264,7 +348,7 @@ class _InvoiceSummaryTabState extends State<InvoiceSummaryTab> {
             DateFormat('dd/MM/yyyy').format(item.date),
           ),
         ),
-        ReportDataColumn<InvoiceData>(
+        ReportDataColumn<MaterialSaleData>(
           label: 'Customer',
           cellBuilder: (item) => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,7 +359,7 @@ class _InvoiceSummaryTabState extends State<InvoiceSummaryTab> {
             ],
           ),
         ),
-        ReportDataColumn<InvoiceData>(
+        ReportDataColumn<MaterialSaleData>(
           label: 'Total (Rs.)',
           numeric: true,
           sortable: true,
@@ -285,7 +369,7 @@ class _InvoiceSummaryTabState extends State<InvoiceSummaryTab> {
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
         ),
-        ReportDataColumn<InvoiceData>(
+        ReportDataColumn<MaterialSaleData>(
           label: 'Paid (Rs.)',
           numeric: true,
           sortable: true,
@@ -295,7 +379,7 @@ class _InvoiceSummaryTabState extends State<InvoiceSummaryTab> {
             style: TextStyle(color: ReportTheme.successColor),
           ),
         ),
-        ReportDataColumn<InvoiceData>(
+        ReportDataColumn<MaterialSaleData>(
           label: 'Due (Rs.)',
           numeric: true,
           sortable: true,
@@ -308,13 +392,13 @@ class _InvoiceSummaryTabState extends State<InvoiceSummaryTab> {
             ),
           ),
         ),
-        ReportDataColumn<InvoiceData>(
+        ReportDataColumn<MaterialSaleData>(
           label: 'Status',
           sortable: true,
           compareFunction: (a, b) => a.status.compareTo(b.status),
           cellBuilder: (item) => _buildStatusBadge(item.status),
         ),
-        ReportDataColumn<InvoiceData>(
+        ReportDataColumn<MaterialSaleData>(
           label: 'Actions',
           cellBuilder: (item) => Row(
             mainAxisSize: MainAxisSize.min,

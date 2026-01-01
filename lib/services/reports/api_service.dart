@@ -1,10 +1,25 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Platform;
+
+String _defaultBaseUrl() {
+  // Use emulator-friendly address for Android emulators
+  if (kIsWeb) return 'http://localhost:5000/api';
+  try {
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:5000/api';
+    }
+  } catch (_) {
+    // Platform not available (e.g., web)
+  }
+  return 'http://localhost:5000/api';
+}
 
 class ReportsApiService {
   final String baseUrl;
 
-  ReportsApiService({this.baseUrl = 'http://localhost:5000/api'});
+  ReportsApiService({String? baseUrl}) : baseUrl = baseUrl ?? _defaultBaseUrl();
 
   // Helper method to get auth token from local storage or wherever it's stored
   Future<String?> _getToken() async {

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tilework/cubits/auth/auth_cubit.dart';
 import 'package:tilework/cubits/auth/auth_state.dart';
@@ -538,9 +538,13 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       debugPrint('💾 Save Document - Cubit update successful');
 
       if (mounted) {
+        // Update working document with saved data
+        _workingDocument = _deepCopyDocument(widget.document);
+
         setState(() {
           _hasUnsavedChanges = false;
           _isSaving = false;
+          _originalDocument = _deepCopyDocument(_workingDocument);
         });
 
         _showSnackBar(
@@ -562,72 +566,129 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
   }
 
   // Show Convert to Invoice Dialog
-  void _showConversionDialog() async {
+  void _showConversionDialog() {
+    debugPrint('════════════════════════════════════════════════════════');
+    debugPrint('🚀 _showConversionDialog() STARTED');
+    debugPrint('════════════════════════════════════════════════════════');
+
+    // Step 1: Validate BEFORE opening dialog
+    debugPrint('📋 Current Status: ${_workingDocument.status}');
+    debugPrint('📋 Document ID: ${_workingDocument.id}');
+
     if (_workingDocument.status != DocumentStatus.approved) {
-      if (mounted) {
-        _showSnackBar('Quotation must be Approved before conversion.');
-      }
+      _showSnackBar('Quotation must be Approved before conversion.');
       return;
     }
 
     if (_workingDocument.id == null || _workingDocument.id!.trim().isEmpty) {
-      if (mounted) {
-        _showSnackBar('Cannot convert quotation: Document ID is missing. Please save the document first.');
-      }
+      _showSnackBar('Cannot convert quotation: Document ID is missing.');
       return;
     }
 
-    // Debug: Check authentication state
     final authState = context.read<AuthCubit>().state;
-    debugPrint('🔐 Auth state during conversion: ${authState.runtimeType}');
-    if (authState is AuthAuthenticated) {
-      debugPrint('🔑 Token available: ${authState.token.substring(0, 20)}...');
-    } else {
-      debugPrint('❌ No valid authentication');
-      if (mounted) {
-        _showSnackBar('Authentication error. Please log in again.');
-      }
+    if (authState is! AuthAuthenticated) {
+      _showSnackBar('Authentication error. Please log in again.');
       return;
     }
+
+    // Store references
+    final quotationCubit = context.read<QuotationCubit>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final documentId = _workingDocument.id!;
+    final subtotal = _workingDocument.subtotal;
+
+    debugPrint('💰 Subtotal: $subtotal');
 
     showDialog(
       context: context,
-      builder: (context) => ConvertToInvoiceDialog(
-        quotationTotal: _workingDocument.subtotal,
+      barrierDismissible: false,
+      builder: (dialogContext) => ConvertToInvoiceDialog(
+        quotationTotal: subtotal,
         onConvert: (List<PaymentRecord> advancePayments) async {
+          debugPrint('════════════════════════════════════════════════════════');
+          debugPrint('🔄 onConvert CALLBACK TRIGGERED');
+          debugPrint('════════════════════════════════════════════════════════');
+
+          // Close dialog FIRST
+          Navigator.of(dialogContext).pop();
+          debugPrint('✅ Dialog closed');
+
+          if (!mounted) {
+            debugPrint('❌ Widget not mounted, returning');
+            return;
+          }
+
+          // 🔍 DEBUG: Check advance payments
+          debugPrint('════════════════════════════════════════════════════════');
+          debugPrint('💵 ADVANCE PAYMENTS CHECK:');
+          debugPrint('   advancePayments.isEmpty: ${advancePayments.isEmpty}');
+          debugPrint('   advancePayments.length: ${advancePayments.length}');
+          if (advancePayments.isNotEmpty) {
+            for (int i = 0; i < advancePayments.length; i++) {
+              debugPrint('   Payment $i: ${advancePayments[i].amount}');
+            }
+          }
+          debugPrint('════════════════════════════════════════════════════════');
+
           try {
-            // First convert the quotation to invoice via API
-            debugPrint('🔄 Converting quotation ${_workingDocument.id} to invoice...');
-            final convertedInvoice = await context.read<QuotationCubit>().convertToInvoice(_workingDocument.id!);
-            debugPrint('✅ Conversion successful: ${convertedInvoice.documentNumber}');
+            debugPrint('🔄 Calling quotationCubit.convertToInvoice($documentId)...');
 
-            // Check if widget is still mounted after async operation
-            if (!mounted) return;
+            final convertedInvoice = await quotationCubit.convertToInvoice(
+              documentId,
+              advancePayments: advancePayments.map((p) => p.toJson()).toList(),
+            );
 
-            // Update working document with converted data
+            debugPrint('════════════════════════════════════════════════════════');
+            debugPrint('📦 BACKEND RESPONSE:');
+            debugPrint('   Document Number: ${convertedInvoice.documentNumber}');
+            debugPrint('   Type: ${convertedInvoice.type}');
+            debugPrint('   Status from Backend: ${convertedInvoice.status}');
+            debugPrint('════════════════════════════════════════════════════════');
+
+            if (!mounted) {
+              debugPrint('❌ Widget not mounted after API call, returning');
+              return;
+            }
+
+            // Create deep copy
             final updatedInvoice = _deepCopyDocument(convertedInvoice);
+            debugPrint('📋 After deep copy - Status: ${updatedInvoice.status}');
+
+            // Set type to invoice
             updatedInvoice.type = DocumentType.invoice;
-            updatedInvoice.status = DocumentStatus.converted; // Show as converted status
+            debugPrint('📋 Set type to invoice');
+
+            // Backend now handles status correctly - use the status from backend
+            debugPrint('════════════════════════════════════════════════════════');
+            debugPrint('🎯 USING BACKEND STATUS...');
 
             if (advancePayments.isNotEmpty) {
-              updatedInvoice.paymentHistory = List.from(
-                updatedInvoice.paymentHistory,
-              )..addAll(advancePayments);
+              // Add advance payments to local copy for UI display
+              updatedInvoice.paymentHistory = [
+                ...updatedInvoice.paymentHistory,
+                ...advancePayments,
+              ];
+              debugPrint('   ➡️ Added ${advancePayments.length} payments to history for UI display');
+            }
 
-              if (updatedInvoice.amountDue > 0) {
-                updatedInvoice.status = DocumentStatus.partial;
-              } else {
-                updatedInvoice.status = DocumentStatus.paid;
-              }
+            debugPrint('   ✅ Using backend status: ${updatedInvoice.status}');
+            debugPrint('════════════════════════════════════════════════════════');
+
+            // Final status check before setState
+            debugPrint('🔍 BEFORE setState:');
+            debugPrint('   updatedInvoice.status = ${updatedInvoice.status}');
+            debugPrint('   updatedInvoice.type = ${updatedInvoice.type}');
+
+            if (!mounted) {
+              debugPrint('❌ Widget not mounted before setState, returning');
+              return;
             }
 
             setState(() {
               _workingDocument = updatedInvoice;
-              // Update original document for proper change detection
               _originalDocument = _deepCopyDocument(updatedInvoice);
-              _hasUnsavedChanges = false; // Reset since we just converted
+              _hasUnsavedChanges = false; // Invoice is now saved
 
-              // Also update the widget.document to ensure consistency
               widget.document.type = DocumentType.invoice;
               widget.document.status = updatedInvoice.status;
               widget.document.paymentHistory = updatedInvoice.paymentHistory;
@@ -635,37 +696,41 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
               widget.document.documentNumber = updatedInvoice.documentNumber;
             });
 
-            // Show success message before closing dialog
-            if (mounted) {
-              _showSnackBar(
-                'Quotation converted to Invoice: ${_workingDocument.displayDocumentNumber}',
-              );
+            // After setState check
+            debugPrint('════════════════════════════════════════════════════════');
+            debugPrint('🔍 AFTER setState:');
+            debugPrint('   _workingDocument.status = ${_workingDocument.status}');
+            debugPrint('   _workingDocument.type = ${_workingDocument.type}');
+            debugPrint('   widget.document.status = ${widget.document.status}');
+            debugPrint('════════════════════════════════════════════════════════');
 
-              // Close the dialog after showing snackbar
-              Navigator.of(context).pop();
-            }
+            scaffoldMessenger.showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Converted: ${updatedInvoice.displayDocumentNumber} (Status: ${updatedInvoice.status.name.toUpperCase()})',
+                ),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+
+            debugPrint('✅ CONVERSION COMPLETE!');
+            debugPrint('════════════════════════════════════════════════════════');
+
           } catch (e) {
-            debugPrint('❌ Conversion failed: $e');
+            debugPrint('════════════════════════════════════════════════════════');
+            debugPrint('❌ CONVERSION ERROR: $e');
+            debugPrint('════════════════════════════════════════════════════════');
 
-            // Check if widget is still mounted before showing error
             if (!mounted) return;
 
-            String errorMessage = 'Failed to convert quotation';
-
-            // Provide more specific error messages
-            if (e.toString().contains('Not authorized')) {
-              errorMessage = 'Authentication error. Please log in again.';
-            } else if (e.toString().contains('not found')) {
-              errorMessage = 'Quotation not found. It may have been deleted.';
-            } else if (e.toString().contains('already')) {
-              errorMessage = 'This quotation has already been converted to an invoice.';
-            } else if (e.toString().contains('Network')) {
-              errorMessage = 'Network error. Please check your connection.';
-            }
-
-            if (mounted) {
-              _showSnackBar('$errorMessage: ${e.toString()}');
-            }
+            scaffoldMessenger.showSnackBar(
+              SnackBar(
+                content: Text('Failed: ${e.toString()}'),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
           }
         },
       ),
@@ -684,29 +749,43 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       return;
     }
 
+    // ✅ Store reference BEFORE dialog
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     showDialog(
       context: context,
-      builder: (context) => AddAdvancePaymentDialog(
+      builder: (dialogContext) => AddAdvancePaymentDialog(
         currentDue: _workingDocument.amountDue,
         onAddPayments: (List<PaymentRecord> newPayments) {
-          if (mounted) {
-            setState(() {
-              _workingDocument.paymentHistory = List.from(
-                _workingDocument.paymentHistory,
-              )..addAll(newPayments);
+          // ✅ Close dialog FIRST
+          Navigator.of(dialogContext).pop();
 
-              // Update status based on payment
-              if (_workingDocument.amountDue <= 0) {
-                _workingDocument.status = DocumentStatus.paid;
-              } else if (_workingDocument.paymentHistory.isNotEmpty) {
-                _workingDocument.status = DocumentStatus.partial;
-              }
+          if (!mounted) return;
 
-              _hasUnsavedChanges = true;
-            });
+          setState(() {
+            _workingDocument.paymentHistory = List.from(
+              _workingDocument.paymentHistory,
+            )..addAll(newPayments);
 
-            _showSnackBar('Advance payment(s) added successfully!');
-          }
+            if (_workingDocument.amountDue <= 0) {
+              _workingDocument.status = DocumentStatus.paid;
+            } else if (_workingDocument.paymentHistory.isNotEmpty) {
+              _workingDocument.status = DocumentStatus.partial;
+            }
+
+            _hasUnsavedChanges = true;
+          });
+
+          // Save the document after adding payments
+          _saveDocument();
+
+          // ✅ Use stored reference
+          scaffoldMessenger.showSnackBar(
+            const SnackBar(
+              content: Text('Advance payment(s) added successfully!'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         },
       ),
     );
@@ -721,49 +800,73 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
 
     final dueAmount = _workingDocument.amountDue;
 
+    // ✅ Store references BEFORE dialog
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
     showDialog(
       context: context,
-      builder: (context) => RecordPaymentDialog(
+      builder: (dialogContext) => RecordPaymentDialog(
         dueAmount: dueAmount,
         onRecordPayment: (paymentAmount) {
-          if (mounted) {
-            if (paymentAmount < dueAmount) {
-              // Partial payment
-              setState(() {
-                _workingDocument.paymentHistory =
-                    List.from(_workingDocument.paymentHistory)..add(
-                      PaymentRecord(
-                        paymentAmount,
-                        DateTime.now(),
-                        description: 'Partial Payment',
-                      ),
-                    );
+          // ✅ Close dialog FIRST
+          Navigator.of(dialogContext).pop();
 
-                if (_workingDocument.amountDue <= 0) {
-                  _workingDocument.status = DocumentStatus.paid;
-                }
-                _hasUnsavedChanges = true;
-              });
-              _showSnackBar('Payment recorded successfully!');
-            } else {
-              // Full payment
-              setState(() {
-                _workingDocument.paymentHistory =
-                    List.from(_workingDocument.paymentHistory)..add(
-                      PaymentRecord(
-                        paymentAmount,
-                        DateTime.now(),
-                        description: 'Final Payment (Fully Paid)',
-                      ),
-                    );
+          if (!mounted) return;
+
+          if (paymentAmount < dueAmount) {
+            // Partial payment
+            setState(() {
+              _workingDocument.paymentHistory =
+                  List.from(_workingDocument.paymentHistory)..add(
+                    PaymentRecord(
+                      paymentAmount,
+                      DateTime.now(),
+                      description: 'Partial Payment',
+                    ),
+                  );
+
+              if (_workingDocument.amountDue <= 0) {
                 _workingDocument.status = DocumentStatus.paid;
-                _hasUnsavedChanges = true;
-              });
+              }
+              _hasUnsavedChanges = true;
+            });
 
-              _showSnackBar('Invoice marked as PAID successfully!');
-              _saveDocument();
-              Navigator.pop(context);
-            }
+            scaffoldMessenger.showSnackBar(
+              const SnackBar(
+                content: Text('Payment recorded successfully!'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          } else {
+            // Full payment
+            setState(() {
+              _workingDocument.paymentHistory =
+                  List.from(_workingDocument.paymentHistory)..add(
+                    PaymentRecord(
+                      paymentAmount,
+                      DateTime.now(),
+                      description: 'Final Payment (Fully Paid)',
+                    ),
+                  );
+              _workingDocument.status = DocumentStatus.paid;
+              _hasUnsavedChanges = true;
+            });
+
+            scaffoldMessenger.showSnackBar(
+              const SnackBar(
+                content: Text('Invoice marked as PAID!'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+
+            // Save and navigate safely
+            _saveDocument().then((_) {
+              if (mounted) {
+                navigator.pop();
+              }
+            });
           }
         },
       ),
@@ -790,32 +893,55 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
   }
 
   void _deleteDocument() async {
-    if (_workingDocument.isQuotation && _workingDocument.isPending) {
-      // Debug: Check document ID status
-      debugPrint('🗑️ Delete attempt - Document ID: ${_workingDocument.id}');
-      debugPrint('🗑️ Delete attempt - Document Number: ${_workingDocument.documentNumber}');
-      debugPrint('🗑️ Delete attempt - Is new document: $_isNewDocument');
-
-      // Check if document has a valid ID before attempting deletion
-      if (_workingDocument.id == null || _workingDocument.id!.trim().isEmpty) {
-        _showSnackBar('Cannot delete quotation: Document ID is missing. Please refresh and try again.');
-        return;
-      }
-
-      final shouldDelete = await DeleteConfirmationDialog.show(
-        context,
-        onConfirm: () async {
-          try {
-            // Delete quotation using the cubit (calls backend API)
-            await context.read<QuotationCubit>().deleteQuotation(_workingDocument.id!);
-            _showSnackBar('Quotation Deleted successfully.');
-            Navigator.pop(context, true);
-          } catch (e) {
-            _showSnackBar('Failed to delete quotation: ${e.toString()}');
-          }
-        },
-      );
+    if (!(_workingDocument.isQuotation && _workingDocument.isPending)) {
+      return;
     }
+
+    if (_workingDocument.id == null || _workingDocument.id!.trim().isEmpty) {
+      _showSnackBar('Cannot delete: Document ID is missing.');
+      return;
+    }
+
+    // ✅ Store references BEFORE dialog
+    final quotationCubit = context.read<QuotationCubit>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final documentId = _workingDocument.id!;
+
+    final confirmed = await DeleteConfirmationDialog.show(
+      context,
+      onConfirm: () async {
+        // Dialog already closed by DeleteConfirmationDialog
+
+        if (!mounted) return;
+
+        try {
+          // ✅ Use stored cubit reference
+          await quotationCubit.deleteQuotation(documentId);
+
+          if (!mounted) return;
+
+          scaffoldMessenger.showSnackBar(
+            const SnackBar(
+              content: Text('Quotation deleted successfully.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+
+          navigator.pop(true);
+        } catch (e) {
+          if (!mounted) return;
+
+          scaffoldMessenger.showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+    );
   }
 
   void _cancelCreation() async {

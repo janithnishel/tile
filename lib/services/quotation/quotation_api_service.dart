@@ -188,12 +188,18 @@ class QuotationApiService {
   // PATCH: Convert quotation to invoice
   Future<Map<String, dynamic>> convertToInvoice({
     required String id,
+    List<Map<String, dynamic>>? advancePayments,
     String? token,
   }) async {
     final headers = await _getHeaders(token: token);
+    final body = advancePayments != null && advancePayments.isNotEmpty
+        ? json.encode({'advancePayments': advancePayments})
+        : null;
+
     final response = await http.patch(
       Uri.parse('$baseUrl/quotations/$id/convert-to-invoice'),
       headers: headers,
+      body: body,
     );
 
     if (response.statusCode == 200) {

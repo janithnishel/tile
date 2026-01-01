@@ -1,7 +1,11 @@
 // lib/widgets/reports/project_report/project_report_tab.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:tilework/cubits/auth/auth_cubit.dart';
+import 'package:tilework/cubits/auth/auth_state.dart';
+import 'package:tilework/services/reports/report_api_service.dart';
 import 'package:tilework/widget/reports/report_data_table.dart';
 import 'package:tilework/widget/reports/report_date_range_picker.dart';
 import 'package:tilework/widget/reports/report_dropdown_filter.dart';
@@ -47,58 +51,71 @@ class _ProjectReportTabState extends State<ProjectReportTab> {
   String? _selectedStatus;
   final TextEditingController _searchController = TextEditingController();
 
-  // Mock Data - Replace with actual data source
-  List<ProjectReportData> get _mockData => [
-    ProjectReportData(
-      projectId: 'PRJ-001',
-      projectName: 'Villa Renovation',
-      clientName: 'John Silva',
-      status: 'Completed',
-      income: 450000,
-      directCost: 320000,
-      completionDate: DateTime.now().subtract(const Duration(days: 15)),
-    ),
-    ProjectReportData(
-      projectId: 'PRJ-002',
-      projectName: 'Office Flooring',
-      clientName: 'ABC Company',
-      status: 'Active',
-      income: 280000,
-      directCost: 180000,
-      completionDate: DateTime.now().add(const Duration(days: 30)),
-    ),
-    ProjectReportData(
-      projectId: 'PRJ-003',
-      projectName: 'Hotel Lobby',
-      clientName: 'Grand Hotel',
-      status: 'Active',
-      income: 850000,
-      directCost: 620000,
-      completionDate: DateTime.now().add(const Duration(days: 45)),
-    ),
-    ProjectReportData(
-      projectId: 'PRJ-004',
-      projectName: 'Apartment Complex',
-      clientName: 'Sky Builders',
-      status: 'On Hold',
-      income: 1200000,
-      directCost: 950000,
-      completionDate: DateTime.now().add(const Duration(days: 90)),
-    ),
-    ProjectReportData(
-      projectId: 'PRJ-005',
-      projectName: 'Restaurant Makeover',
-      clientName: 'Food Paradise',
-      status: 'Completed',
-      income: 180000,
-      directCost: 210000,
-      completionDate: DateTime.now().subtract(const Duration(days: 5)),
-    ),
-  ];
+  // API Data
+  List<ProjectReportData> _projects = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProjectData();
+  }
+
+  Future<void> _loadProjectData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final authState = context.read<AuthCubit>().state;
+      if (authState is! AuthAuthenticated) {
+        throw Exception('User not authenticated');
+      }
+
+      final apiService = ReportApiService();
+      final startDate = _dateRange?.start.toIso8601String().split('T')[0];
+      final endDate = _dateRange?.end.toIso8601String().split('T')[0];
+
+      final response = await apiService.getProjectReport(
+        token: authState.token,
+        status: _selectedStatus,
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+      final data = response['data'] as List;
+      final projects = data.map((item) => ProjectReportData(
+        projectId: item['projectId'] as String,
+        projectName: item['projectName'] as String,
+        clientName: item['clientName'] as String,
+        status: item['status'] as String,
+        income: (item['income'] as num).toDouble(),
+        directCost: (item['directCost'] as num).toDouble(),
+        completionDate: DateTime.parse(item['completionDate'] as String),
+      )).toList();
+
+      setState(() {
+        _projects = projects;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to load project data: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Mock Data fallback - only used if API fails
+  List<ProjectReportData> get _mockData => [];
 
   List<ProjectReportData> get _filteredData {
-    var data = _mockData;
-    
+    if (_isLoading || _errorMessage != null) return [];
+
+    var data = _projects;
+
     // Apply date filter
     if (_dateRange != null) {
       data = data.where((item) =>
@@ -106,12 +123,12 @@ class _ProjectReportTabState extends State<ProjectReportTab> {
         item.completionDate.isBefore(_dateRange!.end.add(const Duration(days: 1)))
       ).toList();
     }
-    
+
     // Apply status filter
     if (_selectedStatus != null && _selectedStatus != 'All') {
       data = data.where((item) => item.status == _selectedStatus).toList();
     }
-    
+
     // Apply search filter
     if (_searchController.text.isNotEmpty) {
       final query = _searchController.text.toLowerCase();
@@ -121,7 +138,7 @@ class _ProjectReportTabState extends State<ProjectReportTab> {
         item.clientName.toLowerCase().contains(query)
       ).toList();
     }
-    
+
     return data;
   }
 
@@ -160,33 +177,87 @@ class _ProjectReportTabState extends State<ProjectReportTab> {
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      onRefresh: () async => setState(() {}),
+      onRefresh: _loadProjectData,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title Section
-            _buildSectionTitle(
-              'Project Profitability Analysis',
-              Icons.trending_up,
-            ),
-            const SizedBox(height: 16),
-
-            // Summary Cards
-            _buildSummaryCards(),
-            const SizedBox(height: 24),
-
-            // Filters
-            _buildFilters(),
-            const SizedBox(height: 24),
-
-            // Data Table
-            _buildDataTable(),
-          ],
-        ),
+        child: _buildContent(),
       ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(48.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(48.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: ReportTheme.errorColor,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Failed to Load Project Data',
+                style: ReportTheme.headingMedium.copyWith(
+                  color: ReportTheme.errorColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: ReportTheme.caption,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadProjectData,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Try Again'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ReportTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title Section
+        _buildSectionTitle(
+          'Project Profitability Analysis',
+          Icons.trending_up,
+        ),
+        const SizedBox(height: 16),
+
+        // Summary Cards
+        _buildSummaryCards(),
+        const SizedBox(height: 24),
+
+        // Filters
+        _buildFilters(),
+        const SizedBox(height: 24),
+
+        // Data Table
+        _buildDataTable(),
+      ],
     );
   }
 

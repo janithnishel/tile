@@ -1268,6 +1268,11 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
     }
 
     String? selectedBaseUnit = item.baseUnit;
+    // Validate that the current baseUnit is valid for the current item type
+    final initialValidUnits = getBaseUnits(item.isService);
+    if (selectedBaseUnit != null && !initialValidUnits.contains(selectedBaseUnit)) {
+      selectedBaseUnit = null; // Reset if invalid for current type
+    }
 
     // Packaging unit options and state
     final List<String> packagingUnits = ['None', 'Box', 'Roll', 'Sheet', 'Pcs', 'Strip'];

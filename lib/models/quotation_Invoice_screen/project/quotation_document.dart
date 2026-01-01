@@ -66,6 +66,7 @@ class QuotationDocument {
   Map<String, dynamic> toJson() {
     return {
       if (id != null) '_id': id,
+      // ✅ Always send full document number with prefix
       'documentNumber': documentNumber,
       'type': type == DocumentType.invoice ? 'invoice' : 'quotation',
       'status': _statusToString(status),
@@ -158,8 +159,8 @@ class QuotationDocument {
   double get amountDue => subtotal - totalPayments;
 
   String get displayDocumentNumber {
-    final prefix = type == DocumentType.quotation ? 'QUO' : 'INV';
-    return '$prefix-$documentNumber';
+    // Backend now stores prefixed document numbers (QUO-109, INV-109)
+    return documentNumber;
   }
 
   bool get isLocked =>

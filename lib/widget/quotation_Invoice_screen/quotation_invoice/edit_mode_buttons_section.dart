@@ -36,7 +36,7 @@ class EditModeButtonsSection extends StatelessWidget {
     required this.onDelete,
   }) : super(key: key);
 
-  bool get _isSaveVisible => !document.isLocked;
+  bool get _isSaveVisible => document.isQuotation && !document.isLocked;
 
   bool get _isConvertVisible =>
       document.isQuotation && document.status == DocumentStatus.approved && !hasUnsavedChanges;

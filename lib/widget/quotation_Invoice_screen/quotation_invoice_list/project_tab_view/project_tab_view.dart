@@ -63,7 +63,11 @@ class _ProjectTabViewState extends State<ProjectTabView> {
           (_endDate == null ||
               doc.invoiceDate.isBefore(_endDate!.add(const Duration(days: 1))));
 
-      return matchesSearch && matchesStatus && matchesType && matchesDate;
+      // Filter out quotations with 'invoiced' status from active quotation list
+      final isNotInvoicedQuotation = !(doc.type.name.toLowerCase() == 'quotation' &&
+                                       doc.status.name.toLowerCase() == 'invoiced');
+
+      return matchesSearch && matchesStatus && matchesType && matchesDate && isNotInvoicedQuotation;
     }).toList();
   }
 
