@@ -7,12 +7,31 @@ class QuotationRepository {
 
   QuotationRepository(this._apiService, [this._token]);
 
-  // GET: Fetch all quotations
-  Future<List<QuotationDocument>> fetchQuotations({Map<String, String>? queryParams, String? token}) async {
+  // GET: Fetch all quotations (returns paginated result)
+  Future<Map<String, dynamic>> fetchQuotations({Map<String, String>? queryParams, String? token}) async {
     try {
       final currentToken = token ?? _token;
+
+      // Extract pagination parameters
+      final page = int.tryParse(queryParams?['page'] ?? '1') ?? 1;
+      final limit = int.tryParse(queryParams?['limit'] ?? '10') ?? 10;
+      final type = queryParams?['type'];
+      final status = queryParams?['status'];
+      final search = queryParams?['search'];
+      final startDate = queryParams?['startDate'];
+      final endDate = queryParams?['endDate'];
+
       // Backend returns: {success: true, data: [...]}
-      final response = await _apiService.getQuotations(token: currentToken);
+      final response = await _apiService.getQuotations(
+        token: currentToken,
+        page: page,
+        limit: limit,
+        type: type,
+        status: status,
+        search: search,
+        startDate: startDate,
+        endDate: endDate,
+      );
       print('🔍 Raw API Response: $response');
       print('🔍 Response type: ${response.runtimeType}');
 
@@ -26,7 +45,12 @@ class QuotationRepository {
         print('📊 Response is directly a list with ${data.length} items');
       } else {
         print('❌ No data field found in response');
-        return [];
+        return {
+          'items': [],
+          'total': 0,
+          'page': page,
+          'limit': limit,
+        };
       }
 
       final quotations = data.map((json) {
@@ -38,14 +62,44 @@ class QuotationRepository {
         }
       }).toList();
 
+      // Extract pagination metadata from response if available
+      dynamic totalFromBackend = response['total'];
+      dynamic pageFromBackend = response['page'];
+      dynamic limitFromBackend = response['limit'];
+
+      // Some APIs nest pagination under `pagination` or `meta` keys
+      if (response['pagination'] != null) {
+        totalFromBackend ??= response['pagination']['total'];
+        pageFromBackend ??= response['pagination']['page'];
+        limitFromBackend ??= response['pagination']['limit'];
+      }
+      if (response['meta'] != null) {
+        totalFromBackend ??= response['meta']['total'];
+        pageFromBackend ??= response['meta']['page'];
+        limitFromBackend ??= response['meta']['limit'];
+      }
+
       print('✅ Successfully parsed ${quotations.length} quotations');
-      print('📋 All quotations from backend:');
+      print('📊 DB SUMMARY: Total in DB: ${totalFromBackend ?? 'N/A'} | Loaded: ${quotations.length} | Page: ${pageFromBackend ?? page} | Limit: ${limitFromBackend ?? limit}');
+
+      if (totalFromBackend != null && quotations.length < totalFromBackend) {
+        final remaining = (totalFromBackend as int) - quotations.length;
+        print('📊 REMAINING: ${remaining} more documents available in database');
+      }
+
+      print('📋 FRONTEND: Quotations received:');
       for (var i = 0; i < quotations.length; i++) {
         final q = quotations[i];
-        print('   ${i + 1}. ID: ${q.id}, Number: ${q.documentNumber}, Customer: ${q.customerName}, Project: ${q.projectTitle}, Type: ${q.type}, Status: ${q.status}');
+        print('   ${i + 1}. ${q.documentNumber} - ${q.customerName} (${q.type})');
       }
-      print('📋 End of quotations list');
-      return quotations;
+      print('📋 FRONTEND: End of list');
+
+      return {
+        'items': quotations,
+        'total': totalFromBackend ?? quotations.length,
+        'page': pageFromBackend ?? page,
+        'limit': limitFromBackend ?? limit,
+      };
     } catch (e) {
       print('💥 Failed to fetch quotations: $e');
       throw Exception('Failed to fetch quotations: $e');

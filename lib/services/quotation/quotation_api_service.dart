@@ -60,11 +60,19 @@ class QuotationApiService {
     if (endDate != null) queryParams['endDate'] = endDate;
 
     final finalUri = uri.replace(queryParameters: queryParams);
+    print('🔗 GET Quotations API URL: $finalUri');
+    print('🔗 Query params: $queryParams');
 
     final response = await http.get(finalUri, headers: headers);
 
     if (response.statusCode == 200) {
-      return json.decode(response.body);
+      final decodedResponse = json.decode(response.body);
+      print('🔗 API Response received - Status: 200');
+      print('🔗 Response contains total: ${decodedResponse.containsKey('total')}');
+      if (decodedResponse.containsKey('total')) {
+        print('🔗 Total from backend: ${decodedResponse['total']}');
+      }
+      return decodedResponse;
     } else {
       throw Exception('Failed to load quotations: ${response.statusCode}');
     }

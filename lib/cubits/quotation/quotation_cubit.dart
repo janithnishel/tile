@@ -39,20 +39,26 @@ class QuotationCubit extends Cubit<QuotationState> {
       debugPrint('🚀 QuotationCubit: Starting to load quotations...');
       final queryParamsWithPage = {
         'page': '1',
-        'limit': '20', // Load 20 items per page
+        'limit': '50', // TEMPORARY: Match backend limit to show all records
         ...?queryParams,
       };
-      final loadedQuotations = await _quotationRepository.fetchQuotations(queryParams: queryParamsWithPage, token: _currentToken);
+      final result = await _quotationRepository.fetchQuotations(queryParams: queryParamsWithPage, token: _currentToken);
       debugPrint('� QuotationCubit: Token being passed to fetchQuotations: ${_currentToken != null ? 'Available' : 'NULL'}');
-      debugPrint('�📦 QuotationCubit: Loaded ${loadedQuotations.length} quotations');
 
-      // Check if we have more data (if we got exactly the limit, assume there's more)
-      final hasMore = loadedQuotations.length >= 20;
+      final loadedQuotations = (result['items'] as List<QuotationDocument>);
+      final total = result['total'] is int ? result['total'] as int : int.tryParse('${result['total']}') ?? loadedQuotations.length;
+      final page = result['page'] is int ? result['page'] as int : int.tryParse('${result['page']}') ?? 1;
+      final limit = result['limit'] is int ? result['limit'] as int : int.tryParse('${result['limit']}') ?? 50;
+
+      debugPrint('�📦 QuotationCubit: Loaded ${loadedQuotations.length} quotations (page $page / limit $limit / total $total)');
+
+      // Compute hasMore properly using total, page and limit
+      final hasMore = (page * limit) < total;
 
       emit(state.copyWith(
         quotations: loadedQuotations,
         isLoading: false,
-        currentPage: 1,
+        currentPage: page,
         hasMoreData: hasMore,
       ));
       debugPrint('✅ QuotationCubit: Successfully updated state with quotations');
@@ -68,34 +74,46 @@ class QuotationCubit extends Cubit<QuotationState> {
 
   // 1.5. 📄 Fetch More Quotations (Infinite scroll - appends to existing data)
   Future<void> fetchMoreQuotations({Map<String, String>? queryParams}) async {
-    if (state.isFetchingMoreValue || !state.hasMoreDataValue) return;
+    if (state.isFetchingMoreValue || !state.hasMoreDataValue) {
+      debugPrint('🚫 QuotationCubit: Skipping fetch - isFetchingMore: ${state.isFetchingMoreValue}, hasMoreData: ${state.hasMoreDataValue}');
+      return;
+    }
 
     emit(state.copyWith(isFetchingMore: true, errorMessage: null));
     try {
-      debugPrint('🚀 QuotationCubit: Fetching more quotations (page ${state.currentPageValue + 1})...');
       final nextPage = state.currentPageValue + 1;
+      debugPrint('🚀 QuotationCubit: Fetching more quotations (page $nextPage)...');
+      debugPrint('🚀 QuotationCubit: Current state - page: ${state.currentPageValue}, total items: ${state.quotations.length}, hasMore: ${state.hasMoreDataValue}');
+
       final queryParamsWithPage = {
         'page': nextPage.toString(),
-        'limit': '20',
+        'limit': '50', // TEMPORARY: Match backend limit
         ...?queryParams,
       };
 
-      final moreQuotations = await _quotationRepository.fetchQuotations(queryParams: queryParamsWithPage, token: _currentToken);
-      debugPrint('📦 QuotationCubit: Loaded ${moreQuotations.length} more quotations');
+      final result = await _quotationRepository.fetchQuotations(queryParams: queryParamsWithPage, token: _currentToken);
+      final moreQuotations = (result['items'] as List<QuotationDocument>);
+      final total = result['total'] is int ? result['total'] as int : int.tryParse('${result['total']}') ?? (state.quotations.length + moreQuotations.length);
+      final page = result['page'] is int ? result['page'] as int : int.tryParse('${result['page']}') ?? nextPage;
+      final limit = result['limit'] is int ? result['limit'] as int : int.tryParse('${result['limit']}') ?? 50;
 
-      // Check if we have more data
-      final hasMore = moreQuotations.length >= 20;
+      debugPrint('📦 QuotationCubit: Loaded ${moreQuotations.length} more quotations (page $page / limit $limit / total $total)');
+
+      // Determine if more pages remain
+      final hasMore = (page * limit) < total;
+      debugPrint('📦 QuotationCubit: Has more data: $hasMore (received ${moreQuotations.length} items)');
 
       // Append new data to existing list
       final updatedList = List<QuotationDocument>.from(state.quotations)..addAll(moreQuotations);
+      debugPrint('📦 QuotationCubit: Total items after append: ${updatedList.length} (was ${state.quotations.length})');
 
       emit(state.copyWith(
         quotations: updatedList,
         isFetchingMore: false,
-        currentPage: nextPage,
+        currentPage: page,
         hasMoreData: hasMore,
       ));
-      debugPrint('✅ QuotationCubit: Successfully appended ${moreQuotations.length} more quotations');
+      debugPrint('✅ QuotationCubit: Successfully appended ${moreQuotations.length} more quotations (page $nextPage)');
     } catch (e) {
       debugPrint('💥 QuotationCubit: Failed to fetch more quotations: $e');
       emit(state.copyWith(
@@ -131,7 +149,9 @@ class QuotationCubit extends Cubit<QuotationState> {
       // Add to local state
       final updatedList = List<QuotationDocument>.from(state.quotations)..insert(0, createdQuotation);
       emit(state.copyWith(quotations: updatedList));
-      debugPrint('📦 QuotationCubit: Updated local state with ${updatedList.length} quotations');
+      debugPrint('📦 QuotationCubit: Added new quotation to state');
+      debugPrint('📦 QuotationCubit: Total quotations in state: ${updatedList.length}');
+      debugPrint('📦 QuotationCubit: New quotation: ${createdQuotation.documentNumber} - ${createdQuotation.customerName}');
     } catch (e) {
       debugPrint('💥 QuotationCubit: Failed to create quotation: $e');
       emit(state.copyWith(errorMessage: e.toString()));

@@ -27,8 +27,9 @@ class JobCostRepository {
       final currentToken = token ?? _token;
       final quotationRepository = QuotationRepository(QuotationApiService(), currentToken);
 
-      // Fetch all quotations
-      final quotations = await quotationRepository.fetchQuotations(token: currentToken);
+      // Fetch all quotations (use only items)
+      final result = await quotationRepository.fetchQuotations(token: currentToken);
+      final quotations = (result['items'] as List<QuotationDocument>);
 
       // Filter for active job quotations (Approved, Invoiced, Converted, or Paid, but not Rejected)
       final activeJobQuotations = quotations.where((q) =>
