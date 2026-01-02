@@ -870,15 +870,13 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
   }
 
   void _showPreviewDialog() {
-    showDialog(
+    DocumentPdfService.previewPDF(
       context: context,
-      builder: (context) => DocumentPreviewDialog(
-        document: _workingDocument,
-        customerName: _customerNameController.text,
-        customerPhone: _customerPhoneController.text,
-        customerAddress: _customerAddressController.text,
-        projectTitle: _projectTitleController.text,
-      ),
+      document: _workingDocument,
+      customerName: _customerNameController.text,
+      customerPhone: _customerPhoneController.text,
+      customerAddress: _customerAddressController.text,
+      projectTitle: _projectTitleController.text,
     );
   }
 
