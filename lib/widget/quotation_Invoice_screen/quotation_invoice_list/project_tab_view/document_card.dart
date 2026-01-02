@@ -32,13 +32,15 @@ class DocumentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = StatusHelpers.getDocumentCardColor(document);
     final statusDisplay = StatusHelpers.getStatusDisplayText(document.status);
-    final icon = StatusHelpers.getDocumentTypeIcon(document.type);
+    final icon = document.status == DocumentStatus.rejected
+        ? Icons.cancel_outlined
+        : StatusHelpers.getDocumentTypeIcon(document.type);
 
     return Card(
       color: statusColor,
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
       child: ListTile(
-        leading: Icon(icon, color: Colors.black87),
+        leading: Icon(icon, color: document.status == DocumentStatus.rejected ? Colors.red.shade800 : Colors.black87),
         title: Text(
           '${document.type.name.toUpperCase()} #${document.documentNumber}'
           '${document.projectTitle.isNotEmpty ? ' - ${document.projectTitle}' : ''}',

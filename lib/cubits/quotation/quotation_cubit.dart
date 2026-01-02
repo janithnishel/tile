@@ -43,7 +43,8 @@ class QuotationCubit extends Cubit<QuotationState> {
         ...?queryParams,
       };
       final loadedQuotations = await _quotationRepository.fetchQuotations(queryParams: queryParamsWithPage, token: _currentToken);
-      debugPrint('📦 QuotationCubit: Loaded ${loadedQuotations.length} quotations');
+      debugPrint('� QuotationCubit: Token being passed to fetchQuotations: ${_currentToken != null ? 'Available' : 'NULL'}');
+      debugPrint('�📦 QuotationCubit: Loaded ${loadedQuotations.length} quotations');
 
       // Check if we have more data (if we got exactly the limit, assume there's more)
       final hasMore = loadedQuotations.length >= 20;
@@ -190,9 +191,21 @@ class QuotationCubit extends Cubit<QuotationState> {
   }
 
   // 6. 🔄 Convert Quotation to Invoice
-  Future<QuotationDocument> convertToInvoice(String id, {List<Map<String, dynamic>>? advancePayments}) async {
+  Future<QuotationDocument> convertToInvoice(String id, {List<Map<String, dynamic>>? advancePayments, DateTime? customDueDate}) async {
+    debugPrint('🔄 QuotationCubit: Starting conversion process...');
+    debugPrint('🔄 QuotationCubit: Auth state: ${_authCubit.state.runtimeType}');
+    debugPrint('🔄 QuotationCubit: Current token available: ${_currentToken != null ? 'YES' : 'NO'}');
+
+    if (_currentToken == null) {
+      const errorMsg = 'Authentication session expired. Please log out and log back in to continue.';
+      debugPrint('❌ QuotationCubit: $errorMsg');
+      emit(state.copyWith(errorMessage: errorMsg));
+      throw Exception(errorMsg);
+    }
+
     try {
-      final convertedInvoice = await _quotationRepository.convertToInvoice(id, advancePayments: advancePayments, token: _currentToken);
+      debugPrint('🔄 QuotationCubit: Calling repository convertToInvoice with token...');
+      final convertedInvoice = await _quotationRepository.convertToInvoice(id, advancePayments: advancePayments, customDueDate: customDueDate, token: _currentToken);
 
       // Update local state
       final updatedList = state.quotations.map((q) {
@@ -200,6 +213,7 @@ class QuotationCubit extends Cubit<QuotationState> {
       }).toList();
 
       emit(state.copyWith(quotations: updatedList));
+      debugPrint('✅ QuotationCubit: Conversion successful');
 
       return convertedInvoice;
     } catch (e) {

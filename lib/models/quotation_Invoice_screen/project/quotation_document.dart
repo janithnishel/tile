@@ -113,8 +113,8 @@ class QuotationDocument {
         return DocumentStatus.partial;
       case 'paid':
         return DocumentStatus.paid;
-      case 'closed':
-        return DocumentStatus.closed;
+      case 'rejected':
+        return DocumentStatus.rejected;
       case 'converted':
         return DocumentStatus.converted;
       case 'invoiced':
@@ -135,8 +135,8 @@ class QuotationDocument {
         return 'partial';
       case DocumentStatus.paid:
         return 'paid';
-      case DocumentStatus.closed:
-        return 'closed';
+      case DocumentStatus.rejected:
+        return 'rejected';
       case DocumentStatus.converted:
         return 'converted';
       case DocumentStatus.invoiced:
@@ -168,7 +168,7 @@ class QuotationDocument {
   }
 
   bool get isLocked =>
-      status == DocumentStatus.paid || status == DocumentStatus.closed;
+      status == DocumentStatus.paid || status == DocumentStatus.rejected;
 
   bool get isQuotation => type == DocumentType.quotation;
 

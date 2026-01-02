@@ -30,10 +30,10 @@ class JobCostRepository {
       // Fetch all quotations
       final quotations = await quotationRepository.fetchQuotations(token: currentToken);
 
-      // Filter for active job quotations (Approved, Invoiced, Converted, or Paid, but not Closed)
+      // Filter for active job quotations (Approved, Invoiced, Converted, or Paid, but not Rejected)
       final activeJobQuotations = quotations.where((q) =>
         (q.isApproved || q.status == DocumentStatus.converted || q.status == DocumentStatus.invoiced || q.status == DocumentStatus.paid) &&
-        q.status != DocumentStatus.closed
+        q.status != DocumentStatus.rejected
       ).toList();
 
       print('✅ JobCostRepository: Found ${activeJobQuotations.length} active job quotations');

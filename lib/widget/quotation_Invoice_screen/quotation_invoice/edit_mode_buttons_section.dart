@@ -36,7 +36,7 @@ class EditModeButtonsSection extends StatelessWidget {
     required this.onDelete,
   }) : super(key: key);
 
-  bool get _isSaveVisible => document.isQuotation && !document.isLocked;
+  bool get _isSaveVisible => document.isQuotation && (!document.isLocked || document.status == DocumentStatus.rejected);
 
   bool get _isConvertVisible =>
       document.isQuotation && document.status == DocumentStatus.approved && !hasUnsavedChanges;
@@ -45,7 +45,7 @@ class EditModeButtonsSection extends StatelessWidget {
       document.isInvoice && !document.isLocked && document.amountDue > 0;
 
   bool get _isDeleteVisible =>
-      document.isQuotation && document.status == DocumentStatus.pending;
+      document.isQuotation && (document.status == DocumentStatus.pending || document.status == DocumentStatus.rejected);
 
   bool get _isApproveVisible =>
       document.isQuotation && document.status == DocumentStatus.pending;
@@ -207,7 +207,7 @@ class EditModeButtonsSection extends StatelessWidget {
 
   Widget _buildPrimaryActionsRow() {
     // Implement the specific button state logic requested
-    final isSaveEnabled = hasUnsavedChanges && !isSaving;
+    final isSaveEnabled = (hasUnsavedChanges || document.status == DocumentStatus.rejected) && !isSaving;
     final isApproveEnabled = !hasUnsavedChanges && document.status == DocumentStatus.pending;
     final isRejectEnabled = !hasUnsavedChanges && document.status == DocumentStatus.pending;
 
@@ -229,7 +229,7 @@ class EditModeButtonsSection extends StatelessWidget {
                       ),
                     )
                   : const Icon(Icons.save),
-              label: Text(isSaving ? 'Saving...' : 'Save Quotation'),
+              label: Text(isSaving ? 'Saving...' : (document.status == DocumentStatus.rejected ? 'Edit & Re-submit' : 'Save Quotation')),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.all(16),
                 backgroundColor: isSaveEnabled ? Colors.indigo : Colors.grey.shade300,

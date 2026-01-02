@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 
 class QuotationApiService {
@@ -13,11 +14,19 @@ class QuotationApiService {
     return null;
   }
 
+  // Get token synchronously (since it's passed from cubit)
+  String? getTokenSync(String? token) {
+    return token;
+  }
+
   // Helper method to get common headers
   Future<Map<String, String>> _getHeaders({String? token}) async {
     final currentToken = token ?? await _getToken();
+    print('🔑 API Service - Token check: ${currentToken != null ? 'Token available (${currentToken.substring(0, min(20, currentToken.length))}...)' : 'No token'}');
+
     if (currentToken == null) {
-      throw Exception('No authentication token available');
+      print('❌ API Service - No authentication token available');
+      throw Exception('No authentication token available. Please log out and log back in.');
     }
 
     return {
@@ -209,12 +218,20 @@ class QuotationApiService {
   Future<Map<String, dynamic>> convertToInvoice({
     required String id,
     List<Map<String, dynamic>>? advancePayments,
+    DateTime? customDueDate,
     String? token,
   }) async {
     final headers = await _getHeaders(token: token);
-    final body = advancePayments != null && advancePayments.isNotEmpty
-        ? json.encode({'payments': advancePayments})
-        : null;
+
+    final requestBody = <String, dynamic>{};
+    if (advancePayments != null && advancePayments.isNotEmpty) {
+      requestBody['payments'] = advancePayments;
+    }
+    if (customDueDate != null) {
+      requestBody['customDueDate'] = customDueDate.toIso8601String();
+    }
+
+    final body = requestBody.isNotEmpty ? json.encode(requestBody) : null;
 
     final response = await http.patch(
       Uri.parse('$baseUrl/quotations/$id/convert-to-invoice'),

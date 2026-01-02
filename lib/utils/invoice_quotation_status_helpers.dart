@@ -14,8 +14,8 @@ class StatusHelpers {
         return Colors.red;
       case 'paid':
         return Colors.green;
-      case 'closed':
-        return Colors.grey;
+      case 'rejected':
+        return Colors.red.shade800; // Dark red for rejected
       case 'converted':
         return Colors.purple;
       default:
@@ -25,6 +25,10 @@ class StatusHelpers {
 
   // Get background color for document card
   static Color getDocumentCardColor(QuotationDocument doc) {
+    if (doc.status == DocumentStatus.rejected) {
+      return Colors.grey.shade300; // Light grey for rejected documents
+    }
+
     if (doc.type == DocumentType.quotation) {
       if (doc.status == DocumentStatus.approved) return Colors.blue.shade100; // Blue color for approved quotations (ready for conversion)
       return Colors.orange.shade100;
@@ -33,8 +37,7 @@ class StatusHelpers {
           doc.status == DocumentStatus.converted) {
         return Colors.red.shade100;
       }
-      if (doc.status == DocumentStatus.paid ||
-          doc.status == DocumentStatus.closed) {
+      if (doc.status == DocumentStatus.paid) {
         return Colors.green.shade100;
       }
       return Colors.grey.shade100;

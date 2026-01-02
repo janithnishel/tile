@@ -149,14 +149,15 @@ class QuotationRepository {
   }
 
   // PATCH: Convert quotation to invoice
-  Future<QuotationDocument> convertToInvoice(String id, {List<Map<String, dynamic>>? advancePayments, String? token}) async {
+  Future<QuotationDocument> convertToInvoice(String id, {List<Map<String, dynamic>>? advancePayments, DateTime? customDueDate, String? token}) async {
     try {
       final currentToken = token ?? _token;
       print('🔄 Converting quotation $id to invoice...');
       print('🔑 Token available: ${currentToken != null ? "Yes (${currentToken!.substring(0, 20)}...)" : "No"}');
       print('💰 Advance payments: ${advancePayments?.length ?? 0} items');
+      print('📅 Custom due date: $customDueDate');
 
-      final response = await _apiService.convertToInvoice(id: id, advancePayments: advancePayments, token: currentToken);
+      final response = await _apiService.convertToInvoice(id: id, advancePayments: advancePayments, customDueDate: customDueDate, token: currentToken);
       print('✅ Convert to invoice API response: $response');
       print('✅ Response type: ${response.runtimeType}');
 

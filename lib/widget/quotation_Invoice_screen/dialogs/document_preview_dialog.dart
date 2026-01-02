@@ -459,8 +459,8 @@ class DocumentPdfService {
         return _StatusBadgeInfo(PdfColor.fromInt(0xFFFF5722), PdfColor.fromInt(0xFFD84315)); // Red
       case DocumentStatus.paid:
         return _StatusBadgeInfo(PdfColor.fromInt(0xFF4CAF50), PdfColor.fromInt(0xFF2E7D32)); // Green
-      case DocumentStatus.closed:
-        return _StatusBadgeInfo(PdfColor.fromInt(0xFF9E9E9E), PdfColor.fromInt(0xFF616161)); // Grey
+      case DocumentStatus.rejected:
+        return _StatusBadgeInfo(PdfColor.fromInt(0xFFC62828), PdfColor.fromInt(0xFFAD1457)); // Red
       case DocumentStatus.converted:
         return _StatusBadgeInfo(PdfColor.fromInt(0xFF9C27B0), PdfColor.fromInt(0xFF7B1FA2)); // Purple
       case DocumentStatus.invoiced:

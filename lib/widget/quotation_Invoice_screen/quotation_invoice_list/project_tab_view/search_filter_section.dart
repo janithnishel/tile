@@ -165,7 +165,7 @@ class SearchFilterSection extends StatelessWidget {
       'Approved',
       'Partial',
       'Paid',
-      'Closed',
+      'Rejected',
       'Converted',
     ];
 

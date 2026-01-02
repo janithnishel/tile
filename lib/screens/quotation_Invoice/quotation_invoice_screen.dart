@@ -205,6 +205,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       _isNewDocument ||
       (!_workingDocument.isLocked &&
           (_workingDocument.status == DocumentStatus.pending ||
+              _workingDocument.status == DocumentStatus.rejected ||
               _workingDocument.isInvoice));
 
   bool get _isPendingQuotation =>
@@ -604,7 +605,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       barrierDismissible: false,
       builder: (dialogContext) => ConvertToInvoiceDialog(
         quotationTotal: subtotal,
-        onConvert: (List<PaymentRecord> advancePayments) async {
+        onConvert: (List<PaymentRecord> advancePayments, {DateTime? customDueDate}) async {
           debugPrint('════════════════════════════════════════════════════════');
           debugPrint('🔄 onConvert CALLBACK TRIGGERED');
           debugPrint('════════════════════════════════════════════════════════');
@@ -964,10 +965,11 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
   void _rejectQuotation() {
     if (mounted) {
       setState(() {
-        _workingDocument.status = DocumentStatus.closed; // Use closed status for rejected
+        _workingDocument.status = DocumentStatus.rejected; // Use rejected status for rejected
         _hasUnsavedChanges = true;
       });
-      _showSnackBar('Quotation rejected successfully!');
+      // Automatically save the document after rejecting
+      _saveDocument();
     }
   }
 
@@ -1024,6 +1026,10 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
               // Header
               _buildHeader(),
               const Divider(height: 32),
+
+              // Rejection Alert Banner (for rejected quotations)
+              if (_workingDocument.status == DocumentStatus.rejected && !_isNewDocument)
+                _buildRejectionAlert(),
 
               // Customer Details Section
               CustomerDetailsSection(
@@ -1356,13 +1362,59 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
         return Colors.red;
       case DocumentStatus.paid:
         return Colors.green;
-      case DocumentStatus.closed:
-        return Colors.grey;
+      case DocumentStatus.rejected:
+        return Colors.red.shade800;
       case DocumentStatus.converted:
         return Colors.purple;
       case DocumentStatus.invoiced:
         return Colors.teal;
     }
+  }
+
+  Widget _buildRejectionAlert() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        border: Border.all(color: Colors.red.shade300),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.red.shade700,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'This Quotation was Rejected',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red.shade800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'You can edit and re-submit this quotation to make it active again.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.red.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
 

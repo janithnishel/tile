@@ -3,7 +3,7 @@ import 'package:tilework/models/quotation_Invoice_screen/project/payment_record.
 
 class ConvertToInvoiceDialog extends StatefulWidget {
   final double quotationTotal;
-  final Function(List<PaymentRecord>) onConvert;
+  final Function(List<PaymentRecord>, {DateTime? customDueDate}) onConvert;
 
   const ConvertToInvoiceDialog({
     Key? key,
@@ -219,6 +219,8 @@ class _ConvertToInvoiceDialogState extends State<ConvertToInvoiceDialog> {
       ),
     );
   }
+
+
 
   Widget _buildAdvancePaymentsSection() {
     return Column(
@@ -484,7 +486,7 @@ class _ConvertToInvoiceDialogState extends State<ConvertToInvoiceDialog> {
                         ))
                     .toList();
 
-                widget.onConvert(payments);
+                widget.onConvert(payments, customDueDate: null);
                 Navigator.pop(context);
               },
               icon: const Icon(Icons.check_circle),
