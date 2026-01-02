@@ -866,7 +866,7 @@ class DocumentPreviewDialog extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: () => _generateAndSavePDF(context),
             icon: const Icon(Icons.download),
-            label: const Text('Download PDF'),
+            label: const Text('Save PDF'),
             style: ElevatedButton.styleFrom(
               backgroundColor: _primaryColor,
               foregroundColor: Colors.white,
@@ -1650,93 +1650,156 @@ class DocumentPreviewDialog extends StatelessWidget {
   }
 
   Widget _buildTotalSection() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Container(
-          width: 320,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: Column(
-            children: [
-              _buildTotalRow('Subtotal', document.subtotal),
-              
-              if (document.type == DocumentType.invoice &&
-                  document.paymentHistory.isNotEmpty) ...[
-                const Divider(height: 1),
-                ...document.paymentHistory.map((p) {
-                  return _buildTotalRow(
-                    'Paid (${p.description})\n${DateFormat('dd MMM yyyy').format(p.date)}',
-                    -p.amount,
-                    color: Colors.green.shade600,
-                    icon: Icons.check_circle_outline,
-                  );
-                }),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Container(
+            width: 380,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
               ],
-              
-              // Amount Due / Paid in Full
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: document.status == DocumentStatus.paid
-                        ? [Colors.green.shade500, Colors.green.shade600]
-                        : [_primaryColor, _primaryColor.withOpacity(0.85)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(11),
-                    bottomRight: Radius.circular(11),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          document.status == DocumentStatus.paid
-                              ? Icons.check_circle
-                              : Icons.account_balance_wallet,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          document.status == DocumentStatus.paid
-                              ? 'PAID IN FULL'
-                              : _isQuotation
-                                  ? 'ESTIMATED TOTAL'
-                                  : 'AMOUNT DUE',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      document.status == DocumentStatus.paid
-                          ? 'Rs 0.00'
-                          : 'Rs ${_formatNumber(document.amountDue)}',
-                      style: const TextStyle(
+            ),
+            child: Column(
+              children: [
+                _buildTotalRow('Subtotal', document.subtotal),
+
+                if (document.type == DocumentType.invoice &&
+                    document.paymentHistory.isNotEmpty) ...[
+                  const Divider(height: 1),
+                  ...document.paymentHistory.map((p) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
+                        border: Border(
+                          bottom: BorderSide(color: Colors.grey.shade100),
+                        ),
                       ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.check_circle_outline, size: 16, color: Colors.green.shade600),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Paid (${p.description})',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.grey.shade700,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          Text(
+                                            DateFormat('dd MMM yyyy').format(p.date),
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey.shade500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '-Rs ${_formatNumber(p.amount)}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.green.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+
+                // Amount Due / Paid in Full
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: document.status == DocumentStatus.paid
+                          ? [Colors.green.shade500, Colors.green.shade600]
+                          : [_primaryColor, _primaryColor.withOpacity(0.85)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(11),
+                      bottomRight: Radius.circular(11),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            document.status == DocumentStatus.paid
+                                ? Icons.check_circle
+                                : Icons.account_balance_wallet,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            document.status == DocumentStatus.paid
+                                ? 'PAID IN FULL'
+                                : _isQuotation
+                                    ? 'ESTIMATED TOTAL'
+                                    : 'AMOUNT DUE',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        document.status == DocumentStatus.paid
+                            ? 'Rs 0.00'
+                            : 'Rs ${_formatNumber(document.amountDue)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
