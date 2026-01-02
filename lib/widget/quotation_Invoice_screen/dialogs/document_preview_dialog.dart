@@ -55,6 +55,14 @@ class _DeductionItem {
   _DeductionItem({required this.description, required this.amount});
 }
 
+// STATUS BADGE INFO HELPER CLASS
+class _StatusBadgeInfo {
+  final PdfColor color;
+  final PdfColor borderColor;
+
+  _StatusBadgeInfo(this.color, this.borderColor);
+}
+
 // ============================================
 // PDF SERVICE CLASS
 // ============================================
@@ -94,7 +102,7 @@ class DocumentPdfService {
     required String customerPhone,
     required String customerAddress,
     required String projectTitle,
-    bool isPreview = false, // NEW: To differentiate preview vs saved PDF
+    bool isPreview = false, // Show status badge in preview, hide in final PDF
   }) async {
     final pdf = pw.Document();
 
@@ -145,14 +153,14 @@ class DocumentPdfService {
           primaryColor: primaryColor,
         ),
         build: (context) => [
-          // Document Info Bar - WITHOUT STATUS BADGE
+          // Document Info Bar - Show status only in preview mode
           _buildDocumentInfoBar(
             document: document,
             boldFont: ttfBold,
             regularFont: ttfRegular,
             primaryColor: primaryColor,
             title: title,
-            showStatus: false, // CHANGED: Never show status in PDF
+            showStatus: isPreview, // Show status badge only in preview mode
           ),
           pw.SizedBox(height: 20),
 
@@ -364,7 +372,7 @@ class DocumentPdfService {
   }
 
   // ============================================
-  // DOCUMENT INFO BAR - STATUS REMOVED
+  // DOCUMENT INFO BAR - CONDITIONAL STATUS DISPLAY
   // ============================================
   static pw.Widget _buildDocumentInfoBar({
     required QuotationDocument document,
@@ -372,7 +380,7 @@ class DocumentPdfService {
     required pw.Font regularFont,
     required PdfColor primaryColor,
     required String title,
-    bool showStatus = false, // NEW: Control status visibility
+    bool showStatus = false, // Show status only in preview mode
   }) {
     return pw.Container(
       width: pageWidth,
@@ -385,7 +393,7 @@ class DocumentPdfService {
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          // Document Number ONLY (Status removed)
+          // Document Number with optional Status Badge
           pw.Row(
             children: [
               pw.Text(
@@ -396,7 +404,10 @@ class DocumentPdfService {
                 document.displayDocumentNumber,
                 style: pw.TextStyle(font: boldFont, fontSize: 12, color: primaryColor),
               ),
-              // STATUS BADGE REMOVED FROM HERE
+              if (showStatus) ...[
+                pw.SizedBox(width: 8),
+                _buildStatusBadge(document.status, boldFont, regularFont),
+              ],
             ],
           ),
 
@@ -413,6 +424,48 @@ class DocumentPdfService {
         ],
       ),
     );
+  }
+
+  // STATUS BADGE FOR PDF
+  static pw.Widget _buildStatusBadge(DocumentStatus status, pw.Font boldFont, pw.Font regularFont) {
+    final statusInfo = _getStatusBadgeInfo(status);
+
+    return pw.Container(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: pw.BoxDecoration(
+        color: statusInfo.color,
+        borderRadius: pw.BorderRadius.circular(12),
+        border: pw.Border.all(color: statusInfo.borderColor),
+      ),
+      child: pw.Text(
+        status.name.toUpperCase(),
+        style: pw.TextStyle(
+          font: boldFont,
+          fontSize: 8,
+          color: PdfColors.white,
+        ),
+      ),
+    );
+  }
+
+  // STATUS BADGE INFO HELPER
+  static _StatusBadgeInfo _getStatusBadgeInfo(DocumentStatus status) {
+    switch (status) {
+      case DocumentStatus.pending:
+        return _StatusBadgeInfo(PdfColor.fromInt(0xFFFF9800), PdfColor.fromInt(0xFFE65100)); // Orange
+      case DocumentStatus.approved:
+        return _StatusBadgeInfo(PdfColor.fromInt(0xFF2196F3), PdfColor.fromInt(0xFF0D47A1)); // Blue
+      case DocumentStatus.partial:
+        return _StatusBadgeInfo(PdfColor.fromInt(0xFFFF5722), PdfColor.fromInt(0xFFD84315)); // Red
+      case DocumentStatus.paid:
+        return _StatusBadgeInfo(PdfColor.fromInt(0xFF4CAF50), PdfColor.fromInt(0xFF2E7D32)); // Green
+      case DocumentStatus.closed:
+        return _StatusBadgeInfo(PdfColor.fromInt(0xFF9E9E9E), PdfColor.fromInt(0xFF616161)); // Grey
+      case DocumentStatus.converted:
+        return _StatusBadgeInfo(PdfColor.fromInt(0xFF9C27B0), PdfColor.fromInt(0xFF7B1FA2)); // Purple
+      case DocumentStatus.invoiced:
+        return _StatusBadgeInfo(PdfColor.fromInt(0xFF009688), PdfColor.fromInt(0xFF00695C)); // Teal
+    }
   }
 
   static pw.Widget _buildDateBox(String label, String value, pw.Font boldFont, pw.Font regularFont) {

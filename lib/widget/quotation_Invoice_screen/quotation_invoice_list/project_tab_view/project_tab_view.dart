@@ -32,10 +32,62 @@ class _ProjectTabViewState extends State<ProjectTabView> {
   DateTime? _endDate;
   final TextEditingController _searchController = TextEditingController();
 
+  // Infinite Scroll
+  final ScrollController _scrollController = ScrollController();
+  bool _isNearBottom = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  // Infinite scroll listener
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    // Check if we're near the bottom (90% of the list height)
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    final threshold = maxScroll * 0.9; // 90% threshold
+
+    final isNearBottom = currentScroll >= threshold;
+
+    // Only trigger if we just crossed the threshold
+    if (isNearBottom && !_isNearBottom) {
+      _isNearBottom = true;
+      _fetchMoreData();
+    } else if (!isNearBottom && _isNearBottom) {
+      _isNearBottom = false;
+    }
+  }
+
+  // Fetch more data for infinite scroll
+  void _fetchMoreData() {
+    final cubit = context.read<QuotationCubit>();
+    final currentState = cubit.state;
+
+    // Don't fetch if already fetching or no more data
+    if (currentState.isFetchingMoreValue || !currentState.hasMoreDataValue) return;
+
+    debugPrint('📄 ProjectTabView: Fetching more data (page ${currentState.currentPageValue + 1})');
+
+    // Build query params for pagination
+    final queryParams = <String, String>{};
+    if (_searchQuery.isNotEmpty) queryParams['search'] = _searchQuery;
+    if (_statusFilter != 'All') queryParams['status'] = _statusFilter.toLowerCase();
+    if (_typeFilter != 'All') queryParams['type'] = _typeFilter.toLowerCase();
+    if (_startDate != null) queryParams['startDate'] = _startDate!.toIso8601String().split('T')[0];
+    if (_endDate != null) queryParams['endDate'] = _endDate!.toIso8601String().split('T')[0];
+
+    cubit.fetchMoreQuotations(queryParams: queryParams);
   }
 
   // ============================================
@@ -231,20 +283,35 @@ class _ProjectTabViewState extends State<ProjectTabView> {
     List<String> customerNames,
     Map<String, List<QuotationDocument>> groupedDocs,
   ) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16), // Standard padding, no extra bottom needed
-      itemCount: customerNames.length,
-      itemBuilder: (context, index) {
-        final customerName = customerNames[index];
-        final customerDocs = groupedDocs[customerName]!;
-        final summary = _getCustomerSummary(customerDocs);
+    return BlocBuilder<QuotationCubit, QuotationState>(
+      builder: (context, state) {
+        return ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.all(16),
+          itemCount: customerNames.length + (state.isFetchingMoreValue ? 1 : 0), // Add 1 for loading indicator
+          itemBuilder: (context, index) {
+            // Show loading indicator at the bottom
+            if (index == customerNames.length && state.isFetchingMoreValue) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
 
-        return CustomerExpansionTile(
-          customerName: customerName,
-          documents: customerDocs,
-          summary: summary,
-          onDocumentTap: widget.onDocumentTap,
-          cubit: context.read<QuotationCubit>(),
+            final customerName = customerNames[index];
+            final customerDocs = groupedDocs[customerName]!;
+            final summary = _getCustomerSummary(customerDocs);
+
+            return CustomerExpansionTile(
+              customerName: customerName,
+              documents: customerDocs,
+              summary: summary,
+              onDocumentTap: widget.onDocumentTap,
+              cubit: context.read<QuotationCubit>(),
+            );
+          },
         );
       },
     );

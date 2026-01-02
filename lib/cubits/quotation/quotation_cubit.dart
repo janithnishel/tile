@@ -26,20 +26,80 @@ class QuotationCubit extends Cubit<QuotationState> {
     return null;
   }
 
-  // 1. 🔄 Load Quotations
+  // 1. 🔄 Load Quotations (First page - replaces existing data)
   Future<void> loadQuotations({Map<String, String>? queryParams}) async {
-    emit(state.copyWith(isLoading: true, errorMessage: null));
+    emit(state.copyWith(
+      isLoading: true,
+      errorMessage: null,
+      currentPage: 1,
+      hasMoreData: true,
+      quotations: [], // Clear existing data for fresh load
+    ));
     try {
       debugPrint('🚀 QuotationCubit: Starting to load quotations...');
-      final loadedQuotations = await _quotationRepository.fetchQuotations(queryParams: queryParams, token: _currentToken);
+      final queryParamsWithPage = {
+        'page': '1',
+        'limit': '20', // Load 20 items per page
+        ...?queryParams,
+      };
+      final loadedQuotations = await _quotationRepository.fetchQuotations(queryParams: queryParamsWithPage, token: _currentToken);
       debugPrint('📦 QuotationCubit: Loaded ${loadedQuotations.length} quotations');
-      emit(state.copyWith(quotations: loadedQuotations, isLoading: false));
+
+      // Check if we have more data (if we got exactly the limit, assume there's more)
+      final hasMore = loadedQuotations.length >= 20;
+
+      emit(state.copyWith(
+        quotations: loadedQuotations,
+        isLoading: false,
+        currentPage: 1,
+        hasMoreData: hasMore,
+      ));
       debugPrint('✅ QuotationCubit: Successfully updated state with quotations');
     } catch (e) {
       debugPrint('💥 QuotationCubit: Failed to load quotations: $e');
       emit(state.copyWith(
         isLoading: false,
         errorMessage: 'Failed to load quotations. Please check your connection.',
+        hasMoreData: false,
+      ));
+    }
+  }
+
+  // 1.5. 📄 Fetch More Quotations (Infinite scroll - appends to existing data)
+  Future<void> fetchMoreQuotations({Map<String, String>? queryParams}) async {
+    if (state.isFetchingMoreValue || !state.hasMoreDataValue) return;
+
+    emit(state.copyWith(isFetchingMore: true, errorMessage: null));
+    try {
+      debugPrint('🚀 QuotationCubit: Fetching more quotations (page ${state.currentPageValue + 1})...');
+      final nextPage = state.currentPageValue + 1;
+      final queryParamsWithPage = {
+        'page': nextPage.toString(),
+        'limit': '20',
+        ...?queryParams,
+      };
+
+      final moreQuotations = await _quotationRepository.fetchQuotations(queryParams: queryParamsWithPage, token: _currentToken);
+      debugPrint('📦 QuotationCubit: Loaded ${moreQuotations.length} more quotations');
+
+      // Check if we have more data
+      final hasMore = moreQuotations.length >= 20;
+
+      // Append new data to existing list
+      final updatedList = List<QuotationDocument>.from(state.quotations)..addAll(moreQuotations);
+
+      emit(state.copyWith(
+        quotations: updatedList,
+        isFetchingMore: false,
+        currentPage: nextPage,
+        hasMoreData: hasMore,
+      ));
+      debugPrint('✅ QuotationCubit: Successfully appended ${moreQuotations.length} more quotations');
+    } catch (e) {
+      debugPrint('💥 QuotationCubit: Failed to fetch more quotations: $e');
+      emit(state.copyWith(
+        isFetchingMore: false,
+        errorMessage: 'Failed to load more quotations.',
       ));
     }
   }
@@ -73,7 +133,7 @@ class QuotationCubit extends Cubit<QuotationState> {
       debugPrint('📦 QuotationCubit: Updated local state with ${updatedList.length} quotations');
     } catch (e) {
       debugPrint('💥 QuotationCubit: Failed to create quotation: $e');
-      emit(state.copyWith(errorMessage: 'Failed to create quotation: ${e.toString()}'));
+      emit(state.copyWith(errorMessage: e.toString()));
       rethrow;
     }
   }
@@ -91,7 +151,7 @@ class QuotationCubit extends Cubit<QuotationState> {
       emit(state.copyWith(quotations: updatedList));
     } catch (e) {
       debugPrint('💥 QuotationCubit: Failed to update quotation: $e');
-      emit(state.copyWith(errorMessage: 'Failed to update quotation.'));
+      emit(state.copyWith(errorMessage: e.toString()));
       rethrow;
     }
   }
@@ -106,7 +166,7 @@ class QuotationCubit extends Cubit<QuotationState> {
       emit(state.copyWith(quotations: updatedList));
     } catch (e) {
       debugPrint('💥 QuotationCubit: Failed to delete quotation: $e');
-      emit(state.copyWith(errorMessage: 'Failed to delete quotation.'));
+      emit(state.copyWith(errorMessage: e.toString()));
       rethrow;
     }
   }
@@ -124,7 +184,7 @@ class QuotationCubit extends Cubit<QuotationState> {
       emit(state.copyWith(quotations: updatedList));
     } catch (e) {
       debugPrint('💥 QuotationCubit: Failed to add payment: $e');
-      emit(state.copyWith(errorMessage: 'Failed to add payment.'));
+      emit(state.copyWith(errorMessage: e.toString()));
       rethrow;
     }
   }
@@ -144,7 +204,7 @@ class QuotationCubit extends Cubit<QuotationState> {
       return convertedInvoice;
     } catch (e) {
       debugPrint('💥 QuotationCubit: Failed to convert quotation: $e');
-      emit(state.copyWith(errorMessage: 'Failed to convert quotation to invoice.'));
+      emit(state.copyWith(errorMessage: e.toString()));
       rethrow;
     }
   }
@@ -162,7 +222,7 @@ class QuotationCubit extends Cubit<QuotationState> {
       emit(state.copyWith(quotations: updatedList));
     } catch (e) {
       debugPrint('💥 QuotationCubit: Failed to update quotation status: $e');
-      emit(state.copyWith(errorMessage: 'Failed to update quotation status.'));
+      emit(state.copyWith(errorMessage: e.toString()));
       rethrow;
     }
   }

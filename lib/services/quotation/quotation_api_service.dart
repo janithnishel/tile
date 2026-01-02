@@ -101,7 +101,17 @@ class QuotationApiService {
       return responseData;
     } else {
       print('❌ Quotation API - Error response: ${response.body}');
-      throw Exception('Failed to create quotation: ${response.statusCode} - ${response.body}');
+      try {
+        final errorData = json.decode(response.body);
+        if (errorData['errors'] != null && errorData['errors'] is List) {
+          final errors = errorData['errors'] as List;
+          throw Exception(errors.join(', '));
+        } else {
+          throw Exception(errorData['message'] ?? 'Failed to create quotation');
+        }
+      } catch (parseError) {
+        throw Exception('Failed to create quotation: ${response.statusCode}');
+      }
     }
   }
 
@@ -181,7 +191,17 @@ class QuotationApiService {
       }
     } else {
       print('❌ Update Quotation API - Error response: ${response.body}');
-      throw Exception('Failed to update quotation: ${response.statusCode} - ${response.body}');
+      try {
+        final errorData = json.decode(response.body);
+        if (errorData['errors'] != null && errorData['errors'] is List) {
+          final errors = errorData['errors'] as List;
+          throw Exception(errors.join(', '));
+        } else {
+          throw Exception(errorData['message'] ?? 'Failed to update quotation');
+        }
+      } catch (parseError) {
+        throw Exception('Failed to update quotation: ${response.statusCode}');
+      }
     }
   }
 
@@ -206,7 +226,17 @@ class QuotationApiService {
       final responseData = json.decode(response.body);
       return responseData['data'] ?? responseData;
     } else {
-      throw Exception('Failed to convert to invoice: ${response.statusCode}');
+      try {
+        final errorData = json.decode(response.body);
+        if (errorData['errors'] != null && errorData['errors'] is List) {
+          final errors = errorData['errors'] as List;
+          throw Exception(errors.join(', '));
+        } else {
+          throw Exception(errorData['message'] ?? 'Failed to convert to invoice');
+        }
+      } catch (parseError) {
+        throw Exception('Failed to convert to invoice: ${response.statusCode}');
+      }
     }
   }
 

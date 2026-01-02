@@ -81,27 +81,7 @@ class QuotationRepository {
       return createdQuotation;
     } catch (e) {
       print('❌ Failed to create quotation: $e');
-      print('❌ Error details: ${e.toString()}');
-
-      // If it's a validation error, let's try to understand what went wrong
-      if (e.toString().contains('Validation Error')) {
-        print('🔍 Backend validation failed. Checking data format...');
-        final jsonData = quotation.toJson();
-        print('🔍 Sent data keys: ${jsonData.keys.toList()}');
-
-        // Check for common validation issues
-        if (jsonData['customerName']?.isEmpty ?? true) {
-          print('⚠️  Customer name is empty');
-        }
-        if (jsonData['customerPhone']?.isEmpty ?? true) {
-          print('⚠️  Customer phone is empty');
-        }
-        if ((jsonData['lineItems'] as List?)?.isEmpty ?? true) {
-          print('⚠️  No line items');
-        }
-      }
-
-      throw Exception('Failed to create quotation: $e');
+      throw e; // Pass the original error message
     }
   }
 
