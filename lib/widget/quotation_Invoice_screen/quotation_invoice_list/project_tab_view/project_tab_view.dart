@@ -53,19 +53,23 @@ class _ProjectTabViewState extends State<ProjectTabView> {
   void _onScroll() {
     if (!_scrollController.hasClients) return;
 
-    // Check if we're near the bottom (90% of the list height)
+    // Check if we're near the bottom (80% of the list height for better desktop experience)
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.position.pixels;
-    final threshold = maxScroll * 0.9; // 90% threshold
+    final threshold = maxScroll * 0.8; // 80% threshold
+
+    debugPrint('📜 Scroll: current=$currentScroll, max=$maxScroll, threshold=$threshold');
 
     final isNearBottom = currentScroll >= threshold;
 
     // Only trigger if we just crossed the threshold
     if (isNearBottom && !_isNearBottom) {
       _isNearBottom = true;
+      debugPrint('📜 Scroll: Near bottom - triggering fetch');
       _fetchMoreData();
     } else if (!isNearBottom && _isNearBottom) {
       _isNearBottom = false;
+      debugPrint('📜 Scroll: Left bottom area');
     }
   }
 
@@ -175,22 +179,47 @@ class _ProjectTabViewState extends State<ProjectTabView> {
 
   void _onSearchChanged(String value) {
     setState(() => _searchQuery = value);
+    // Reload data when search changes
+    _reloadData();
   }
 
   void _onTypeFilterChanged(String value) {
     setState(() => _typeFilter = value);
+    // Reload data when type filter changes
+    _reloadData();
   }
 
   void _onStatusFilterChanged(String value) {
     setState(() => _statusFilter = value);
+    // Reload data when status filter changes
+    _reloadData();
   }
 
   void _onStartDateChanged(DateTime? value) {
     setState(() => _startDate = value);
+    // Reload data when date filter changes
+    _reloadData();
   }
 
   void _onEndDateChanged(DateTime? value) {
     setState(() => _endDate = value);
+    // Reload data when date filter changes
+    _reloadData();
+  }
+
+  // Reload data from page 1 when filters change
+  void _reloadData() {
+    final cubit = context.read<QuotationCubit>();
+
+    // Build query params for new load
+    final queryParams = <String, String>{};
+    if (_searchQuery.isNotEmpty) queryParams['search'] = _searchQuery;
+    if (_statusFilter != 'All') queryParams['status'] = _statusFilter.toLowerCase();
+    if (_typeFilter != 'All') queryParams['type'] = _typeFilter.toLowerCase();
+    if (_startDate != null) queryParams['startDate'] = _startDate!.toIso8601String().split('T')[0];
+    if (_endDate != null) queryParams['endDate'] = _endDate!.toIso8601String().split('T')[0];
+
+    cubit.loadQuotations(queryParams: queryParams);
   }
 
   void _clearSearch() {
@@ -285,13 +314,19 @@ class _ProjectTabViewState extends State<ProjectTabView> {
   ) {
     return BlocBuilder<QuotationCubit, QuotationState>(
       builder: (context, state) {
+        // Calculate item count including loading indicator
+        final itemCount = customerNames.length + (state.isFetchingMoreValue ? 1 : 0);
+
+        debugPrint('📄 Building list with $itemCount items (${customerNames.length} customers + ${state.isFetchingMoreValue ? 1 : 0} loading)');
+
         return ListView.builder(
           controller: _scrollController,
           padding: const EdgeInsets.all(16),
-          itemCount: customerNames.length + (state.isFetchingMoreValue ? 1 : 0), // Add 1 for loading indicator
+          itemCount: itemCount,
           itemBuilder: (context, index) {
             // Show loading indicator at the bottom
             if (index == customerNames.length && state.isFetchingMoreValue) {
+              debugPrint('📄 Building loading indicator at index $index');
               return const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Center(
@@ -300,9 +335,12 @@ class _ProjectTabViewState extends State<ProjectTabView> {
               );
             }
 
+            // Build customer tile
             final customerName = customerNames[index];
             final customerDocs = groupedDocs[customerName]!;
             final summary = _getCustomerSummary(customerDocs);
+
+            debugPrint('📄 Building customer tile: $customerName with ${customerDocs.length} documents');
 
             return CustomerExpansionTile(
               customerName: customerName,
@@ -485,5 +523,7 @@ class _ProjectTabViewState extends State<ProjectTabView> {
       _startDate = null;
       _endDate = null;
     });
+    // Reload data when filters are cleared
+    _reloadData();
   }
 }
