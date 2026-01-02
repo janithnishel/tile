@@ -193,7 +193,7 @@ class QuotationApiService {
   }) async {
     final headers = await _getHeaders(token: token);
     final body = advancePayments != null && advancePayments.isNotEmpty
-        ? json.encode({'advancePayments': advancePayments})
+        ? json.encode({'payments': advancePayments})
         : null;
 
     final response = await http.patch(

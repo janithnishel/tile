@@ -861,12 +861,8 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
               ),
             );
 
-            // Save and navigate safely
-            _saveDocument().then((_) {
-              if (mounted) {
-                navigator.pop();
-              }
-            });
+            // Save document (consistent with other save operations - stay on screen)
+            _saveDocument();
           }
         },
       ),
