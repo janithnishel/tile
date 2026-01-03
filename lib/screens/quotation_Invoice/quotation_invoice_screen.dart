@@ -55,6 +55,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
   late QuotationDocument _originalDocument; // Store original values for comparison
   bool _hasUnsavedChanges = false;
   bool _isSaving = false; // Track save operation status
+  bool _isEditingRejectedQuotation = false; // Track if user clicked "Edit & Re-submit" for rejected quotations
 
   @override
   void initState() {
@@ -205,8 +206,8 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       _isNewDocument ||
       (!_workingDocument.isLocked &&
           (_workingDocument.status == DocumentStatus.pending ||
-              _workingDocument.status == DocumentStatus.rejected ||
-              _workingDocument.isInvoice));
+              _workingDocument.isInvoice)) ||
+      (_workingDocument.status == DocumentStatus.rejected && _isEditingRejectedQuotation);
 
   bool get _isPendingQuotation =>
       _workingDocument.isQuotation &&
@@ -497,6 +498,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
     debugPrint('💾 Save Document - Document ID: ${widget.document.id}');
     debugPrint('💾 Save Document - Document Number: ${widget.document.documentNumber}');
     debugPrint('💾 Save Document - Has unsaved changes: $_hasUnsavedChanges');
+    debugPrint('💾 Save Document - Is editing rejected quotation: $_isEditingRejectedQuotation');
 
     if (widget.document.id == null || widget.document.id!.isEmpty) {
       debugPrint('❌ Save Document - Document ID is null or empty!');
@@ -508,6 +510,13 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
       setState(() {
         _isSaving = true;
       });
+    }
+
+    // If editing a rejected quotation, change status to pending
+    if (_isEditingRejectedQuotation && _workingDocument.status == DocumentStatus.rejected) {
+      _workingDocument.status = DocumentStatus.pending;
+      _isEditingRejectedQuotation = false; // Reset the editing flag
+      debugPrint('💾 Save Document - Changed status from rejected to pending for re-submission');
     }
 
     // Copy all changes from working document to original
@@ -535,12 +544,12 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
     try {
       // Update quotation using the cubit (calls backend API)
       debugPrint('💾 Save Document - Calling cubit.updateQuotation...');
-      await context.read<QuotationCubit>().updateQuotation(widget.document);
+      final updatedQuotation = await context.read<QuotationCubit>().updateQuotation(widget.document);
       debugPrint('💾 Save Document - Cubit update successful');
 
       if (mounted) {
         // Update working document with saved data
-        _workingDocument = _deepCopyDocument(widget.document);
+        _workingDocument = _deepCopyDocument(updatedQuotation);
 
         setState(() {
           _hasUnsavedChanges = false;
@@ -548,8 +557,12 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
           _originalDocument = _deepCopyDocument(_workingDocument);
         });
 
+        // Show appropriate success message
+        final wasRejected = _originalDocument.status == DocumentStatus.rejected && updatedQuotation.status == DocumentStatus.pending;
         _showSnackBar(
-          '${_workingDocument.type.name.toUpperCase()} ${_workingDocument.displayDocumentNumber} Saved.',
+          wasRejected
+              ? '${_workingDocument.displayDocumentNumber} Re-submitted successfully!'
+              : '${_workingDocument.type.name.toUpperCase()} ${_workingDocument.displayDocumentNumber} Saved.',
         );
 
         // Stay on screen to allow user to verify changes
@@ -1056,7 +1069,7 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
               // අපි DocumentDetailsSection හි වෙනසක් නැතිව තබමු.
               DocumentDetailsSection(
                 document: _workingDocument,
-                isEditable: _isNewDocument || !_workingDocument.isLocked,
+                isEditable: _isNewDocument || !_workingDocument.isLocked || (_workingDocument.status == DocumentStatus.rejected && _isEditingRejectedQuotation),
                 onInvoiceDateChanged: (date) {
                   if (mounted) {
                     setState(() {
@@ -1109,9 +1122,9 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                   return AddItemsSection(
                     lineItems: _workingDocument.lineItems,
                     categories: categoryState.categories, // Pass loaded categories
-                    isAddEnabled: _isNewDocument || _workingDocument.isQuotation,
-                    isPendingQuotation: _isNewDocument || _isPendingQuotation,
-                    isEditable: _workingDocument.isQuotation && _workingDocument.status != DocumentStatus.approved,
+                    isAddEnabled: _isNewDocument || (_workingDocument.isQuotation && (_workingDocument.status != DocumentStatus.rejected || _isEditingRejectedQuotation)),
+                    isPendingQuotation: _isNewDocument || _isPendingQuotation || (_workingDocument.status == DocumentStatus.rejected && _isEditingRejectedQuotation),
+                    isEditable: _workingDocument.isQuotation && _workingDocument.status != DocumentStatus.approved && (_workingDocument.status != DocumentStatus.rejected || _isEditingRejectedQuotation),
                     isQuotationCreation: _isNewDocument && _workingDocument.isQuotation, // New parameter for quotation creation mode
                     onItemChanged: (index, item) {
                       if (mounted) {
@@ -1185,6 +1198,9 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                   onCancel: _cancelCreation,
                   onCreateQuotation: _createQuotation,
                 )
+              else if (_workingDocument.status == DocumentStatus.rejected && !_isEditingRejectedQuotation)
+                // Special buttons for rejected quotations when not editing
+                _buildRejectedQuotationButtons()
               else
                 EditModeButtonsSection(
                   document: _workingDocument,
@@ -1390,26 +1406,85 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'This Quotation was Rejected',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red.shade800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'You can edit and re-submit this quotation to make it active again.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.red.shade700,
-                  ),
-                ),
-              ],
+            child: Text(
+              'This quotation was rejected. All input fields are currently disabled.',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.red.shade700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRejectedQuotationButtons() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          // Edit & Re-submit Button
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _isEditingRejectedQuotation = true;
+                });
+              },
+              icon: const Icon(Icons.edit),
+              label: const Text('Edit & Re-submit'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.all(16),
+                backgroundColor: Colors.blue.shade600,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Preview Button
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _showPreviewDialog,
+              icon: const Icon(Icons.preview),
+              label: const Text('Preview'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.all(16),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Print Button
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _mockPrint,
+              icon: const Icon(Icons.print),
+              label: const Text('Print'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.all(16),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Delete Button
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _deleteDocument,
+              icon: const Icon(Icons.delete, color: Colors.red),
+              label: const Text('Delete'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.all(16),
+                side: const BorderSide(color: Colors.red),
+                foregroundColor: Colors.red,
+              ),
             ),
           ),
         ],

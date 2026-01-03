@@ -160,7 +160,7 @@ class QuotationCubit extends Cubit<QuotationState> {
   }
 
   // 3. ✏️ Update Quotation
-  Future<void> updateQuotation(QuotationDocument quotation) async {
+  Future<QuotationDocument> updateQuotation(QuotationDocument quotation) async {
     try {
       final updatedQuotation = await _quotationRepository.updateQuotation(quotation, token: _currentToken);
 
@@ -170,6 +170,7 @@ class QuotationCubit extends Cubit<QuotationState> {
       }).toList();
 
       emit(state.copyWith(quotations: updatedList));
+      return updatedQuotation;
     } catch (e) {
       debugPrint('💥 QuotationCubit: Failed to update quotation: $e');
       emit(state.copyWith(errorMessage: e.toString()));
