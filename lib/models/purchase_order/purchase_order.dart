@@ -71,7 +71,7 @@ class PurchaseOrder {
       items.fold(0, (sum, item) => sum + item.totalAmount);
 
   // Display quotation ID
-  String get displayQuotationId => 'QUO-$quotationId';
+  String get displayQuotationId => '$quotationId';
 
   // Check status
   bool get isDraft => status == 'Draft';

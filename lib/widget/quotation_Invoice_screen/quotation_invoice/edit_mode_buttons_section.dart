@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/document_enums.dart';
 import 'package:tilework/models/quotation_Invoice_screen/project/quotation_document.dart';
+import 'package:tilework/widget/quotation_Invoice_screen/dialogs/document_preview_dialog.dart';
 
 class EditModeButtonsSection extends StatelessWidget {
   final QuotationDocument document;
@@ -8,6 +9,10 @@ class EditModeButtonsSection extends StatelessWidget {
   final bool isValid;
   final bool isSaving;
   final bool isNewDocument;
+  final String customerName;
+  final String customerPhone;
+  final String customerAddress;
+  final String projectTitle;
   final VoidCallback onSave;
   final VoidCallback? onApprove;
   final VoidCallback? onReject;
@@ -25,6 +30,10 @@ class EditModeButtonsSection extends StatelessWidget {
     this.isValid = false,
     this.isSaving = false,
     this.isNewDocument = false,
+    required this.customerName,
+    required this.customerPhone,
+    this.customerAddress = '',
+    this.projectTitle = '',
     required this.onSave,
     this.onApprove,
     this.onReject,
@@ -53,9 +62,24 @@ class EditModeButtonsSection extends StatelessWidget {
   bool get _isRejectVisible =>
       document.isQuotation && document.status == DocumentStatus.pending;
 
-  void _onSaveAsPdf() {
-    // TODO: Implement PDF download functionality
-    // This method will be called with context from the build method
+  void _onSaveAsPdf() async {
+    try {
+      // Generate PDF bytes
+      final bytes = await DocumentPdfService.generateDocument(
+        document: document,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        customerAddress: customerAddress,
+        projectTitle: projectTitle,
+      );
+
+      // Save and open PDF (effectively downloads it)
+      final fileName = '${document.type == DocumentType.quotation ? 'Quotation' : 'Invoice'}_${document.displayDocumentNumber}.pdf';
+      await DocumentPdfService.saveAndOpenPDF(bytes, fileName);
+    } catch (e) {
+      // Error handling would go here
+      print('Error saving PDF: $e');
+    }
   }
 
   @override
@@ -89,8 +113,9 @@ class EditModeButtonsSection extends StatelessWidget {
           // Primary Actions
           _buildPrimaryActionsRow(),
 
-          // Secondary Actions (only show if not paid invoice - buttons already in primary row)
-          if (!(document.status == DocumentStatus.paid && document.isInvoice)) ...[
+          // Secondary Actions (only show if not paid invoice or approved quotation - buttons already in primary row)
+          if (!(document.status == DocumentStatus.paid && document.isInvoice) &&
+              !(document.status == DocumentStatus.approved && document.isQuotation)) ...[
             const SizedBox(height: 16),
             _buildSecondaryActionsRow(),
           ],
@@ -214,13 +239,14 @@ class EditModeButtonsSection extends StatelessWidget {
   }
 
   Widget _buildPrimaryActionsRow() {
-    // For approved quotations, organize buttons with Convert as primary action
+    // For approved quotations, show all buttons in same row like paid invoices
     if (document.status == DocumentStatus.approved && document.isQuotation) {
       final isSaveEnabled = hasUnsavedChanges && !isSaving;
+      final isConvertEnabled = !hasUnsavedChanges;
 
       return Row(
         children: [
-          // Save Button (only show if there are unsaved changes)
+          // Save Changes Button (only show if there are unsaved changes)
           if (hasUnsavedChanges)
             Expanded(
               child: ElevatedButton.icon(
@@ -237,27 +263,59 @@ class EditModeButtonsSection extends StatelessWidget {
                     : const Icon(Icons.save),
                 label: Text(isSaving ? 'Saving...' : 'Save Changes'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   backgroundColor: isSaveEnabled ? Colors.blue.shade600 : Colors.grey.shade300,
                   foregroundColor: isSaveEnabled ? Colors.white : Colors.grey.shade600,
                   disabledBackgroundColor: Colors.grey.shade300,
+                  minimumSize: const Size(double.infinity, 48),
                 ),
               ),
             ),
 
           if (hasUnsavedChanges) const SizedBox(width: 12),
 
-          // Convert to Invoice Button (primary action for approved quotations)
+          // Convert to Invoice Button
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: hasUnsavedChanges ? null : onConvert,
+              onPressed: isConvertEnabled ? onConvert : null,
               icon: const Icon(Icons.compare_arrows),
               label: const Text('Convert to Invoice'),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.all(16),
-                backgroundColor: hasUnsavedChanges ? Colors.grey.shade300 : Colors.green.shade600,
-                foregroundColor: hasUnsavedChanges ? Colors.grey.shade600 : Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                backgroundColor: isConvertEnabled ? Colors.green.shade600 : Colors.grey.shade300,
+                foregroundColor: isConvertEnabled ? Colors.white : Colors.grey.shade600,
                 disabledBackgroundColor: Colors.grey.shade300,
+                minimumSize: const Size(double.infinity, 48),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Preview Button
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: onPreview,
+              icon: const Icon(Icons.preview, size: 20),
+              label: const Text('Preview'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                minimumSize: const Size(double.infinity, 48),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Print Button
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: onPrint,
+              icon: const Icon(Icons.print, size: 20),
+              label: const Text('Print'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                minimumSize: const Size(double.infinity, 48),
               ),
             ),
           ),

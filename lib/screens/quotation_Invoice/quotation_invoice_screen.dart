@@ -1208,6 +1208,10 @@ class _QuotationInvoiceScreenState extends State<QuotationInvoiceScreen> {
                   isValid: _isValidForCreation, // Use same validation logic for save button
                   isSaving: _isSaving,
                   isNewDocument: _isNewDocument,
+                  customerName: _customerNameController.text,
+                  customerPhone: _customerPhoneController.text,
+                  customerAddress: _customerAddressController.text,
+                  projectTitle: _projectTitleController.text,
                   onSave: _saveDocument,
                   onApprove: _approveQuotation,
                   onReject: _rejectQuotation,

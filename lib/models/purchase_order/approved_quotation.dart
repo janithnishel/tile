@@ -17,7 +17,7 @@ class ApprovedQuotation {
     required this.items,
   });
 
-  String get displayId => 'QUO-$quotationId';
+  String get displayId => '$quotationId';
 
   String get displayName => '$displayId | $customerName - $projectTitle';
 
