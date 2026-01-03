@@ -40,6 +40,7 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
   late bool _isNewDocument;
   bool _hasUnsavedChanges = false;
   bool _isSaving = false;
+  bool _isSearchingCustomer = false;
 
   @override
   void initState() {
@@ -109,6 +110,10 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
 
   bool get _isEditable => _isNewDocument || _workingDocument.status == MaterialSaleStatus.pending;
 
+  bool get _canDelete => !_isNewDocument &&
+      _workingDocument.status == MaterialSaleStatus.pending &&
+      _workingDocument.totalPaid == 0;
+
   bool get _isValidForCreation {
     return _customerNameController.text.trim().isNotEmpty &&
         _customerPhoneController.text.trim().isNotEmpty &&
@@ -171,7 +176,14 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
     _workingDocument.customerPhone = _customerPhoneController.text.trim();
     _workingDocument.customerAddress = _customerAddressController.text.trim();
 
+    // Update status based on payment history before creation
+    _updateDocumentStatus();
+
     try {
+      debugPrint('📄 Creating material sale with status: ${_workingDocument.status}');
+      debugPrint('💰 Payment history count: ${_workingDocument.paymentHistory.length}');
+      debugPrint('💰 Total amount: ${_workingDocument.totalAmount}, Total paid: ${_workingDocument.totalPaid}');
+
       // Create material sale using the cubit (calls backend API)
       await context.read<MaterialSaleCubit>().createMaterialSale(_workingDocument);
 
@@ -180,6 +192,21 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
     } catch (e) {
       _showSnackBar('Failed to create material sale: ${e.toString()}');
     }
+  }
+
+  void _updateDocumentStatus() {
+    final totalPaid = _workingDocument.totalPaid;
+    final totalAmount = _workingDocument.totalAmount;
+
+    if (totalPaid >= totalAmount) {
+      _workingDocument.status = MaterialSaleStatus.paid;
+    } else if (totalPaid > 0) {
+      _workingDocument.status = MaterialSaleStatus.partial;
+    } else {
+      _workingDocument.status = MaterialSaleStatus.pending;
+    }
+
+    debugPrint('🔄 Status updated to: ${_workingDocument.status} (Paid: $totalPaid, Total: $totalAmount)');
   }
 
   Future<void> _saveDocument() async {
@@ -269,6 +296,9 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
           'description': payment.description,
         };
 
+        debugPrint('💰 Recording payment: ${payment.amount} for sale ${_workingDocument.id}');
+        debugPrint('📊 Before payment - Status: ${_workingDocument.status}, Total: ${_workingDocument.totalAmount}, Due: ${_workingDocument.amountDue}');
+
         // Call cubit to add payment via API
         await context.read<MaterialSaleCubit>().addPayment(_workingDocument.id!, paymentData);
 
@@ -276,9 +306,22 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
         final updatedDocument = context.read<MaterialSaleCubit>().state.materialSales
             .firstWhere((sale) => sale.id == _workingDocument.id);
 
+        debugPrint('📊 After payment - Status: ${updatedDocument.status}, Total: ${updatedDocument.totalAmount}, Due: ${updatedDocument.amountDue}');
+        debugPrint('📝 Payment history count: ${updatedDocument.paymentHistory.length}');
+        debugPrint('🔄 Status changed: ${_workingDocument.status} → ${updatedDocument.status}');
+
         setState(() {
           _workingDocument = _deepCopyDocument(updatedDocument);
           _hasUnsavedChanges = false; // API call succeeded, no unsaved changes
+        });
+
+        debugPrint('🔄 UI updated - Working document status: ${_workingDocument.status}, due: ${_workingDocument.amountDue}, isEditable: ${_isEditable}');
+
+        // Force a rebuild to ensure UI updates immediately
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {});
+          }
         });
 
         _showSnackBar('Payment recorded successfully!');
@@ -290,13 +333,8 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
       setState(() {
         _workingDocument.paymentHistory = List.from(_workingDocument.paymentHistory)..add(payment);
 
-        // Update status based on payment type
-        if (isFullPayment) {
-          _workingDocument.status = MaterialSaleStatus.paid;
-        } else {
-          // For advance payment, keep as pending
-          _workingDocument.status = MaterialSaleStatus.pending;
-        }
+        // Update status based on total payments
+        _updateDocumentStatus();
 
         _hasUnsavedChanges = true;
       });
@@ -311,6 +349,162 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
 
   void _mockPrint() {
     _showSnackBar('Simulating print of Material Sale Invoice #${_workingDocument.displayInvoiceNumber}...');
+  }
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Sale'),
+        content: const Text('Are you sure you want to delete this pending sale? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _deleteSale();
+    }
+  }
+
+  Future<void> _deleteSale() async {
+    if (_workingDocument.id == null) {
+      _showSnackBar('Cannot delete: Sale ID is missing');
+      return;
+    }
+
+    try {
+      // Show loading indicator
+      setState(() {
+        _isSaving = true;
+      });
+
+      debugPrint('🗑️ Deleting material sale: ${_workingDocument.id}');
+
+      // Call cubit to delete the sale
+      await context.read<MaterialSaleCubit>().deleteMaterialSale(_workingDocument.id!);
+
+      _showSnackBar('Sale deleted successfully');
+
+      // Navigate back to the list
+      Navigator.pop(context, true); // Return true to indicate the list should refresh
+
+    } catch (e) {
+      debugPrint('❌ Failed to delete sale: $e');
+      _showSnackBar('Failed to delete sale: ${e.toString()}');
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
+    }
+  }
+
+  void _clearCustomerFields() {
+    setState(() {
+      _customerNameController.clear();
+      _customerAddressController.clear();
+      // Keep phone number for potential re-search
+    });
+    _showSnackBar('Customer fields cleared');
+    debugPrint('🧹 Customer fields cleared');
+  }
+
+  Future<void> _searchCustomerByPhone() async {
+    final phoneNumber = _customerPhoneController.text.trim();
+
+    if (phoneNumber.isEmpty) {
+      _showSnackBar('Please enter a phone number to search');
+      return;
+    }
+
+    // Validate phone number format - exactly 10 digits for Sri Lankan numbers
+    final phoneRegex = RegExp(r'^(\+94|0)[0-9]{9}$');
+    final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^\d]'), ''); // Remove non-digits
+
+    if (!phoneRegex.hasMatch(phoneNumber) || cleanPhone.length != 10) {
+      _showSnackBar('Please enter a valid 10-digit Sri Lankan phone number');
+      return;
+    }
+
+    setState(() {
+      _isSearchingCustomer = true;
+    });
+
+    try {
+      // Get auth token
+      final authState = context.read<AuthCubit>().state;
+      final token = authState is AuthAuthenticated ? authState.token : null;
+
+      if (token == null) {
+        throw Exception('Authentication required');
+      }
+
+      // Call API to search customer
+      final materialSaleCubit = context.read<MaterialSaleCubit>();
+      final response = await materialSaleCubit.searchCustomerByPhone(phoneNumber, token: token);
+
+      // Check if customer was found
+      final customerData = response['data'];
+
+      if (customerData != null) {
+        // Existing customer found - populate details
+        setState(() {
+          _customerNameController.text = customerData['name'] ?? '';
+          _customerAddressController.text = customerData['address'] ?? '';
+        });
+
+        _showSnackBar('Customer details loaded successfully');
+        debugPrint('👤 Customer found: ${customerData['name']} for phone: $phoneNumber');
+      } else {
+        // No customer found - show message for new customer entry
+        _showSnackBar('Customer not found. Please enter details for a new customer.');
+        debugPrint('❌ No customer found for phone: $phoneNumber');
+      }
+    } catch (e) {
+      _showSnackBar('Failed to search customer: ${e.toString()}');
+      debugPrint('❌ Customer search error: $e');
+    } finally {
+      setState(() {
+        _isSearchingCustomer = false;
+      });
+    }
+  }
+
+  Map<String, String>? _getMockCustomerData(String phoneNumber) {
+    // Mock customer database - replace with actual API call
+    final mockCustomers = {
+      '0771234567': {
+        'name': 'John Smith',
+        'address': '456 Oak Street, Colombo 05',
+      },
+      '0772345678': {
+        'name': 'Sarah Johnson',
+        'address': '789 Pine Avenue, Colombo 03',
+      },
+      '0773456789': {
+        'name': 'Mike Wilson',
+        'address': '321 Elm Road, Colombo 07',
+      },
+      '0711234567': {
+        'name': 'Priya Fernando',
+        'address': '123 Lotus Lane, Nugegoda',
+      },
+      '0769876543': {
+        'name': 'Rajesh Kumar',
+        'address': '456 Temple Road, Kandy',
+      },
+    };
+
+    return mockCustomers[phoneNumber];
   }
 
   void _showSnackBar(String message) {
@@ -343,6 +537,9 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
                 phoneController: _customerPhoneController,
                 addressController: _customerAddressController,
                 isEditable: _isEditable,
+                isSearching: _isSearchingCustomer,
+                onSearchByPhone: _searchCustomerByPhone,
+                onClearFields: _clearCustomerFields,
               ),
               const SizedBox(height: 24),
 
@@ -431,11 +628,26 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    // Delete button - ONLY for PENDING status with no payments
+                    if (_canDelete)
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _confirmDelete,
+                          icon: const Icon(Icons.delete_forever, color: Colors.red),
+                          label: const Text('Delete Sale', style: TextStyle(color: Colors.red)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.red),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: (_hasUnsavedChanges && !_isSaving) ? _saveDocument : null,
+                        onPressed: (_hasUnsavedChanges && !_isSaving && _isEditable) ? _saveDocument : null,
                         child: _isSaving
                             ? const SizedBox(
                                 width: 20,
@@ -445,7 +657,7 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
                                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                 ),
                               )
-                            : const Text('Save'),
+                            : Text(_isEditable ? 'Save' : 'Locked (Payment Recorded)'),
                       ),
                     ),
                   ],
@@ -536,7 +748,22 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
             ),
           ),
           // Only show status badge in details mode (not create mode)
-          if (!_isNewDocument)
+          if (!_isNewDocument) ...[
+            // Lock indicator for non-editable documents
+            if (!_isEditable)
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.lock,
+                  color: Colors.grey,
+                  size: 16,
+                ),
+              ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -553,6 +780,7 @@ class _MaterialSaleInvoiceScreenState extends State<MaterialSaleInvoiceScreen> {
                 ),
               ),
             ),
+          ],
         ],
       ),
     );

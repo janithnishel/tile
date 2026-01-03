@@ -15,6 +15,7 @@ import 'package:tilework/cubits/super_admin/company/company_cubit.dart';
 import 'package:tilework/cubits/super_admin/dashboard/dashboard_cubit.dart' as super_admin_dashboard;
 import 'package:tilework/cubits/supplier/supplier_cubit.dart';
 import 'package:tilework/repositories/auth/auth_repository.dart';
+import 'package:tilework/repositories/customer/customer_repository.dart';
 import 'package:tilework/repositories/dashboard/dashboard_repository.dart';
 import 'package:tilework/repositories/job_cost/job_cost_repository.dart';
 import 'package:tilework/repositories/material_sale/material_sale_repository.dart';
@@ -30,6 +31,7 @@ import 'package:tilework/repositories/supplier/supplier_repository.dart';
 import 'package:tilework/providers/site_visit_provider.dart';
 import 'package:tilework/routes/company_routes.dart';
 import 'package:tilework/services/auth/api_service.dart';
+import 'package:tilework/services/customer/customer_api_service.dart';
 import 'package:tilework/services/dashboard/api_service.dart';
 import 'package:tilework/services/job_cost/api_service.dart';
 import 'package:tilework/services/material_sale/material_sale_api_service.dart';
@@ -82,9 +84,13 @@ class MyApp extends StatelessWidget {
             context.read<AuthCubit>(),
           ),
         ),
+        RepositoryProvider(
+          create: (context) => CustomerRepository(CustomerApiService()),
+        ),
         BlocProvider(
           create: (context) => MaterialSaleCubit(
             MaterialSaleRepository(MaterialSaleApiService()),
+            context.read<CustomerRepository>(),
             context.read<AuthCubit>(),
           ),
         ),

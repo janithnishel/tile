@@ -53,23 +53,19 @@ class _ProjectTabViewState extends State<ProjectTabView> {
   void _onScroll() {
     if (!_scrollController.hasClients) return;
 
-    // Check if we're near the bottom (80% of the list height for better desktop experience)
+    // Calculate 80% threshold of the scrollable area
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.position.pixels;
     final threshold = maxScroll * 0.8; // 80% threshold
-
-    debugPrint('📜 Scroll: current=$currentScroll, max=$maxScroll, threshold=$threshold');
 
     final isNearBottom = currentScroll >= threshold;
 
     // Only trigger if we just crossed the threshold
     if (isNearBottom && !_isNearBottom) {
-      _isNearBottom = true;
-      debugPrint('📜 Scroll: Near bottom - triggering fetch');
+      setState(() => _isNearBottom = true);
       _fetchMoreData();
     } else if (!isNearBottom && _isNearBottom) {
-      _isNearBottom = false;
-      debugPrint('📜 Scroll: Left bottom area');
+      setState(() => _isNearBottom = false);
     }
   }
 
@@ -219,6 +215,7 @@ class _ProjectTabViewState extends State<ProjectTabView> {
     if (_startDate != null) queryParams['startDate'] = _startDate!.toIso8601String().split('T')[0];
     if (_endDate != null) queryParams['endDate'] = _endDate!.toIso8601String().split('T')[0];
 
+    // Reset pagination when filters change
     cubit.loadQuotations(queryParams: queryParams);
   }
 
@@ -295,7 +292,7 @@ class _ProjectTabViewState extends State<ProjectTabView> {
             // Document List
             Expanded(
               child: state.isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? _buildShimmerLoading()
                   : state.errorMessage != null
                       ? _buildErrorState(state.errorMessage!)
                       : customerNames.isEmpty
@@ -427,6 +424,75 @@ class _ProjectTabViewState extends State<ProjectTabView> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 5, // Show 5 shimmer items
+      itemBuilder: (context, index) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header shimmer
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Subtitle shimmer
+                Container(
+                  height: 12,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Content shimmer (simulate expansion tile items)
+                ...List.generate(2, (index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                )),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

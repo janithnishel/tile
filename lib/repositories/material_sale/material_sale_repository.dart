@@ -92,4 +92,14 @@ class MaterialSaleRepository {
       throw Exception('Failed to update status: $e');
     }
   }
+
+  // GET: Search customer by phone number
+  Future<Map<String, dynamic>> searchCustomerByPhone(String phone, {String? token}) async {
+    try {
+      final response = await _apiService.searchCustomerByPhone(phone: phone, token: token);
+      return response;
+    } catch (e) {
+      throw Exception('Failed to search customer: $e');
+    }
+  }
 }

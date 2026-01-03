@@ -170,4 +170,24 @@ class MaterialSaleApiService {
       throw Exception('Failed to delete material sale: ${response.statusCode}');
     }
   }
+
+  // GET: Search customer by phone number
+  Future<Map<String, dynamic>> searchCustomerByPhone({
+    required String phone,
+    String? token,
+  }) async {
+    final headers = await _getHeaders(token: token);
+    final uri = Uri.parse('$baseUrl/material-sales/search-customer');
+    final queryParams = {'phone': phone};
+    final finalUri = uri.replace(queryParameters: queryParams);
+
+    final response = await http.get(finalUri, headers: headers);
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data;
+    } else {
+      throw Exception('Failed to search customer: ${response.statusCode}');
+    }
+  }
 }

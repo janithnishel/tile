@@ -231,19 +231,40 @@ class _ProductItemCardState extends State<_ProductItemCard> {
   void _initSelections(List<CategoryModel> categories) {
     if (_selectedCategory != null || _selectedItem != null) return; // Already initialized
 
+    debugPrint('🔍 _initSelections called for item with categoryId="${widget.item.categoryId}", itemId="${widget.item.itemId}", productName="${widget.item.productName}"');
+
     // Find category by categoryId
     if (widget.item.categoryId.isNotEmpty) {
-      _selectedCategory = categories.firstWhere(
-        (category) => category.id == widget.item.categoryId,
-        orElse: () => null as CategoryModel,
-      );
+      final matchingCategories = categories.where((category) => category.id == widget.item.categoryId);
+      _selectedCategory = matchingCategories.isNotEmpty ? matchingCategories.first : null;
+
+      debugPrint('📂 Found category: ${_selectedCategory?.name ?? "NOT FOUND"}');
 
       // Find item by itemId within the selected category
       if (_selectedCategory != null && widget.item.itemId.isNotEmpty) {
-        _selectedItem = _selectedCategory!.items.firstWhere(
-          (item) => item.id == widget.item.itemId,
-          orElse: () => null as ItemModel,
-        );
+        final matchingItems = _selectedCategory!.items.where((item) => item.id == widget.item.itemId);
+        _selectedItem = matchingItems.isNotEmpty ? matchingItems.first : null;
+
+        debugPrint('🛍️ Found item: ${_selectedItem?.itemName ?? "NOT FOUND"}');
+      } else {
+        debugPrint('⚠️ No itemId or category not found');
+      }
+    } else {
+      debugPrint('⚠️ No categoryId found');
+    }
+
+    // If we couldn't find by IDs, try fallback: find by productName within categories
+    if (_selectedItem == null && widget.item.productName.isNotEmpty) {
+      debugPrint('🔄 Trying fallback search by productName: "${widget.item.productName}"');
+
+      for (final category in categories) {
+        final matchingItems = category.items.where((item) => item.itemName == widget.item.productName);
+        if (matchingItems.isNotEmpty) {
+          _selectedItem = matchingItems.first;
+          _selectedCategory = category;
+          debugPrint('✅ Found by productName fallback: category="${category.name}", item="${_selectedItem!.itemName}"');
+          break;
+        }
       }
     }
   }
@@ -356,6 +377,17 @@ class _ProductItemCardState extends State<_ProductItemCard> {
   }
 
   Widget _buildCardHeader() {
+    final categoryText = widget.item.categoryName.isNotEmpty
+        ? widget.item.categoryName
+        : 'Category';
+    final productText = widget.item.productName.isNotEmpty
+        ? widget.item.productName
+        : 'Product ${widget.index + 1}';
+    final displayText = '$categoryText: $productText';
+
+    // Debug logging for data visibility
+    debugPrint('🛍️ Item ${widget.index + 1} display: categoryName="${widget.item.categoryName}", productName="${widget.item.productName}", categoryId="${widget.item.categoryId}", itemId="${widget.item.itemId}"');
+
     return Row(
       children: [
         Container(
@@ -377,14 +409,25 @@ class _ProductItemCardState extends State<_ProductItemCard> {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            widget.item.productName.isNotEmpty
-                ? widget.item.productName
-                : 'Product ${widget.index + 1}',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                displayText,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              if (widget.item.colorCode.isNotEmpty)
+                Text(
+                  'Color: ${widget.item.colorCode}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+            ],
           ),
         ),
         if (widget.isEditable)
@@ -407,6 +450,25 @@ class _ProductItemCardState extends State<_ProductItemCard> {
           _initSelections(categories);
         }
 
+        // In view mode (not editable), show a read-only text field instead of disabled dropdown
+        if (!widget.isEditable) {
+          return TextFormField(
+            initialValue: _selectedCategory?.name ?? widget.item.categoryName,
+            enabled: false,
+            decoration: InputDecoration(
+              labelText: 'Category',
+              prefixIcon: const Icon(Icons.category_outlined),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              filled: true,
+              fillColor: Colors.grey.shade50,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          );
+        }
+
+        // In edit mode, show the dropdown
         return DropdownButtonFormField<CategoryModel>(
           value: _selectedCategory,
           decoration: InputDecoration(
@@ -426,15 +488,13 @@ class _ProductItemCardState extends State<_ProductItemCard> {
               ),
             );
           }).toList(),
-          onChanged: widget.isEditable
-              ? (value) {
-                  setState(() {
-                    _selectedCategory = value;
-                    _selectedItem = null;
-                  });
-                  _updateItem();
-                }
-              : null,
+          onChanged: (value) {
+            setState(() {
+              _selectedCategory = value;
+              _selectedItem = null;
+            });
+            _updateItem();
+          },
           hint: const Text('Select category'),
         );
       },
@@ -444,6 +504,25 @@ class _ProductItemCardState extends State<_ProductItemCard> {
   Widget _buildProductDropdown() {
     final items = _selectedCategory?.items ?? [];
 
+    // In view mode (not editable), show a read-only text field instead of disabled dropdown
+    if (!widget.isEditable) {
+      return TextFormField(
+        initialValue: _selectedItem?.itemName ?? widget.item.productName,
+        enabled: false,
+        decoration: InputDecoration(
+          labelText: 'Product',
+          prefixIcon: const Icon(Icons.shopping_bag_outlined),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+      );
+    }
+
+    // In edit mode, show the dropdown
     return DropdownButtonFormField<ItemModel>(
       value: _selectedItem,
       decoration: InputDecoration(
@@ -463,7 +542,7 @@ class _ProductItemCardState extends State<_ProductItemCard> {
           ),
         );
       }).toList(),
-      onChanged: widget.isEditable ? _onItemSelected : null,
+      onChanged: _onItemSelected,
       hint: Text(
         items.isEmpty ? 'Select category first' : 'Choose product',
       ),

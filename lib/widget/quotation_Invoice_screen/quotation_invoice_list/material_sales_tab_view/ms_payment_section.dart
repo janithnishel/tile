@@ -25,7 +25,7 @@ class MSPaymentSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final totalPaid = totalAmount - amountDue;
-    final isPaid = amountDue <= 0;
+    final hasOutstandingBalance = amountDue > 0; // Amount Due > 0 means payment needed
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -45,11 +45,11 @@ class MSPaymentSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Header
-          _buildSectionHeader(isPaid),
+          _buildSectionHeader(!hasOutstandingBalance), // isPaid = !hasOutstandingBalance
           const SizedBox(height: 16),
 
           // Payment Summary Cards
-          _buildPaymentSummary(totalPaid, isPaid),
+          _buildPaymentSummary(totalPaid, !hasOutstandingBalance),
           const SizedBox(height: 16),
 
           // Payment History
@@ -58,8 +58,9 @@ class MSPaymentSection extends StatelessWidget {
             const SizedBox(height: 16),
           ],
 
-          // Action Buttons
-          if (isEditable && !isPaid) _buildActionButtons(context),
+          // Action Buttons - Show payment buttons when there's outstanding balance
+          // Item editing may be disabled, but payment collection should always be available
+          if (hasOutstandingBalance) _buildActionButtons(context),
         ],
       ),
     );
@@ -180,7 +181,8 @@ class MSPaymentSection extends StatelessWidget {
   Widget _buildActionButtons(BuildContext context) {
     final hasPayments = paymentHistory.isNotEmpty;
     final buttonText = hasPayments ? 'Add Further Payment' : 'Record Payment';
-    final showDuePayment = onRecordFinalPayment != null && amountDue > 0;
+    // Show Record Final Payment button if amountDue > 0 (regardless of status)
+    final showDuePayment = amountDue > 0;
 
     return Column(
       children: [
@@ -203,15 +205,17 @@ class MSPaymentSection extends StatelessWidget {
             ),
           ),
 
-        // Due payment button (for existing documents with outstanding balance)
-        if (showDuePayment) ...[
+        // Due payment button - CRITICAL: Show whenever Amount Due > 0
+        // This button must be visible regardless of PENDING/PARTIAL status
+        // as long as there's money to be collected (හිඟ මුදල තියෙනවා නම් බට්න් එක පේන්න ඕනේ)
+        if (showDuePayment && onRecordFinalPayment != null) ...[
           if (onAddPayment != null) const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: onRecordFinalPayment,
               icon: const Icon(Icons.receipt_long, size: 18),
-              label: const Text('Add Due Payment'),
+              label: const Text('Record Final Payment'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.orange.shade700,
                 side: BorderSide(color: Colors.orange.shade300),
@@ -239,7 +243,7 @@ class MSPaymentSection extends StatelessWidget {
               Expanded(
                 child: Text(
                   showDuePayment
-                      ? 'Add due payment for outstanding balance'
+                      ? 'Add final payment for outstanding balance'
                       : 'Record full payment or advance amount',
                   style: TextStyle(
                     fontSize: 11,

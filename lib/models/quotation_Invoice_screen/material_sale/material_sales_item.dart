@@ -65,7 +65,7 @@ class MaterialSaleItem {
   factory MaterialSaleItem.fromJson(Map<String, dynamic> json) {
     return MaterialSaleItem(
       categoryId: json['categoryId'] as String? ?? '',
-      categoryName: json['categoryName'] as String? ?? '',
+      categoryName: json['categoryName'] as String? ?? json['category'] as String? ?? '',
       itemId: json['itemId'] as String? ?? '',
       colorCode: json['colorCode'] as String? ?? '',
       productName: json['productName'] as String? ?? '',

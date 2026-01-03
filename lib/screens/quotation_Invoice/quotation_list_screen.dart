@@ -181,9 +181,10 @@ class _QuotationListScreenState extends State<QuotationListScreen>
         ),
       ),
     ).then((result) {
+      debugPrint('📱 Material Sale creation screen closed with result: $result');
       if (result == true) {
         // Force refresh material sales from API after successful creation
-        debugPrint('🔄 Refreshing material sales list after creation...');
+        debugPrint('🔄 SERVER REFRESH: Refreshing material sales list after creation...');
         cubit.loadMaterialSales();
       }
     });

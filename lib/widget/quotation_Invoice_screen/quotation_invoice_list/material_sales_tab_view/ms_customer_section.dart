@@ -7,7 +7,9 @@ class MSCustomerSection extends StatelessWidget {
   final TextEditingController phoneController;
   final TextEditingController? addressController;
   final bool isEditable;
+  final bool isSearching;
   final VoidCallback? onSearchByPhone;
+  final VoidCallback? onClearFields;
 
   const MSCustomerSection({
     Key? key,
@@ -15,7 +17,9 @@ class MSCustomerSection extends StatelessWidget {
     required this.phoneController,
     this.addressController,
     this.isEditable = true,
+    this.isSearching = false,
     this.onSearchByPhone,
+    this.onClearFields,
   }) : super(key: key);
 
   @override
@@ -114,11 +118,52 @@ class MSCustomerSection extends StatelessWidget {
         labelText: 'Phone Number *',
         hintText: '07X XXX XXXX',
         prefixIcon: const Icon(Icons.phone_outlined),
-        suffixIcon: isEditable && onSearchByPhone != null
-            ? IconButton(
-                icon: Icon(Icons.search, color: Colors.orange.shade600),
-                onPressed: onSearchByPhone,
-                tooltip: 'Search existing customer',
+        suffixIcon: isEditable
+            ? Container(
+                width: 96, // Wider to accommodate both buttons
+                height: 48,
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Search button
+                    if (isSearching)
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.orange.shade600),
+                        ),
+                      )
+                    else if (onSearchByPhone != null)
+                      IconButton(
+                        icon: Icon(Icons.search, color: Colors.orange.shade600),
+                        onPressed: onSearchByPhone,
+                        tooltip: 'Search existing customer',
+                        iconSize: 20,
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                        padding: EdgeInsets.zero,
+                      ),
+
+                    // Clear button (only show if there are values to clear)
+                    if (onClearFields != null && (nameController.text.isNotEmpty || (addressController?.text.isNotEmpty ?? false)))
+                      IconButton(
+                        icon: Icon(Icons.clear, color: Colors.red.shade400),
+                        onPressed: onClearFields,
+                        tooltip: 'Clear all customer fields',
+                        iconSize: 18,
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                        padding: EdgeInsets.zero,
+                      ),
+                  ],
+                ),
               )
             : null,
         border: OutlineInputBorder(

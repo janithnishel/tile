@@ -31,11 +31,9 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
   DateTime? _endDate;
   final TextEditingController _searchController = TextEditingController();
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
+  // Infinite Scroll
+  final ScrollController _scrollController = ScrollController();
+  bool _isNearBottom = false;
 
   @override
   void initState() {
@@ -44,6 +42,50 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MaterialSaleCubit>().loadMaterialSales();
     });
+
+    // Set up scroll listener for infinite scroll
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    // Calculate 80% threshold of the scrollable area
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    final threshold = maxScroll * 0.8; // 80% threshold
+
+    final isNearBottom = currentScroll >= threshold;
+
+    // Only trigger if we just crossed the threshold
+    if (isNearBottom && !_isNearBottom) {
+      setState(() => _isNearBottom = true);
+      _loadMoreIfAvailable();
+    } else if (!isNearBottom && _isNearBottom) {
+      setState(() => _isNearBottom = false);
+    }
+  }
+
+  void _loadMoreIfAvailable() {
+    final cubit = context.read<MaterialSaleCubit>();
+    final state = cubit.state;
+
+    if (state.hasMoreData && !state.isLoadingMore) {
+      debugPrint('📄 Loading more material sales...');
+      cubit.loadMoreMaterialSales(
+        status: _statusFilter != 'All' ? _statusFilter.toLowerCase() : null,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+        startDate: _startDate?.toIso8601String(),
+        endDate: _endDate?.toIso8601String(),
+      );
+    }
   }
 
   // ============================================
@@ -52,18 +94,33 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
 
   void _onSearchChanged(String value) {
     setState(() => _searchQuery = value);
+    _reloadDataWithFilters();
   }
 
   void _onStatusFilterChanged(String value) {
     setState(() => _statusFilter = value);
+    _reloadDataWithFilters();
   }
 
   void _onStartDateChanged(DateTime? value) {
     setState(() => _startDate = value);
+    _reloadDataWithFilters();
   }
 
   void _onEndDateChanged(DateTime? value) {
     setState(() => _endDate = value);
+    _reloadDataWithFilters();
+  }
+
+  void _reloadDataWithFilters() {
+    final cubit = context.read<MaterialSaleCubit>();
+    cubit.loadMaterialSales(
+      resetPagination: true, // Reset pagination when filters change
+      status: _statusFilter != 'All' ? _statusFilter.toLowerCase() : null,
+      search: _searchQuery.isNotEmpty ? _searchQuery : null,
+      startDate: _startDate?.toIso8601String(),
+      endDate: _endDate?.toIso8601String(),
+    );
   }
 
   void _clearSearch() {
@@ -141,11 +198,11 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
               child: Container(
                 color: Colors.grey.shade50,
                 child: state.isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? _buildShimmerLoading()
                     : state.errorMessage != null
                         ? _buildErrorState(state.errorMessage!)
                         : customerNames.isEmpty
-                            ? _buildEmptyState(context.read<MaterialSaleCubit>())
+                            ? _buildEmptyState(context.read<MaterialSaleCubit>(), state)
                             : _buildDocumentList(customerNames, groupedDocs, context.read<MaterialSaleCubit>()),
               ),
             ),
@@ -215,9 +272,26 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
     MaterialSaleCubit cubit,
   ) {
     return ListView.builder(
-      padding: const EdgeInsets.all(16), // Standard padding, no extra bottom needed
-      itemCount: customerNames.length,
+      controller: _scrollController,
+      padding: const EdgeInsets.all(16),
+      itemCount: customerNames.length + (cubit.state.isLoadingMore ? 1 : 0), // Add 1 for loading indicator
       itemBuilder: (context, index) {
+        // Show loading indicator at the bottom
+        if (cubit.state.isLoadingMore && index == customerNames.length) {
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            alignment: Alignment.center,
+            child: const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+              ),
+            ),
+          );
+        }
+
         final customerName = customerNames[index];
         final customerDocs = groupedDocs[customerName]!;
         final summary = _getCustomerSummary(customerDocs);
@@ -354,9 +428,78 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
     );
   }
 
-  Widget _buildEmptyState(MaterialSaleCubit cubit) {
+  Widget _buildShimmerLoading() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 5, // Show 5 shimmer items
+      itemBuilder: (context, index) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header shimmer
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Subtitle shimmer
+                Container(
+                  height: 12,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Content shimmer (simulate expansion tile items)
+                ...List.generate(2, (index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                )),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState(MaterialSaleCubit cubit, MaterialSaleState state) {
     final hasFilters = _hasActiveFilters();
-    final originalCount = context.read<MaterialSaleCubit>().state.materialSales.length;
+    final isInitialLoadWithNoResults = !hasFilters && !state.isLoading && state.materialSales.isEmpty && state.totalRecords == 0;
 
     return Center(
       child: Column(
@@ -369,14 +512,18 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              hasFilters ? Icons.search_off : Icons.store_outlined,
+              isInitialLoadWithNoResults ? Icons.inventory_2_outlined : Icons.search_off,
               size: 64,
               color: Colors.grey.shade400,
             ),
           ),
           const SizedBox(height: 24),
           Text(
-            hasFilters ? 'No sales match your filters' : 'No material sales yet',
+            isInitialLoadWithNoResults
+                ? 'No records found'
+                : hasFilters
+                    ? 'No sales match your filters'
+                    : 'No material sales yet',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -385,26 +532,18 @@ class _MaterialSaleTabViewState extends State<MaterialSaleTabView> {
           ),
           const SizedBox(height: 8),
           Text(
-            hasFilters
-                ? 'Try adjusting your search or filters'
-                : 'Create your first material sale',
+            isInitialLoadWithNoResults
+                ? 'There are no material sales in the system yet'
+                : hasFilters
+                    ? 'Try adjusting your search or filters'
+                    : 'Create your first material sale',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey.shade500,
             ),
           ),
-          if (hasFilters && originalCount > 0) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Found $originalCount sales in total',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade400,
-              ),
-            ),
-          ],
           const SizedBox(height: 32),
-          if (!hasFilters)
+          if (!hasFilters && !isInitialLoadWithNoResults)
             ElevatedButton.icon(
               onPressed: () => widget.onCreateNew(cubit),
               icon: const Icon(Icons.add_shopping_cart),
